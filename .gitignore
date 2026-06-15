@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/
+*.log
+*.tmp
+**/output/*.html
+**/output/*.jpeg
+**/output/*.png
+**/output/*.pdf

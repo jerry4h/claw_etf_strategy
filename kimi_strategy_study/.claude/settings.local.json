@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/c/Users/admin/AppData/Local/Microsoft/WindowsApps/python3.exe --version)",
+      "Bash(where python *)",
+      "Bash(python)",
+      "Bash(conda activate *)",
+      "Bash(python main.py)",
+      "Bash(/c/Users/admin/anaconda3/Scripts/activate.bat base *)",
+      "Bash(python \"d:\\\\workspace\\\\lude-20230818\\\\kimi_strategy_study\\\\main.py\")",
+      "Bash(cmd /c \"cd /d d:\\\\workspace\\\\lude-20230818\\\\kimi_strategy_study && python main.py\")",
+      "Bash(cmd /c \"python --version\")",
+      "Bash(cmd /c \"C:\\\\Users\\\\admin\\\\anaconda3\\\\python.exe --version\")",
+      "Bash(\"C:\\\\Users\\\\admin\\\\anaconda3\\\\python.exe\" --version)",
+      "Bash(\"C:\\\\Users\\\\admin\\\\anaconda3\\\\python.exe\" \"d:\\\\workspace\\\\lude-20230818\\\\kimi_strategy_study\\\\main.py\")",
+      "Bash(\"C:\\\\Users\\\\admin\\\\anaconda3\\\\python.exe\" -m pip install --upgrade numpy)",
+      "Bash(pip install *)",
+      "Bash(python -c ' *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
+    ]
+  }
+}

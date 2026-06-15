@@ -1,0 +1,45 @@
+# 虾池ETF轮动策略 v2.3 — 基准配置
+# 对应技术方案定稿 v2.3 的核心参数
+# 生成日期: 2026-06-15
+
+strategy:
+  name: "虾池ETF轮动 v2.3"
+  version: "2.3"
+
+scoring:
+  mom_w: 0.35        # 4周动量权重
+  vol_w: 0.30        # 20周波动率权重
+  # val_w 已移除（v2.3消融验证不影响进攻层排序）
+
+selection:
+  top_n: 2           # 从进攻层选2只ETF
+
+factors:
+  mom_window: 4      # 动量窗口（周）
+  vol_window: 20     # 波动率窗口（周）
+  pe_window_years: 5 # PE分位数窗口（年）
+
+defense:
+  def_alloc: 0.25    # 基准防御比例
+  step_low: 0.20     # vol三段式下限
+  step_high: 0.35    # vol三段式上限
+  max_def: 0.95      # 极限防御比例
+  hongli_ratio: 0.50 # 防御层中红利低波占比
+
+rebalance:
+  threshold: 0.07    # 调仓阈值（单只仓位变化≥7%才调）
+  fee_rate: 0.00005  # 单边费率（turnover = buy+sell 的双边总额已在 backtest 内体现）
+  anchor: "W-MON"    # 调仓日锚点
+
+risk_control:
+  stop_loss: 0.08    # 止损阈值（净值从峰值下跌8%）
+  recovery_weeks: 4  # 止损后恢复观察周数
+
+data:
+  nav_path: "data/all_etfs_nav_2013_2026_h20269_scaled.csv"
+  pe_path: "data/300etf_pe_percentile_weekly.csv"
+  start_date: "2013-05-20"
+  end_date: "2026-05-01"
+
+reporting:
+  risk_free_rate: 0.025  # 无风险利率（用于标准夏普）

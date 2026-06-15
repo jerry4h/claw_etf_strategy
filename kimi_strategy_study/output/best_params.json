@@ -1,0 +1,14 @@
+{
+  "mom_w": 0.35,
+  "vol_w": 0.3,
+  "val_w": 0.05,
+  "top_n": 2,
+  "def_alloc": 0.5,
+  "step_low": 0.08,
+  "step_high": 0.23,
+  "max_def": 0.9,
+  "hongli_ratio": 0.1,
+  "annual_return": 0.07445828524489762,
+  "max_drawdown": 0.03339248168089938,
+  "sharpe": 1.8452167688738141
+}
