@@ -10,3 +10,6 @@ __pycache__/
 **/output/*.jpeg
 **/output/*.png
 **/output/*.pdf
+
+# Hermes Agent - kanban, cron, skills
+.hermes/
