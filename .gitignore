@@ -1,3 +1,4 @@
+.venv/
 venv/
 __pycache__/
 *.pyc
@@ -13,3 +14,7 @@ __pycache__/
 
 # Hermes Agent - kanban, cron, skills
 .hermes/
+test_venv/
+scripts/_*.py
+*.pyc
+__pycache__/

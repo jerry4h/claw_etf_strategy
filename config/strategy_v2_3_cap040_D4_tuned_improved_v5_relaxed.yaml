@@ -1,0 +1,80 @@
+strategy:
+  name: 虾池ETF轮动 v2.3 + cap 0.40 + D4 tuned + T66+T67 v5改进(止损放宽版)
+  version: 2.3-cap040-D4tuned-v5-relaxed
+scoring:
+  mom_w: 0.35
+  vol_w: 0.3
+selection:
+  top_n: 2
+factors:
+  mom_window: 4
+  vol_window: 20
+  pe_window_years: 5
+defense:
+  def_alloc: 0.25
+  step_low: 0.2
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.5
+rebalance:
+  threshold: 0.07
+  fee_rate: 5.0e-05
+  anchor: W-MON
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+# === T67: 三层分级止损（D1）— 放宽版 ===
+stop_loss:
+  tiered: true
+  l1_drawdown: 0.06     # L1 预警阈值 (6%, 原4%)
+  l1_defense: 0.50      # L1 强制防御比例 (50%)
+  l2_drawdown: 0.10     # L2 强制止损阈值 (10%, 原6%)
+  l2_defense: 0.95      # L2 强制防御比例 (95%)
+  l3_weekly_drop: -0.03 # L3 熔断单周跌幅
+  l3_down_weeks: 3      # L3 熔断下跌周数
+  l3_window: 4          # L3 观察窗口
+  l2_recovery_weeks: 4  # L2 恢复观察期
+  l3_recovery_weeks: 2  # L3 恢复观察期
+allocation:
+  max_single_alloc: 0.4
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+d4_individual_filter:
+  # === T66: D4参数钳制 ===
+  # momentum_window: clamp to max 8 (done in strategy.py loader)
+  # momentum_threshold: clamp to min -0.07 (done in strategy.py loader)
+  enabled: true
+  momentum_window: 8
+  momentum_threshold: -0.07
+  action: replace
+  min_candidates: 3
+softmax_allocation:
+  enabled: false
+  temperature: 1.0
+  hard_top_n_fallback: 2
+  min_candidates: 2
+dynamic_weighting:
+  enabled: false
+  lookback: 12
+  tq_low: 0.0
+  tq_high: 2.0
+  mom_w_low: 0.25
+  mom_w_high: 0.45
+  vol_w_low: 0.2
+  vol_w_high: 0.4
+  weight_sum: 0.65
+data:
+  nav_path: data/all_etfs_nav_2013_2026_h20269_scaled.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: '2013-05-20'
+  end_date: '2026-05-01'
+reporting:
+  risk_free_rate: 0.025
+
+# === T32: 成分股信号（CWM + CONC）=== 默认关闭
+constituent_signals:
+  enabled: false
+  signals_path: data/tushare/constituent_signals.csv
+  cwm_weight: 0.10
+  conc_weight: 0.03
+  cwm_window: 12

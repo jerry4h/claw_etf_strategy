@@ -1,0 +1,96 @@
+# 虾池ETF轮动策略 v2.6 — cap=0.45 网格搜索变体
+# 与 strategy_v2_6.yaml 完全相同，仅 max_single_alloc 不同
+
+strategy:
+  name: "虾池ETF轮动 v2.6 cap=0.45"
+  version: "2.6"
+
+scoring:
+  mom_w: 0.35
+  vol_w: 0.30
+
+selection:
+  top_n: 2
+
+factors:
+  mom_window: 4
+  vol_window: 20
+  pe_window_years: 5
+
+defense:
+  def_alloc: 0.25
+  step_low: 0.20
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.50
+
+rebalance:
+  threshold: 0.07
+  fee_rate: 0.00005
+  anchor: "W-MON"
+
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+
+stop_loss:
+  tiered: false
+  l1_drawdown: 0.04
+  l1_defense: 0.50
+  l2_drawdown: 0.06
+  l2_defense: 0.95
+  l3_weekly_drop: -0.03
+  l3_down_weeks: 3
+  l3_window: 4
+  l2_recovery_weeks: 4
+  l3_recovery_weeks: 2
+
+market_state:
+  stateful_stop_loss: true
+  ms_bull_mom: 0.10
+  ms_correction_mom: -0.05
+  ms_crisis_mom: -0.15
+  ms_low_vol_pct: 0.33
+  ms_mid_vol_pct: 0.50
+  ms_high_vol_pct: 0.80
+  ms_shallow_dd: 0.03
+  ms_moderate_dd: 0.08
+  ms_deep_dd: 0.15
+  ss_bull_l1: 0.08
+  ss_bull_l1_def: 0.50
+  ss_bull_l2: 0.12
+  ss_bull_l2_def: 0.80
+  ss_bull_recovery: 1
+  ss_normal_l1: 0.06
+  ss_normal_l1_def: 0.50
+  ss_normal_l2: 0.10
+  ss_normal_l2_def: 0.85
+  ss_normal_recovery: 2
+  ss_correction_l1: 0.04
+  ss_correction_l1_def: 0.60
+  ss_correction_l2: 0.07
+  ss_correction_l2_def: 0.95
+  ss_correction_recovery: 2
+  ss_crisis_l1: 0.03
+  ss_crisis_l1_def: 0.70
+  ss_crisis_l2: 0.05
+  ss_crisis_l2_def: 0.95
+  ss_crisis_recovery: 2
+
+allocation:
+  max_single_alloc: 0.45        # 网格搜索变体
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+  dc_bull_cap: 0.50
+  dc_normal_cap: 0.35
+  dc_correction_cap: 0.30
+  dc_crisis_cap: 0.25
+
+data:
+  nav_path: "data/all_etfs_nav_2013_2026_h20269_scaled.csv"
+  pe_path: "data/300etf_pe_percentile_weekly.csv"
+  start_date: "2013-05-20"
+  end_date: "2026-05-01"
+
+reporting:
+  risk_free_rate: 0.025

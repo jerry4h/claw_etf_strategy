@@ -1,0 +1,76 @@
+# 虾池ETF轮动策略 v2.3 + cap 0.40 — 基准配置 + 仅权重上限
+# 测试 v2.3 简单架构 + 单一 Fix #2 是否优于所有 stateful 变体
+
+strategy:
+  name: "虾池ETF轮动 v2.3 + cap 0.40"
+  version: "2.3-cap040"
+
+scoring:
+  mom_w: 0.35
+  vol_w: 0.30
+
+selection:
+  top_n: 2
+
+factors:
+  mom_window: 4
+  vol_window: 20
+  pe_window_years: 5
+
+defense:
+  def_alloc: 0.25
+  step_low: 0.20
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.50
+
+rebalance:
+  threshold: 0.07
+  fee_rate: 0.00005
+  anchor: "W-MON"
+
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+
+allocation:
+  max_single_alloc: 0.40
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+
+# === Direction D4: 单ETF动量过滤器 (P0, 默认关闭) ===
+d4_individual_filter:
+  enabled: false
+  momentum_window: 8          # 独立于 scoring mom_window(4w) 的动量回看窗口
+  momentum_threshold: 0.0     # 低于此值的 ETF 被标记为弱，0.0=仅过滤负动量
+  action: replace             # 'replace'=替换为剩余最高分, 'defense'=份额转入防御层
+  min_candidates: 3           # 最少进攻候选数才启用过滤
+
+# === Direction D1: 动态动量/波动率权重 (P1, 默认关闭) ===
+dynamic_weighting:
+  enabled: false
+  lookback: 12                # 趋势质量回看窗口 (12周)
+  tq_low: 0.0                 # 趋势质量归一化下限
+  tq_high: 2.0                # 趋势质量归一化上限
+  mom_w_low: 0.25             # 动量权重下限
+  mom_w_high: 0.45            # 动量权重上限
+  vol_w_low: 0.20             # 波动率权重下限
+  vol_w_high: 0.40            # 波动率权重上限
+  weight_sum: 0.65            # mom_w + vol_w 目标和
+
+data:
+  nav_path: "data/all_etfs_nav_2013_2026_h20269_scaled.csv"
+  pe_path: "data/300etf_pe_percentile_weekly.csv"
+  start_date: "2013-05-20"
+  end_date: "2026-05-01"
+
+reporting:
+  risk_free_rate: 0.025
+
+# === T32: 成分股信号（CWM + CONC）=== 默认关闭
+constituent_signals:
+  enabled: false
+  signals_path: data/tushare/constituent_signals.csv
+  cwm_weight: 0.10
+  conc_weight: 0.03
+  cwm_window: 12

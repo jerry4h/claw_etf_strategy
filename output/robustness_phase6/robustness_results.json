@@ -1,0 +1,1126 @@
+{
+  "strategies": [
+    {
+      "label": "v2.3 基线",
+      "metrics": {
+        "annual_return": 0.14112232760062926,
+        "max_drawdown": 0.07420880670160729,
+        "sharpe_ratio": 1.102009124101889
+      },
+      "dsr": 1.0,
+      "mc_survival_rate": 0.4875,
+      "wf_win_rate": 0.6666666666666666,
+      "grid_points": {
+        "mom_w": [
+          {
+            "level": -0.15,
+            "sharpe": 1.0102187992734326,
+            "annual_return": 0.12923030882089348,
+            "max_drawdown": 0.08923095625010541,
+            "relative_sharpe": 0.19377848786326912,
+            "mc_survival_rate": 0.4
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.0078259010596704,
+            "annual_return": 0.12886150064104118,
+            "max_drawdown": 0.08667811133992014,
+            "relative_sharpe": 0.19138558964950692,
+            "mc_survival_rate": 0.38
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.0339762878001793,
+            "annual_return": 0.13187833451219522,
+            "max_drawdown": 0.09810519705644949,
+            "relative_sharpe": 0.21753597639001576,
+            "mc_survival_rate": 0.36
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.3
+          },
+          {
+            "level": 0.05,
+            "sharpe": 0.9645988932653339,
+            "annual_return": 0.1306474883099733,
+            "max_drawdown": 0.1549751497069404,
+            "relative_sharpe": 0.1481585818551704,
+            "mc_survival_rate": 0.28
+          },
+          {
+            "level": 0.1,
+            "sharpe": 0.937122778951057,
+            "annual_return": 0.12724109534518213,
+            "max_drawdown": 0.15497514970694057,
+            "relative_sharpe": 0.12068246754089351,
+            "mc_survival_rate": 0.14
+          },
+          {
+            "level": 0.15,
+            "sharpe": 0.9045607277014924,
+            "annual_return": 0.12351447306651542,
+            "max_drawdown": 0.17150920597964087,
+            "relative_sharpe": 0.08812041629132894,
+            "mc_survival_rate": 0.08
+          }
+        ],
+        "vol_w": [
+          {
+            "level": -0.15,
+            "sharpe": 0.9161755768435554,
+            "annual_return": 0.1255307956039362,
+            "max_drawdown": 0.17150920597964134,
+            "relative_sharpe": 0.09973526543339195,
+            "mc_survival_rate": 0.0
+          },
+          {
+            "level": -0.1,
+            "sharpe": 0.9315652500163386,
+            "annual_return": 0.12666378747519658,
+            "max_drawdown": 0.15497514970694057,
+            "relative_sharpe": 0.11512493860617512,
+            "mc_survival_rate": 0.06
+          },
+          {
+            "level": -0.05,
+            "sharpe": 0.9669899487528026,
+            "annual_return": 0.1309893552321879,
+            "max_drawdown": 0.1549751497069404,
+            "relative_sharpe": 0.15054963734263915,
+            "mc_survival_rate": 0.1
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.0339762878001793,
+            "annual_return": 0.13187833451219522,
+            "max_drawdown": 0.09810519705644949,
+            "relative_sharpe": 0.21753597639001576,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.009923994298259,
+            "annual_return": 0.12910164536768365,
+            "max_drawdown": 0.08667811133992026,
+            "relative_sharpe": 0.19348368288809548,
+            "mc_survival_rate": 0.4
+          },
+          {
+            "level": 0.15,
+            "sharpe": 0.9966212614789026,
+            "annual_return": 0.12758984215956826,
+            "max_drawdown": 0.0866781113399201,
+            "relative_sharpe": 0.18018095006873913,
+            "mc_survival_rate": 0.4
+          }
+        ],
+        "def_alloc": [
+          {
+            "level": -0.15,
+            "sharpe": 1.1090678509201697,
+            "annual_return": 0.1439797766391524,
+            "max_drawdown": 0.0787411320829781,
+            "relative_sharpe": 0.2926275395100062,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.106914244285174,
+            "annual_return": 0.14302877773419365,
+            "max_drawdown": 0.0772305291329867,
+            "relative_sharpe": 0.29047393287501055,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.104563113590299,
+            "annual_return": 0.14207629313121872,
+            "max_drawdown": 0.07571975193512526,
+            "relative_sharpe": 0.2881228021801354,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.0992342373149688,
+            "annual_return": 0.14011619727370195,
+            "max_drawdown": 0.07269769965384186,
+            "relative_sharpe": 0.28279392590480534,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.089712660838075,
+            "annual_return": 0.13843038497229498,
+            "max_drawdown": 0.073313894702831,
+            "relative_sharpe": 0.27327234942791145,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.0866058489632373,
+            "annual_return": 0.13748706824563883,
+            "max_drawdown": 0.07536339613548405,
+            "relative_sharpe": 0.2701655375530738,
+            "mc_survival_rate": 0.18
+          }
+        ],
+        "step_low": [
+          {
+            "level": -0.15,
+            "sharpe": 1.07831843649469,
+            "annual_return": 0.13722304078827885,
+            "max_drawdown": 0.07639618629147499,
+            "relative_sharpe": 0.26187812508452657,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.0793914774654945,
+            "annual_return": 0.13801070945929994,
+            "max_drawdown": 0.07471927027960523,
+            "relative_sharpe": 0.262951166055331,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.098970138866862,
+            "annual_return": 0.14002812224269046,
+            "max_drawdown": 0.07334901371775195,
+            "relative_sharpe": 0.2825298274566985,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.10184773468267,
+            "annual_return": 0.14172329153374408,
+            "max_drawdown": 0.07549191889083785,
+            "relative_sharpe": 0.28540742327250657,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.100466133875045,
+            "annual_return": 0.14212846127619394,
+            "max_drawdown": 0.07831658047947287,
+            "relative_sharpe": 0.2840258224648815,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.0852480345709445,
+            "annual_return": 0.14141267007479041,
+            "max_drawdown": 0.08161789587573738,
+            "relative_sharpe": 0.26880772316078105,
+            "mc_survival_rate": 0.2
+          }
+        ],
+        "step_high": [
+          {
+            "level": -0.15,
+            "sharpe": 1.0225551721971076,
+            "annual_return": 0.13068631920733886,
+            "max_drawdown": 0.1099374499164536,
+            "relative_sharpe": 0.20611486078694408,
+            "mc_survival_rate": 0.1
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.0629918747864642,
+            "annual_return": 0.13685429501040236,
+            "max_drawdown": 0.11205072850538973,
+            "relative_sharpe": 0.2465515633763007,
+            "mc_survival_rate": 0.1
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.0971753756036215,
+            "annual_return": 0.1400229960786632,
+            "max_drawdown": 0.07653083398484742,
+            "relative_sharpe": 0.28073506419345806,
+            "mc_survival_rate": 0.14
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.0865704569960406,
+            "annual_return": 0.13995870250940623,
+            "max_drawdown": 0.08078680807962217,
+            "relative_sharpe": 0.2701301455858771,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.10383182752262,
+            "annual_return": 0.14354435297805268,
+            "max_drawdown": 0.08368020050530459,
+            "relative_sharpe": 0.2873915161124565,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.0933598763715298,
+            "annual_return": 0.14278854969354438,
+            "max_drawdown": 0.08682065325087625,
+            "relative_sharpe": 0.27691956496136627,
+            "mc_survival_rate": 0.24
+          }
+        ],
+        "max_def": [
+          {
+            "level": -0.15,
+            "sharpe": 1.0991065855413247,
+            "annual_return": 0.14314303547070217,
+            "max_drawdown": 0.08509827249249587,
+            "relative_sharpe": 0.2826662741311612,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.0999840525357814,
+            "annual_return": 0.14282894266389468,
+            "max_drawdown": 0.08211983822047879,
+            "relative_sharpe": 0.28354374112561787,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.0967629131818644,
+            "annual_return": 0.1408439682612188,
+            "max_drawdown": 0.07565995986681513,
+            "relative_sharpe": 0.2803226017717009,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.101706433305167,
+            "annual_return": 0.14075225950732762,
+            "max_drawdown": 0.07383075846247084,
+            "relative_sharpe": 0.28526612189500344,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.101706433305167,
+            "annual_return": 0.14075225950732762,
+            "max_drawdown": 0.07383075846247084,
+            "relative_sharpe": 0.28526612189500344,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.101706433305167,
+            "annual_return": 0.14075225950732762,
+            "max_drawdown": 0.07383075846247084,
+            "relative_sharpe": 0.28526612189500344,
+            "mc_survival_rate": 0.2
+          }
+        ],
+        "rebalance_threshold": [
+          {
+            "level": -0.15,
+            "sharpe": 1.1005557081590749,
+            "annual_return": 0.14098532057745783,
+            "max_drawdown": 0.07408311450748263,
+            "relative_sharpe": 0.2841153967489114,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.1022598046933623,
+            "annual_return": 0.14113260721289733,
+            "max_drawdown": 0.07334901371775208,
+            "relative_sharpe": 0.2858194932831988,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.0949040430268873,
+            "annual_return": 0.1402770221109071,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2784637316167238,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.0891215691734049,
+            "annual_return": 0.13965074093276741,
+            "max_drawdown": 0.07716732401592745,
+            "relative_sharpe": 0.27268125776324137,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.091588617366637,
+            "annual_return": 0.1409937641469463,
+            "max_drawdown": 0.07614485262917704,
+            "relative_sharpe": 0.27514830595647344,
+            "mc_survival_rate": 0.2
+          }
+        ],
+        "stop_loss": [
+          {
+            "level": -0.15,
+            "sharpe": 1.041286957347102,
+            "annual_return": 0.13454191258236725,
+            "max_drawdown": 0.10227865969094416,
+            "relative_sharpe": 0.22484664593693848,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.078541613375826,
+            "annual_return": 0.1378185867137065,
+            "max_drawdown": 0.07334901371775174,
+            "relative_sharpe": 0.2621013019656626,
+            "mc_survival_rate": 0.28
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.28
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.28
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.1
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.16
+          }
+        ],
+        "top_n": [
+          {
+            "level": 1.0,
+            "sharpe": 0.8655610094134335,
+            "annual_return": 0.11245713804096424,
+            "max_drawdown": 0.1488720538533186,
+            "relative_sharpe": 0.049120698003270014,
+            "mc_survival_rate": 0.32
+          },
+          {
+            "level": 2.0,
+            "sharpe": 1.102009124101889,
+            "annual_return": 0.14112232760062926,
+            "max_drawdown": 0.07420880670160729,
+            "relative_sharpe": 0.2855688126917255,
+            "mc_survival_rate": 0.6
+          },
+          {
+            "level": 3.0,
+            "sharpe": 0.699391081072851,
+            "annual_return": 0.09932144567599033,
+            "max_drawdown": 0.19273443332522291,
+            "relative_sharpe": -0.11704923033731252,
+            "mc_survival_rate": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "label": "D4 tuned",
+      "metrics": {
+        "annual_return": 0.15654815444013814,
+        "max_drawdown": 0.07583734245319906,
+        "sharpe_ratio": 1.215626903096881
+      },
+      "dsr": 1.0,
+      "mc_survival_rate": 0.435,
+      "wf_win_rate": 0.7777777777777778,
+      "grid_points": {
+        "mom_w": [
+          {
+            "level": -0.15,
+            "sharpe": 1.1098935724219727,
+            "annual_return": 0.14181457861468516,
+            "max_drawdown": 0.09659035776221263,
+            "relative_sharpe": 0.29345326101180924,
+            "mc_survival_rate": 0.42
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.1038421141336514,
+            "annual_return": 0.1411418209395039,
+            "max_drawdown": 0.09659035776221263,
+            "relative_sharpe": 0.2874018027234879,
+            "mc_survival_rate": 0.38
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.1378805236868925,
+            "annual_return": 0.145157498132382,
+            "max_drawdown": 0.09810519705644974,
+            "relative_sharpe": 0.32144021227672903,
+            "mc_survival_rate": 0.32
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.26
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.063479100849959,
+            "annual_return": 0.1431535792790759,
+            "max_drawdown": 0.1549751497069404,
+            "relative_sharpe": 0.2470387894397954,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.0198520443261971,
+            "annual_return": 0.13773863214350368,
+            "max_drawdown": 0.15497514970694043,
+            "relative_sharpe": 0.20341173291603365,
+            "mc_survival_rate": 0.12
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.0051818734751838,
+            "annual_return": 0.136276900593292,
+            "max_drawdown": 0.171509205979641,
+            "relative_sharpe": 0.18874156206502035,
+            "mc_survival_rate": 0.06
+          }
+        ],
+        "vol_w": [
+          {
+            "level": -0.15,
+            "sharpe": 0.9962711533672646,
+            "annual_return": 0.13566453119330735,
+            "max_drawdown": 0.1715092059796416,
+            "relative_sharpe": 0.17983084195710108,
+            "mc_survival_rate": 0.02
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.0142355627927235,
+            "annual_return": 0.1371559480406661,
+            "max_drawdown": 0.15497514970694043,
+            "relative_sharpe": 0.19779525138256004,
+            "mc_survival_rate": 0.1
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.056442234471108,
+            "annual_return": 0.1423758317308239,
+            "max_drawdown": 0.1549751497069404,
+            "relative_sharpe": 0.24000192306094448,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.1378805236868925,
+            "annual_return": 0.145157498132382,
+            "max_drawdown": 0.09810519705644974,
+            "relative_sharpe": 0.32144021227672903,
+            "mc_survival_rate": 0.3
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.105918633291804,
+            "annual_return": 0.1413845780806542,
+            "max_drawdown": 0.09659035776221239,
+            "relative_sharpe": 0.2894783218816406,
+            "mc_survival_rate": 0.34
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.1098935724219727,
+            "annual_return": 0.14181457861468516,
+            "max_drawdown": 0.09659035776221263,
+            "relative_sharpe": 0.29345326101180924,
+            "mc_survival_rate": 0.44
+          }
+        ],
+        "def_alloc": [
+          {
+            "level": -0.15,
+            "sharpe": 1.2268661528217446,
+            "annual_return": 0.1602309437157199,
+            "max_drawdown": 0.07709100654591018,
+            "relative_sharpe": 0.4104258414115811,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.223385792513886,
+            "annual_return": 0.159008696997607,
+            "max_drawdown": 0.07584431022279702,
+            "relative_sharpe": 0.40694548110372253,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.2196848965244769,
+            "annual_return": 0.15778545469727323,
+            "max_drawdown": 0.07527235863600885,
+            "relative_sharpe": 0.4032445851143134,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.2116722371370532,
+            "annual_return": 0.15534883266534383,
+            "max_drawdown": 0.07640241368257907,
+            "relative_sharpe": 0.3952319257268897,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.2008060223636832,
+            "annual_return": 0.15338296082916414,
+            "max_drawdown": 0.07696757191622013,
+            "relative_sharpe": 0.3843657109535197,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.195941471954123,
+            "annual_return": 0.15211443527179358,
+            "max_drawdown": 0.07753281674641342,
+            "relative_sharpe": 0.37950116054395955,
+            "mc_survival_rate": 0.18
+          }
+        ],
+        "step_low": [
+          {
+            "level": -0.15,
+            "sharpe": 1.1941467562707624,
+            "annual_return": 0.1512508892600395,
+            "max_drawdown": 0.0815812253721412,
+            "relative_sharpe": 0.3777064448605989,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.1882585493533442,
+            "annual_return": 0.15162132543389584,
+            "max_drawdown": 0.07973057456642917,
+            "relative_sharpe": 0.3718182379431807,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.2035275520723925,
+            "annual_return": 0.15435905370942593,
+            "max_drawdown": 0.07798602160010633,
+            "relative_sharpe": 0.387087240662229,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.21543238126139,
+            "annual_return": 0.15717781893745797,
+            "max_drawdown": 0.07468597409272969,
+            "relative_sharpe": 0.3989920698512266,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.2132151368138449,
+            "annual_return": 0.1575320196381116,
+            "max_drawdown": 0.07591396553534707,
+            "relative_sharpe": 0.39677482540368136,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.200709880837037,
+            "annual_return": 0.15688092306522727,
+            "max_drawdown": 0.080518995945662,
+            "relative_sharpe": 0.3842695694268734,
+            "mc_survival_rate": 0.2
+          }
+        ],
+        "step_high": [
+          {
+            "level": -0.15,
+            "sharpe": 1.1497072138999533,
+            "annual_return": 0.14618614184931178,
+            "max_drawdown": 0.11189987687167086,
+            "relative_sharpe": 0.33326690248978985,
+            "mc_survival_rate": 0.16
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.1866909510193946,
+            "annual_return": 0.15231665433025587,
+            "max_drawdown": 0.11400849697944478,
+            "relative_sharpe": 0.3702506396092311,
+            "mc_survival_rate": 0.16
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.2152935590909817,
+            "annual_return": 0.15529769005252492,
+            "max_drawdown": 0.08064010828682473,
+            "relative_sharpe": 0.3988532476808182,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.202812475941119,
+            "annual_return": 0.15580703028358078,
+            "max_drawdown": 0.07917655366185117,
+            "relative_sharpe": 0.38637216453095546,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.2148812606207064,
+            "annual_return": 0.15811379692551086,
+            "max_drawdown": 0.08039542065200825,
+            "relative_sharpe": 0.39844094921054296,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.2103695441298856,
+            "annual_return": 0.15798527492509074,
+            "max_drawdown": 0.08216001850129422,
+            "relative_sharpe": 0.39392923271972213,
+            "mc_survival_rate": 0.22
+          }
+        ],
+        "max_def": [
+          {
+            "level": -0.15,
+            "sharpe": 1.2181118680871328,
+            "annual_return": 0.15856480928459593,
+            "max_drawdown": 0.08013563237351541,
+            "relative_sharpe": 0.4016715566769693,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.2193761841997193,
+            "annual_return": 0.15821403815989998,
+            "max_drawdown": 0.07837236902297243,
+            "relative_sharpe": 0.4029358727895558,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.2094598522139115,
+            "annual_return": 0.1562743955402286,
+            "max_drawdown": 0.07565995986681526,
+            "relative_sharpe": 0.393019540803748,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.2146484134648694,
+            "annual_return": 0.1560598550072152,
+            "max_drawdown": 0.0779170850834027,
+            "relative_sharpe": 0.3982081020547059,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.2146484134648694,
+            "annual_return": 0.1560598550072152,
+            "max_drawdown": 0.0779170850834027,
+            "relative_sharpe": 0.3982081020547059,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.2146484134648694,
+            "annual_return": 0.1560598550072152,
+            "max_drawdown": 0.0779170850834027,
+            "relative_sharpe": 0.3982081020547059,
+            "mc_survival_rate": 0.2
+          }
+        ],
+        "rebalance_threshold": [
+          {
+            "level": -0.15,
+            "sharpe": 1.212015444227064,
+            "annual_return": 0.1561654652865656,
+            "max_drawdown": 0.07814167275548807,
+            "relative_sharpe": 0.3955751328169006,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.213734472480709,
+            "annual_return": 0.1563147114848491,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.3972941610705456,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.2157581444332395,
+            "annual_return": 0.1565612223730828,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.399317833023076,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.2084732019172293,
+            "annual_return": 0.15571082503844402,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.3920328905070658,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.2038725430646415,
+            "annual_return": 0.15500438273221584,
+            "max_drawdown": 0.07587005290429788,
+            "relative_sharpe": 0.38743223165447804,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.2059187413040853,
+            "annual_return": 0.15532082229045785,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.3894784298939218,
+            "mc_survival_rate": 0.2
+          }
+        ],
+        "stop_loss": [
+          {
+            "level": -0.15,
+            "sharpe": 1.1394238217633281,
+            "annual_return": 0.14633684613526166,
+            "max_drawdown": 0.10156549900701535,
+            "relative_sharpe": 0.32298351035316464,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.1772356899677239,
+            "annual_return": 0.15034395473859896,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.3607953785575604,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.36
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.34
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.32
+          }
+        ],
+        "top_n": [
+          {
+            "level": 1.0,
+            "sharpe": 0.8655610094134335,
+            "annual_return": 0.11245713804096424,
+            "max_drawdown": 0.1488720538533186,
+            "relative_sharpe": 0.049120698003270014,
+            "mc_survival_rate": 0.18
+          },
+          {
+            "level": 2.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.46
+          },
+          {
+            "level": 3.0,
+            "sharpe": 0.7555216573081204,
+            "annual_return": 0.10404835348401353,
+            "max_drawdown": 0.187804942521529,
+            "relative_sharpe": -0.06091865410204311,
+            "mc_survival_rate": 0.0
+          }
+        ],
+        "momentum_window": [
+          {
+            "level": -0.15,
+            "sharpe": 1.1566719588470844,
+            "annual_return": 0.14979606871047046,
+            "max_drawdown": 0.08714783517996297,
+            "relative_sharpe": 0.3402316474369209,
+            "mc_survival_rate": 0.3
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.1566719588470844,
+            "annual_return": 0.14979606871047046,
+            "max_drawdown": 0.08714783517996297,
+            "relative_sharpe": 0.3402316474369209,
+            "mc_survival_rate": 0.3
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.26
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.26
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.26
+          },
+          {
+            "level": 0.1,
+            "sharpe": 0.9078832740468139,
+            "annual_return": 0.1218064432118009,
+            "max_drawdown": 0.14455350751142515,
+            "relative_sharpe": 0.09144296263665042,
+            "mc_survival_rate": 0.2
+          },
+          {
+            "level": 0.15,
+            "sharpe": 0.9078832740468139,
+            "annual_return": 0.1218064432118009,
+            "max_drawdown": 0.14455350751142515,
+            "relative_sharpe": 0.09144296263665042,
+            "mc_survival_rate": 0.2
+          }
+        ],
+        "momentum_threshold": [
+          {
+            "level": -0.15,
+            "sharpe": 1.0587374055065875,
+            "annual_return": 0.14297435881208487,
+            "max_drawdown": 0.1445535075114254,
+            "relative_sharpe": 0.24229709409642397,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": -0.1,
+            "sharpe": 1.0778086809640337,
+            "annual_return": 0.14526008781445432,
+            "max_drawdown": 0.14455350751142526,
+            "relative_sharpe": 0.2613683695538702,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": -0.05,
+            "sharpe": 1.082698374982578,
+            "annual_return": 0.14572129650379617,
+            "max_drawdown": 0.14455350751142457,
+            "relative_sharpe": 0.26625806357241455,
+            "mc_survival_rate": 0.22
+          },
+          {
+            "level": 0.0,
+            "sharpe": 1.215626903096881,
+            "annual_return": 0.15654815444013814,
+            "max_drawdown": 0.07583734245319906,
+            "relative_sharpe": 0.39918659168671744,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": 0.05,
+            "sharpe": 1.1954500502514847,
+            "annual_return": 0.15268502356359126,
+            "max_drawdown": 0.07334901371775214,
+            "relative_sharpe": 0.37900973884132116,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": 0.1,
+            "sharpe": 1.1489846043148007,
+            "annual_return": 0.14645910964595976,
+            "max_drawdown": 0.07334901371775197,
+            "relative_sharpe": 0.33254429290463716,
+            "mc_survival_rate": 0.24
+          },
+          {
+            "level": 0.15,
+            "sharpe": 1.1489846043148007,
+            "annual_return": 0.14645910964595976,
+            "max_drawdown": 0.07334901371775197,
+            "relative_sharpe": 0.33254429290463716,
+            "mc_survival_rate": 0.28
+          }
+        ]
+      }
+    }
+  ]
+}

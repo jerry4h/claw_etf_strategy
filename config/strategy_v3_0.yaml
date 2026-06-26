@@ -1,0 +1,73 @@
+# 虾池ETF轮动策略 v3.0 — inv-vol8 加权分配
+# Layer 1: v2.3 评分（等权 mom_w+vol_w）
+# Layer 2: inv-vol8 波动率倒数加权（纯连续，零门控）
+# Layer 3: vol 三段式防御（同 v2.3）
+
+strategy:
+  name: "虾池ETF轮动 v3.0 inv-vol8"
+  version: "3.0-invvol8"
+
+scoring:
+  mom_w: 0.35
+  vol_w: 0.30
+
+selection:
+  top_n: 2
+
+factors:
+  mom_window: 4
+  vol_window: 20
+  pe_window_years: 5
+
+defense:
+  def_alloc: 0.25
+  step_low: 0.20
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.50
+
+rebalance:
+  threshold: 0.07
+  fee_rate: 0.00005
+  anchor: "W-MON"
+
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+
+allocation:
+  max_single_alloc: 0.40
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+
+# D6: inv-vol8 allocation replaces equal-weight allocation
+inv_vol_allocation:
+  enabled: true
+  window: 8
+
+d4_individual_filter:
+  enabled: false
+  momentum_window: 8
+  momentum_threshold: 0.0
+  action: replace
+  min_candidates: 3
+
+dynamic_weighting:
+  enabled: false
+  lookback: 12
+  tq_low: 0.0
+  tq_high: 2.0
+  mom_w_low: 0.25
+  mom_w_high: 0.45
+  vol_w_low: 0.20
+  vol_w_high: 0.40
+  weight_sum: 0.65
+
+data:
+  nav_path: "data/all_etfs_nav_2013_2026_h20269_scaled.csv"
+  pe_path: "data/300etf_pe_percentile_weekly.csv"
+  start_date: "2013-05-20"
+  end_date: "2026-05-01"
+
+reporting:
+  risk_free_rate: 0.025

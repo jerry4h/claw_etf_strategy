@@ -13,13 +13,23 @@ import yaml
 
 from src.data_loader import (
     ETFS, OFFENSIVE_IDX, DEFENSIVE_IDX,
-    load_nav_data, load_pe_percentile, resample_weekly
+    load_nav_data, load_pe_percentile, resample_weekly, classify_etfs
 )
 from src.factors import compute_all_factors
 from src.strategy import (
     StrategyConfig, load_config,
     score_offensive, select_top, calculate_defense_ratio,
-    allocate, check_rebalance, check_stop_loss
+    allocate, check_rebalance, check_stop_loss,
+    check_stop_loss_tiered, check_stop_loss_ptiered, MarketState,
+    detect_market_state, check_stop_loss_stateful,
+    apply_max_alloc_cap,
+    apply_individual_momentum_filter, compute_dynamic_weights,
+    compute_softmax_allocation
+)
+from src.regime import (
+    load_regime_data, build_regime_lookup, build_regime_lookup_3state,
+    get_regime_overrides, get_regime_overrides_3state,
+    Regime
 )
 from src.utils import (
     annualize_return, compute_max_drawdown, compute_sharpe,
@@ -51,7 +61,7 @@ def run_backtest(
     2. data_loader.resample_weekly()（若需要）
     3. factors.compute_all_factors()
     4. 逐周循环：评分 → 选股 → 防御 → 止损 → 分配 → 调仓 → 扣费
-    5. 汇总绩效指标
+    5. 汇总绩效指标 (D5 softmax integrated)
 
     Args:
         config: 策略配置
@@ -102,6 +112,23 @@ def run_backtest(
     momentum = factors['momentum']
     volatility = factors['volatility']
 
+    # === T32: 成分股信号加载（CWM + CONC）===
+    _constituent_raw = {}  # end_date_str -> {etf_name -> {'cwm': float, 'conc': float}}
+    _constituent_enabled = config.constituent_signals_enabled
+    if _constituent_enabled:
+        signals_path = project_root / config.constituent_signals_path
+        if signals_path.exists():
+            import csv as _csv
+            with open(signals_path, newline='', encoding='utf-8') as f:
+                reader = _csv.DictReader(f)
+                for row in reader:
+                    d = row['end_date'].strip()
+                    etf = row['etf_name'].strip()
+                    _constituent_raw.setdefault(d, {})[etf] = {
+                        'cwm': float(row.get('cwm', 0) or 0),
+                        'conc': float(row.get('conc', 0) or 0),
+                    }
+
     # === 4. 转为 numpy 加速回测 ===
     w_prices = weekly_nav.values
     w_index = weekly_nav.index
@@ -112,64 +139,316 @@ def run_backtest(
     mom_values = momentum.values
     vol_values = volatility.values
 
-    # ETF 索引
-    NASDAQ_IDX = 0  # 纳指用于 vol 三段式防御
+    # ETF 索引（动态分类）
+    etf_names = list(weekly_nav.columns)
+    n_etfs = len(etf_names)
+    off_idx, def_idx, NASDAQ_IDX = classify_etfs(etf_names)
+
+    # === T32: 构建成分股信号前向填充查找表（必须在此处，w_index 已定义）===
+    constituent_signal_lookup = {}  # week_date_str -> {etf_name -> {'cwm': float, 'conc': float}}
+    if _constituent_enabled and _constituent_raw:
+        sorted_sig_dates = sorted(_constituent_raw.keys())
+        for week_dt in w_index:
+            week_str = week_dt.strftime('%Y%m%d')
+            # 找到 <= week_str 的最新季度末信号日期
+            best_date = None
+            for sd in sorted_sig_dates:
+                if sd <= week_str:
+                    best_date = sd
+                else:
+                    break
+            if best_date:
+                constituent_signal_lookup[week_str] = _constituent_raw.get(best_date, {})
+
+    # === T35: 市场状态分类器加载 ===
+    _regime_enabled = config.regime_enabled
+    _regime_lookup = {}
+    _regime_3state = config.regime_3state
+    if _regime_enabled:
+        regime_path = project_root / config.regime_data_path
+        if regime_path.exists():
+            regime_df = load_regime_data(str(regime_path))
+            if _regime_3state:
+                _regime_lookup = build_regime_lookup_3state(regime_df)
+                print(f"  [regime] Loaded {len(_regime_lookup)} 3-state regime classifications")
+            else:
+                _regime_lookup = build_regime_lookup(regime_df)
+                print(f"  [regime] Loaded {len(_regime_lookup)} regime classifications")
+        else:
+            print(f"  [regime] WARNING: regime data not found at {regime_path}")
+            _regime_enabled = False
 
     # === 5. 逐周回测 ===
     start_idx = config.vol_window  # 需要 vol_window 周预热
     nav = 1.0
     peak = 1.0
-    last_alloc = np.zeros(5)
+    last_alloc = np.zeros(n_etfs)
     max_dd = 0.0
 
-    # 止损状态
+    # 止损状态（原始 + 三层 + 状态感知）
     in_stop_loss = False
     stop_loss_weeks = 0
+    stop_loss_level = 0      # 三层止损当前层级 (0=无, 1=L1, 2=L2, 3=L3)
+    tiered_recovery_weeks = 0  # 三层止损恢复计数
+    recent_weekly_rets = []   # 最近几周策略收益率（用于 L3 熔断判断）
+
+    # 市场状态感知止损状态
+    recovery_ctr = 0
+    in_recovery = False
+    previous_def = 0.0
+    market_state = MarketState.NORMAL  # 当前市场状态
 
     weekly_records = []
 
     for i in range(start_idx, n_weeks - 1):
         date = w_index[i]
 
+        # --- D1: 动态动量/波动率权重 (P1, 默认关闭, 纯无状态) ---
+        if config.d1_enabled:
+            d1_mom_w, d1_vol_w = compute_dynamic_weights(w_rets, i, config, off_idx=off_idx)
+        else:
+            d1_mom_w, d1_vol_w = config.mom_w, config.vol_w
+
+        # --- T35: 市场状态分类器 → 参数覆写 ---
+        current_regime = Regime.CAUTIOUS  # default
+        eff_mom_w = d1_mom_w
+        eff_vol_w = d1_vol_w
+        eff_top_n = config.top_n
+        eff_def_alloc = config.def_alloc
+        eff_stop_loss = config.stop_loss
+
+        if _regime_enabled and _regime_lookup:
+            date_str = date.strftime('%Y%m%d')
+            regime_info = _regime_lookup.get(date_str)
+            if regime_info:
+                current_regime = regime_info['regime']
+                if _regime_3state:
+                    overrides = get_regime_overrides_3state(current_regime, config.regime_overrides)
+                else:
+                    overrides = get_regime_overrides(current_regime, config.regime_overrides)
+                if overrides:
+                    eff_mom_w = overrides.get('mom_w_override', eff_mom_w)
+                    eff_vol_w = overrides.get('vol_w_override', eff_vol_w)
+                    eff_top_n = overrides.get('top_n_override', eff_top_n)
+                    eff_def_alloc = overrides.get('def_alloc_override', eff_def_alloc)
+                    eff_stop_loss = overrides.get('stop_loss_override', eff_stop_loss)
+
+        # --- Phase 5b: Regime-conditional softmax resolution ---
+        eff_softmax_enabled = config.softmax_enabled
+        eff_softmax_temperature = config.softmax_temperature
+        eff_softmax_hard_top_n = config.softmax_hard_top_n_fallback
+
+        if current_regime in config.softmax_regime_enabled:
+            eff_softmax_enabled = config.softmax_regime_enabled[current_regime]
+        if current_regime in config.softmax_regime_temperature:
+            eff_softmax_temperature = config.softmax_regime_temperature[current_regime]
+
         # --- 评分 ---
-        scores_vec = np.full(5, -np.inf)
-        for j in OFFENSIVE_IDX:
+        scores_vec = np.full(n_etfs, -np.inf)
+        for j in off_idx:
             mom_val = mom_values[i, j]
             vol_val = vol_values[i, j]
             if not np.isnan(mom_val) and not np.isnan(vol_val):
-                scores_vec[j] = config.mom_w * mom_val - config.vol_w * vol_val
+                scores_vec[j] = eff_mom_w * mom_val - eff_vol_w * vol_val
 
-        # --- 选 top_n ---
-        off_scores = [(scores_vec[j], j) for j in OFFENSIVE_IDX if not np.isnan(scores_vec[j])]
+        # --- T32: 成分股信号加分（CWM + CONC）---
+        if _constituent_enabled and constituent_signal_lookup:
+            date_str = date.strftime('%Y%m%d')
+            sigs = constituent_signal_lookup.get(date_str, {})
+            if sigs:
+                for j in off_idx:
+                    etf = etf_names[j]
+                    if etf in sigs and not np.isnan(scores_vec[j]):
+                        cwm_val = sigs[etf].get('cwm', 0.0)
+                        conc_val = sigs[etf].get('conc', 0.0)
+                        scores_vec[j] += config.cwm_weight * cwm_val + config.conc_weight * conc_val
+
+        # --- 选 top_n (or softmax all-offensive) ---
+        off_scores = [(scores_vec[j], j) for j in off_idx if not np.isnan(scores_vec[j])]
         off_scores.sort(key=lambda x: x[0], reverse=True)
-        selected_off = [j for _, j in off_scores[:config.top_n]]
 
-        # --- vol 三段式防御 ---
+        # D5: Softmax initial selection — ALL offensive ETFs
+        if eff_softmax_enabled:
+            selected_off = [j for _, j in off_scores]
+        else:
+            selected_off = [j for _, j in off_scores[:eff_top_n]]
+
+        # --- D4: 单ETF动量过滤器 (P0, 默认关闭, 纯无状态) ---
+        # D4 runs before softmax — filters weak ETFs before weights are computed
+        extra_defense = 0.0
+        if config.d4_enabled:
+            selected_off, extra_defense = apply_individual_momentum_filter(
+                selected_off, w_rets, i, config, scores_vec, off_idx=off_idx
+            )
+
+        # --- D5: Softmax-Weighted Allocation (computed AFTER D4 filter) ---
+        sm_weights = None
+        if eff_softmax_enabled and selected_off:
+            # T26b: Clamp to hard_top_n before softmax — only top N ETFs get weight
+            selected_top = selected_off[:eff_softmax_hard_top_n]
+            off_scores_dict = {etf_names[j]: float(scores_vec[j]) for j in selected_top
+                               if not np.isnan(scores_vec[j])}
+            sm_weights = compute_softmax_allocation(off_scores_dict, eff_softmax_temperature)
+
+        # --- vol 三段式防御（含 regime def_alloc override）---
         nasdaq_vol = vol_values[i, NASDAQ_IDX]
-        def_ratio = calculate_defense_ratio(nasdaq_vol, config)
+        if pd.isna(nasdaq_vol):
+            def_ratio = eff_def_alloc
+        elif nasdaq_vol < config.step_low:
+            def_ratio = eff_def_alloc
+        elif nasdaq_vol > config.step_high:
+            def_ratio = config.max_def
+        else:
+            slope = (nasdaq_vol - config.step_low) / (config.step_high - config.step_low)
+            def_ratio = eff_def_alloc + (config.max_def - eff_def_alloc) * slope
 
-        # --- 止损兜底 ---
-        if not in_stop_loss and check_stop_loss(nav, peak, config.stop_loss):
-            in_stop_loss = True
-            stop_loss_weeks = 0
+        # --- 市场状态感知止损（P1 Fix #1, 替代三层止损）---
+        if config.stateful_stop_loss:
+            # 计算状态判定所需信号
+            # nasdaq_12w_ret: 从 w_rets 历史计算
+            if i >= 12:
+                nasdaq_12w_ret = np.prod(1 + w_rets[i-12:i, NASDAQ_IDX]) - 1
+            else:
+                nasdaq_12w_ret = 0.0
 
-        if in_stop_loss:
-            def_ratio = max(def_ratio, 0.95)
-            stop_loss_weeks += 1
-            if stop_loss_weeks >= config.recovery_weeks:
-                in_stop_loss = False
+            # nasdaq_vol_pct: 纳指20w波动率在2年(104周)窗口内的百分位
+            if i >= 20:
+                current_vol = np.std(w_rets[i-20:i, NASDAQ_IDX], ddof=0) * np.sqrt(52)
+                vol_history = [np.std(w_rets[max(0, j-20):j, NASDAQ_IDX], ddof=0) * np.sqrt(52)
+                               for j in range(max(20, i-104), i+1)]
+                nasdaq_vol_pct = sum(1 for v in vol_history if v < current_vol) / len(vol_history)
+            else:
+                nasdaq_vol_pct = 0.5  # 默认中位
+
+            # 当前回撤
+            dd_current = (peak - nav) / peak if peak > 0 else 0.0
+
+            market_state = detect_market_state(nasdaq_12w_ret, nasdaq_vol_pct, dd_current, config)
+
+            ss_def, in_recovery, recovery_ctr = check_stop_loss_stateful(
+                nav, peak, market_state, config, previous_def, recovery_ctr, in_recovery
+            )
+            if ss_def > 0:
+                def_ratio = max(def_ratio, ss_def)
+            previous_def = ss_def
+
+        # --- 止损兜底（Phase A-2 分层 vs D1 三层 vs 原始单层）---
+        if config.ptiered_stop_loss:
+            level, forced_def = check_stop_loss_ptiered(nav, peak, config)
+            def_ratio = max(def_ratio, forced_def)
+        elif config.tiered_stop_loss:
+            weekly_ret_realized = recent_weekly_rets[-1] if recent_weekly_rets else 0.0
+
+            level, forced_def = check_stop_loss_tiered(
+                nav, peak, weekly_ret_realized, recent_weekly_rets, config
+            )
+            if level >= 2:
+                # L2/L3: 强制高防御 + 恢复期计数
+                def_ratio = forced_def
+                if stop_loss_level == 0:
+                    stop_loss_level = level
+                    tiered_recovery_weeks = 0
+            elif level == 1:
+                # L1: 预警 — 防御比例至少 50%
+                def_ratio = max(def_ratio, forced_def)
+                stop_loss_level = 0
+                tiered_recovery_weeks = 0
+            else:
+                # 无触发
+                if stop_loss_level >= 2:
+                    # 恢复期内保持高防御
+                    def_ratio = config.l2_defense
+                    tiered_recovery_weeks += 1
+                    recovery_needed = (
+                        config.l2_recovery_weeks if stop_loss_level == 2
+                        else config.l3_recovery_weeks
+                    )
+                    if tiered_recovery_weeks >= recovery_needed:
+                        stop_loss_level = 0
+                        tiered_recovery_weeks = 0
+                else:
+                    stop_loss_level = 0
+                    tiered_recovery_weeks = 0
+        elif not config.stateful_stop_loss:
+            # 原始单层止损逻辑（保持不变）
+            if not in_stop_loss and check_stop_loss(nav, peak, eff_stop_loss):
+                in_stop_loss = True
+                stop_loss_weeks = 0
+
+            if in_stop_loss:
+                def_ratio = max(def_ratio, 0.95)
+                stop_loss_weeks += 1
+                if stop_loss_weeks >= config.recovery_weeks:
+                    in_stop_loss = False
+
+        # --- D4 extra_defense: max(vol阶段防御, D4额外防御) ---
+        def_ratio = max(def_ratio, extra_defense)
 
         # --- 构建仓位 ---
-        alloc = np.zeros(5)
-        alloc[DEFENSIVE_IDX[0]] = def_ratio * config.hongli_ratio
-        alloc[DEFENSIVE_IDX[1]] = def_ratio * (1 - config.hongli_ratio)
-        if selected_off:
+        alloc = np.zeros(n_etfs)
+
+        # 防御层分配：第一个防御ETF得 hongli_ratio，其余平分 (1-hongli_ratio)
+        if def_idx:
+            alloc[def_idx[0]] = def_ratio * config.hongli_ratio
+            n_rest = len(def_idx) - 1
+            if n_rest > 0:
+                rest_weight = def_ratio * (1 - config.hongli_ratio) / n_rest
+                for j in def_idx[1:]:
+                    alloc[j] = rest_weight
+
+        # D5: Softmax-Weighted Allocation
+        if sm_weights is not None:
+            for j in selected_off:
+                etf_name = etf_names[j]
+                alloc[j] = (1 - def_ratio) * sm_weights.get(etf_name, 0.0)
+        elif config.inv_vol_enabled and selected_off:
+            # D6: Inv-Vol8 Weighted Allocation (v3.0 Layer 2)
+            # 波动率倒数加权 — 波动率越低权重越高，纯连续无门控
+            if i >= config.inv_vol_window:
+                inv_vols = []
+                for j in selected_off:
+                    rets = w_rets[i - config.inv_vol_window:i, j]
+                    rets = rets[~np.isnan(rets)]
+                    if len(rets) < 3:
+                        inv_vols.append(0.0)
+                    else:
+                        vol8 = np.std(rets, ddof=0) * np.sqrt(52)
+                        inv_vols.append(1.0 / vol8 if vol8 > 0 else 0.0)
+                total_inv = sum(inv_vols)
+                if total_inv > 0:
+                    for k, j in enumerate(selected_off):
+                        alloc[j] = (1 - def_ratio) * (inv_vols[k] / total_inv)
+                else:
+                    w = (1 - def_ratio) / len(selected_off)
+                    for j in selected_off:
+                        alloc[j] = w
+            else:
+                w = (1 - def_ratio) / len(selected_off)
+                for j in selected_off:
+                    alloc[j] = w
+        elif selected_off:
             for j in selected_off:
                 alloc[j] = (1 - def_ratio) / len(selected_off)
         else:
             # 极端情况：无进攻层 ETF 可选 → 全额防御
-            alloc[DEFENSIVE_IDX[0]] = config.hongli_ratio
-            alloc[DEFENSIVE_IDX[1]] = 1 - config.hongli_ratio
+            if def_idx:
+                alloc[def_idx[0]] = config.hongli_ratio
+                n_rest = len(def_idx) - 1
+                if n_rest > 0:
+                    rest_weight = (1 - config.hongli_ratio) / n_rest
+                    for j in def_idx[1:]:
+                        alloc[j] = rest_weight
+
+        # --- 权重上限（D2B）---
+        if config.max_single_alloc < 1.0:
+            alloc = apply_max_alloc_cap(
+                alloc, config.max_single_alloc, off_idx,
+                overflow_to_defense_only=config.overflow_to_defense_only,
+                dynamic_cap=config.dynamic_weight_cap,
+                market_state=market_state if config.stateful_stop_loss else None,
+                config=config,
+                def_idx=def_idx
+            )
 
         # --- 调仓阈值检查 ---
         if i > start_idx:
@@ -184,11 +463,14 @@ def run_backtest(
         # --- 周收益 ---
         wret = sum(
             alloc[j] * w_rets[i, j]
-            for j in range(5)
+            for j in range(n_etfs)
             if not np.isnan(w_rets[i, j])
         )
         nav *= (1 + wret - fee_cost)
         peak = max(peak, nav)
+
+        # 追踪最近几周策略收益率（用于 L3 熔断判断）
+        recent_weekly_rets.append(wret - fee_cost)
 
         dd = (peak - nav) / peak
         if dd > max_dd:
@@ -203,12 +485,15 @@ def run_backtest(
             'weekly_return': wret - fee_cost,
             'def_ratio': def_ratio,
             'in_stop_loss': in_stop_loss,
+            'stop_loss_level': stop_loss_level,
+            'market_state': str(market_state),
+            'regime': str(current_regime.value),
             'nasdaq_vol': nasdaq_vol,
             'turnover': turnover,
             'fee_cost': fee_cost,
         }
         # 记录仓位
-        for k, etf in enumerate(ETFS):
+        for k, etf in enumerate(etf_names):
             record[f'weight_{etf}'] = alloc[k]
 
         weekly_records.append(record)
@@ -326,6 +611,54 @@ def _run_single_grid(params: tuple, base_config: StrategyConfig) -> dict | None:
         anchor=base_config.anchor,
         stop_loss=base_config.stop_loss,
         recovery_weeks=base_config.recovery_weeks,
+        tiered_stop_loss=base_config.tiered_stop_loss,
+        l1_drawdown=base_config.l1_drawdown,
+        l1_defense=base_config.l1_defense,
+        l2_drawdown=base_config.l2_drawdown,
+        l2_defense=base_config.l2_defense,
+        l3_weekly_drop=base_config.l3_weekly_drop,
+        l3_down_weeks=base_config.l3_down_weeks,
+        l3_window=base_config.l3_window,
+        l2_recovery_weeks=base_config.l2_recovery_weeks,
+        l3_recovery_weeks=base_config.l3_recovery_weeks,
+        max_single_alloc=base_config.max_single_alloc,
+        stateful_stop_loss=base_config.stateful_stop_loss,
+        # D4: 单ETF动量过滤器
+        d4_enabled=base_config.d4_enabled,
+        d4_momentum_window=base_config.d4_momentum_window,
+        d4_momentum_threshold=base_config.d4_momentum_threshold,
+        d4_action=base_config.d4_action,
+        d4_min_candidates=base_config.d4_min_candidates,
+        # D5: Softmax-Weighted Allocation
+        softmax_enabled=base_config.softmax_enabled,
+        softmax_temperature=base_config.softmax_temperature,
+        softmax_hard_top_n_fallback=base_config.softmax_hard_top_n_fallback,
+        softmax_min_candidates=base_config.softmax_min_candidates,
+        # D6: Inv-Vol8 Weighted Allocation
+        inv_vol_enabled=base_config.inv_vol_enabled,
+        inv_vol_window=base_config.inv_vol_window,
+        # D1: 动态权重
+        d1_enabled=base_config.d1_enabled,
+        d1_lookback=base_config.d1_lookback,
+        d1_tq_low=base_config.d1_tq_low,
+        d1_tq_high=base_config.d1_tq_high,
+        d1_mom_w_low=base_config.d1_mom_w_low,
+        d1_mom_w_high=base_config.d1_mom_w_high,
+        d1_vol_w_low=base_config.d1_vol_w_low,
+        d1_vol_w_high=base_config.d1_vol_w_high,
+        d1_weight_sum=base_config.d1_weight_sum,
+        # T32: Constituent-Stock Signals
+        constituent_signals_enabled=base_config.constituent_signals_enabled,
+        constituent_signals_path=base_config.constituent_signals_path,
+        cwm_weight=base_config.cwm_weight,
+        conc_weight=base_config.conc_weight,
+        cwm_window=base_config.cwm_window,
+        # T35: Regime classifier
+        regime_enabled=base_config.regime_enabled,
+        regime_data_path=base_config.regime_data_path,
+        regime_overrides=base_config.regime_overrides,
+        # T40 Fix 2: 3-state regime
+        regime_3state=base_config.regime_3state,
         nav_path=base_config.nav_path,
         pe_path=base_config.pe_path,
         start_date=base_config.start_date,
@@ -360,54 +693,36 @@ def grid_search(
 
     Args:
         param_space: {"mom_w": [0.30, 0.35, 0.40], "step_high": [0.35, 0.40, 0.45]}
-        base_config_path: 基准配置文件路径
-        n_jobs: 并行进程数（-1 = CPU 数的一半）
-        filters: 结果过滤器 {"annual_return_gt": 0.10, "max_drawdown_lt": 0.15}
-
-    Returns:
-        DataFrame, 每行一组参数 + 绩效指标
     """
-    base_config = load_config(base_config_path)
+    base_config = load_config(Path(__file__).parent.parent / base_config_path)
 
-    # 生成参数组合
     keys = list(param_space.keys())
     values = list(param_space.values())
-    combinations = [dict(zip(keys, combo)) for combo in itertools.product(*values)]
+    combinations = list(itertools.product(*values))
+    params = [dict(zip(keys, combo)) for combo in combinations]
 
-    n_workers = n_jobs if n_jobs > 0 else max(1, int(multiprocessing.cpu_count() * 0.5))
-    print(f"网格搜索: {len(combinations)} 组参数, {n_workers} 个进程")
-
-    results = []
-    params_for_pool = [(combo,) for combo in combinations]
-
-    try:
-        with multiprocessing.Pool(n_workers) as pool:
-            for i, r in enumerate(pool.imap_unordered(
-                lambda p: _run_single_grid(p, base_config), params_for_pool
-            )):
-                if r is not None:
-                    results.append(r)
-                if (i + 1) % 100 == 0:
-                    print(f"  进度: {i + 1}/{len(combinations)}")
-    except Exception as e:
-        print(f"多进程失败 ({e})，切换为串行")
-        for params in params_for_pool:
-            r = _run_single_grid(params, base_config)
-            if r is not None:
-                results.append(r)
-
-    df = pd.DataFrame(results)
-    if df.empty:
-        return df
-
-    # 应用过滤器
+    # Apply filters
     if filters:
-        if 'annual_return_gt' in filters:
-            df = df[df['annual_return'] > filters['annual_return_gt']]
-        if 'max_drawdown_lt' in filters:
-            df = df[df['max_drawdown'] < filters['max_drawdown_lt']]
+        filtered = []
+        for p in params:
+            ok = True
+            for k, v in filters.items():
+                if k in p and not v(p[k]):
+                    ok = False
+                    break
+            if ok:
+                filtered.append(p)
+        params = filtered
 
-    # 按年化收益排序
-    df = df.sort_values('annual_return', ascending=False).reset_index(drop=True)
+    # Run
+    if len(params) == 0:
+        return pd.DataFrame()
 
-    return df
+    task_args = [(p,) for p in params]
+    n_proc = multiprocessing.cpu_count() if n_jobs == -1 else n_jobs
+
+    with multiprocessing.Pool(n_proc) as pool:
+        results = pool.starmap(_run_single_grid, [(args, base_config) for args in task_args])
+
+    results = [r for r in results if r is not None]
+    return pd.DataFrame(results)

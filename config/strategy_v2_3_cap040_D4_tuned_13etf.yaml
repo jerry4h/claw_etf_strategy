@@ -1,0 +1,57 @@
+strategy:
+  name: 虾池ETF轮动 v2.3 + cap 0.40 + D4 tuned + 13-ETF universe
+  version: 2.3-cap040-D4tuned-13etf
+scoring:
+  mom_w: 0.35
+  vol_w: 0.3
+selection:
+  top_n: 2
+factors:
+  mom_window: 4
+  vol_window: 20
+  pe_window_years: 5
+defense:
+  def_alloc: 0.25
+  step_low: 0.2
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.5
+rebalance:
+  threshold: 0.07
+  fee_rate: 5.0e-05
+  anchor: W-MON
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+allocation:
+  max_single_alloc: 0.4
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+d4_individual_filter:
+  enabled: true
+  momentum_window: 8
+  momentum_threshold: -0.07
+  action: replace
+  min_candidates: 3
+softmax_allocation:
+  enabled: false
+  temperature: 1.0
+  hard_top_n_fallback: 2
+  min_candidates: 2
+dynamic_weighting:
+  enabled: false
+  lookback: 12
+  tq_low: 0.0
+  tq_high: 2.0
+  mom_w_low: 0.25
+  mom_w_high: 0.45
+  vol_w_low: 0.2
+  vol_w_high: 0.4
+  weight_sum: 0.65
+data:
+  nav_path: data/tushare/tushare_etf_weekly_nav_13etf.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: '2013-05-20'
+  end_date: '2026-05-01'
+reporting:
+  risk_free_rate: 0.025
