@@ -3,15 +3,14 @@
 实时调仓计算脚本 — 虾池ETF轮动 v3.0
 =====================================
 用法:
-  python scripts/rebalance_live.py                     # 最新数据 → 下周一调仓
-  python scripts/rebalance_live.py --verify            # 全量回测 vs 引擎验证
-  python scripts/rebalance_live.py --week 2026-06-22   # 查看特定周
+  python scripts/rebalance_live.py                      # 最新数据 → 下周一调仓
+  python scripts/rebalance_live.py --verify             # 全量回测 vs 引擎
+  python scripts/rebalance_live.py --week 2026-06-22    # 查看特定周
 
-策略: v3.0 inv-vol8
-  Layer 1: score = mom4 − 0.857×vol20, top_n=2
-  Layer 2: inv-vol8 weights
-  Layer 3: nasdaq vol 3-tier [25%, 95%]
-  零门控, 零阈值
+策略: v3.0 inv-vol8 (零门控, 零阈值)
+  Layer 1 (买什么):  score = mom4 − 0.857×vol20, top_n=2
+  Layer 2 (买多少):  inv-vol8 权重
+  Layer 3 (防多少):  nasdaq vol 三段式线性插值 [25%, 95%]
 """
 
 from __future__ import annotations
@@ -24,6 +23,7 @@ sys.path.insert(0, str(PROJECT))
 from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE
 from src.utils import compute_sharpe, annualize_return
 
+# ── v3.0 参数 ──
 MOM_W, VOL_W, TOP_N = 1.0, 0.857, 2
 INV_VOL_W = 8
 DEF_ALLOC, STEP_LOW, STEP_HIGH, MAX_DEF, HONGLI = 0.25, 0.20, 0.35, 0.95, 0.50
@@ -50,16 +50,14 @@ def factors(nav):
     return wr, m4, v20
 
 
-def score(etf, m4, v20, i):
-    mv = m4[etf].iloc[i]; vv = v20[etf].iloc[i]
-    if pd.isna(mv) or pd.isna(vv): return None
-    return MOM_W * mv - VOL_W * vv
-
-
 def defense(v_nasdaq):
-    if pd.isna(v_nasdaq): return DEF_ALLOC
-    if v_nasdaq < STEP_LOW: return DEF_ALLOC
-    if v_nasdaq > STEP_HIGH: return MAX_DEF
+    """vol 三段式: 纯线性插值, 零门控"""
+    if pd.isna(v_nasdaq):
+        return DEF_ALLOC
+    if v_nasdaq < STEP_LOW:
+        return DEF_ALLOC
+    if v_nasdaq > STEP_HIGH:
+        return MAX_DEF
     return DEF_ALLOC + (v_nasdaq - STEP_LOW) / (STEP_HIGH - STEP_LOW) * (MAX_DEF - DEF_ALLOC)
 
 
@@ -77,8 +75,9 @@ def compute(nav, i):
     wr, m4, v20 = factors(nav)
     sc = {}
     for e in OFFENSIVE:
-        s = score(e, m4, v20, i)
-        if s is not None: sc[e] = s
+        mv = m4[e].iloc[i]; vv = v20[e].iloc[i]
+        if pd.notna(mv) and pd.notna(vv):
+            sc[e] = MOM_W * mv - VOL_W * vv
     ranked = sorted(sc, key=lambda e: sc[e], reverse=True)
     sel = ranked[:TOP_N]
 
@@ -187,7 +186,7 @@ def main():
         idx = len(df) - 1
 
     if idx < 20:
-        print(f"[ERROR] 数据不足. 最早: {df.index[20].date()}"); return
+        print(f"[ERROR] 数据不足. 最早可用: {df.index[20].date()}"); return
 
     alloc, sc, wr, m4, v20 = compute(df, idx)
     if not alloc:
@@ -202,17 +201,17 @@ def main():
     print(f" 范围: {df.index[0].date()} ~ {df.index[-1].date()} ({len(df)}周)")
     print(f" mom_w=1.0  vol_w={VOL_W}  top_n={TOP_N}  invvol{INV_VOL_W}")
 
-    # 上周持仓
+    # 上周持仓对比
     prev_al = {}
     if idx > 20:
         prev_al, _, _, _, _ = compute(df, idx - 1)
         mc = max(abs(alloc.get(e, 0) - prev_al.get(e, 0))
                  for e in set(alloc) | set(prev_al))
         if mc < REBAL_THRESH:
-            print(f"\n  调仓阈值{REBAL_THRESH*100:.0f}%: 最大变化{mc*100:.1f}% → 不调仓")
+            print(f"\n  调仓阈值{REBAL_THRESH*100:.0f}%: 最大仓位变化{mc*100:.1f}% → 不调仓")
             prev_al = dict(alloc)
         else:
-            print(f"\n  调仓阈值{REBAL_THRESH*100:.0f}%: 最大变化{mc*100:.1f}% → 调仓!")
+            print(f"\n  调仓阈值{REBAL_THRESH*100:.0f}%: 最大仓位变化{mc*100:.1f}% → 调仓!")
 
     # Layer 1
     print(f"\n  Layer 1 (买什么): score = mom4 − {VOL_W}×vol20")
@@ -233,8 +232,8 @@ def main():
     elif vn > STEP_HIGH:
         d_tag = f">{STEP_HIGH*100:.0f}% → 极限防御"
     else:
-        d_tag = f"在[{STEP_LOW*100:.0f}%,{STEP_HIGH*100:.0f}%] → 线性插值"
-    print(f"\n  Layer 3 (防多少): 纳指vol20={vn*100:5.1f}% {d_tag} → 防御={d_val*100:5.0f}%")
+        d_tag = f"线性插值 [{STEP_LOW*100:.0f}%, {STEP_HIGH*100:.0f}%]"
+    print(f"\n  Layer 3 (防多少): 纳指vol20 = {vn*100:5.1f}% → 防御 {d_val*100:5.0f}%  ({d_tag})")
 
     # Layer 2
     print(f"\n  Layer 2 (买多少): inv-vol{INV_VOL_W} 权重")
