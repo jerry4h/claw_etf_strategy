@@ -16,5 +16,17 @@ __pycache__/
 .hermes/
 test_venv/
 scripts/_*.py
-*.pyc
-__pycache__/
+
+# Big data files (keep only latest CSVs)
+data/*.csv
+!data/all_etfs_nav_2013_20260626.csv
+
+# Temp configs
+config/tmp_*.yaml
+config/strategy_v2*
+
+# Robustness outputs
+robustness_results.json
+ROBUSTNESS_COMPARISON_REPORT.md
+ROBUSTNESS_REPORT.md
+output/tmp_*
