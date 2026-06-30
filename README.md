@@ -1,82 +1,75 @@
-# 虾池ETF轮动策略 (Shrimp Pool ETF Rotation)
+# 虾池ETF轮动策略 v3.0
 
-> 周频调仓、多资产、动量驱动的 ETF 组合策略 — 年化 14.3% / 最大回撤 8.8% / 夏普 1.21
+基于**5只ETF**的周频动量轮动策略，年化 **14.28%** / 最大回撤 **8.79%** / 夏普 **1.211**（2013-2026 回测）。
 
----
+## 策略原理
 
-## 一、策略概述
-
-基于 5 只 ETF（纳指、红利低波、沪深300、黄金、国债）的周频动量轮动策略。三层决策架构，全部连续无门控：
+### 三层决策，全部零门控
 
 | 层次 | 决策 | 方法 | 参数 |
 |------|------|------|------|
-| **Layer 1** | 买什么 | `score = mom4 − 0.857×vol20`，选 top 2 | 零超参 |
-| **Layer 2** | 买多少 | inv-vol8 风险预算权重 | window=8 |
-| **Layer 3** | 防多少 | 纳指 vol20 三段式线性插值 → 防御比例 25%~95% | step_low=20%, step_high=35% |
+| **Layer 1** 买什么 | 进攻层选 TOP2 | `score = mom4 − 0.857×vol20` | 0 门控 |
+| **Layer 2** 买多少 | 进攻 ETF 间权重 | inv-vol8（波动率倒数） | 0 门控 |
+| **Layer 3** 防多少 | 进攻 vs 防御比例 | 纳指 vol20 三段线性插值 [25%, 95%] | 0 门控 |
 
-**核心特点**：零门控、零阈值、纯连续 — 所有决策都是线性或 sigmoid 连续函数，无参数悬崖。
+### 资产池
 
----
+| ETF | 代码 | 角色 |
+|-----|------|------|
+| 纳指ETF | 513100 | 进攻—海外成长 |
+| 沪深300ETF | 510300 | 进攻—A股大盘 |
+| 黄金ETF | 518880 | 进攻—商品/避险 |
+| 红利低波ETF | 512890 | 防御—低波+股息 |
+| 国债ETF | 511010 | 防御—利率避险 |
 
-## 二、核心指标（v3.0 inv-vol8）
+### 约束
 
-| 指标 | 值 | 说明 |
-|------|:---:|------|
-| 年化收益 | **14.28%** | 2013-2026, 13年回测 |
-| 最大回撤 | **8.79%** | 全区间 |
-| 标准夏普 | **1.211** | 扣 2.5% 无风险利率 |
-| DSR | 1.000 | 真 alpha（Bailey & López de Prado 2014） |
-| SPS 最差起点 | >5% | 114 个逐月起点投 3 年，零亏损 |
-| MC 生存率 | 58.5% | ±15% 参数扰动后 年化>10% AND DD<15% |
-| WF 相对胜率 | 77.8% | 9 窗口 vs 等权 5 ETF 基准 |
+- 单只ETF上限 40%（`max_single_alloc=0.40`）
+- 调仓阈值 7%（周变化 < 7% 不调仓，减少噪音交易）
+- 双边费率 0.005% × 2
 
----
-
-## 三、项目结构
+## 目录结构
 
 ```
 claw_etf_strategy/
-├── src/                         # 核心引擎
-│   ├── backtest.py              #   统一回测引擎
-│   ├── strategy.py              #   策略配置 + 评分/分配/D4过滤
-│   ├── data_loader.py           #   数据加载 (日频清洗 + 周频降采样)
-│   ├── factors.py               #   因子计算 (mom4/vol20/PE分位)
-│   ├── report.py                #   绩效报告 + 可视化
-│   ├── robustness.py            #   鲁棒性评估 (DSR/MC/WF/PSS/SPS/OAT)
-│   └── utils.py                 #   共享工具函数
-├── config/                      # 策略 YAML 配置
-│   ├── strategy_v2_3_cap040.yaml            # v2.3 基线
-│   ├── strategy_v2_3_cap040_D4_tuned.yaml   # v2.3 + D4 门控 (历史最佳候选)
-│   ├── strategy_v3_0_invvol.yaml            # v3.0 inv-vol8 (当前推荐)
-│   └── ...                                  # 历史实验变体
-├── scripts/                     # CLI 入口
-│   ├── run_backtest.py          #   单策略回测
-│   ├── run_grid_search.py       #   网格搜索
-│   ├── run_ablation.py          #   消融实验
-│   ├── rebalance_live.py        #   实时调仓计算 ★
-│   └── robustness_evaluation.py #   鲁棒性评估
-├── data/                        # 数据文件
-│   ├── all_etfs_nav_2013_20260622_scaled.csv  # 主数据 (2013-2026, 678周)
-│   └── 300etf_pe_percentile_weekly.csv        # PE 分位数据
-├── output/                      # 输出报告
-│   ├── robustness_v5b/          #   最新鲁棒性评估
-│   └── ...                      #   历史评估报告
-├── docs/                        # 设计文档
-│   ├── ROBUSTNESS_3_METRICS.md  #   三指标定义
-│   └── ROBUSTNESS_IMPL_SPEC.md  #   实现规范
-├── 虾池ETF轮动策略 —— 技术方案定稿.md   # 策略技术方案 v2.3
-├── goal.md                      # 项目目标 + 数据清洗说明
-├── ARCHITECTURE.md              # 工程架构设计
-└── README.md                    # 本文档
+├── README.md
+├── config/                        # 策略配置文件
+│   ├── strategy_v3_0_invvol.yaml  # v3.0 基准配置
+│   └── ...
+├── src/                           # 回测引擎 (Python)
+│   ├── backtest.py                # 统一回测引擎
+│   ├── strategy.py                # 策略逻辑 + 配置加载
+│   ├── data_loader.py             # 数据加载
+│   ├── factors.py                 # 因子计算
+│   ├── report.py                  # 报告生成
+│   ├── robustness.py              # 鲁棒性评估 (DSR/PSS/MC/WF/SPS)
+│   └── utils.py                   # 工具函数
+├── scripts/                       # 运行脚本
+│   ├── rebalance_live.py          # **实时调仓计算** ← 每周一用
+│   ├── run_robustness.py          # 鲁棒性评估 CLI
+│   └── robustness_evaluation.py   # 旧鲁棒性脚本 (参考)
+├── data/                          # 数据文件
+│   ├── all_etfs_nav_2013_20260622_scaled.csv  # 周净值 (每周更新)
+│   └── 300etf_pe_percentile_weekly.csv        # PE分位数
+├── output/                        # 回测/评估输出报告
+│   ├── robustness_v*/             # 各版本鲁棒性评估报告
+│   └── ...
+└── docs/                          # 设计文档
 ```
 
----
+## 回测
 
-## 四、回测说明
+### 运行
 
-### 输入格式
+```bash
+python -m src.backtest  # 单次回测
+# 或
+python scripts/rebalance_live.py --verify  # 验证实时脚本 vs 引擎一致性
+```
 
-CSV 文件, 每周一行, 列名: `日期,纳指ETF,红利低波ETF,沪深300ETF,黄金ETF,国债ETF`
+### 输入
+
+CSV 格式（`data/all_etfs_nav_2013_20260622_scaled.csv`）：
 
 ```
 日期,纳指ETF,红利低波ETF,沪深300ETF,黄金ETF,国债ETF
@@ -84,139 +77,70 @@ CSV 文件, 每周一行, 列名: `日期,纳指ETF,红利低波ETF,沪深300ETF
 ...
 ```
 
-日期为周一, 净值用周五收盘价填充。数据为前复权/scaled 净值 (百分比收益不变)。
+每周一行净值数据（周一净值/周五收盘价）。配置通过 `config/` 下的 YAML 文件。
 
-### 核心引擎
+### 核心指标
 
-```python
-from src.backtest import run_backtest
-from src.strategy import load_config
+| 指标 | 值 |
+|------|:--:|
+| 年化收益 | **14.28%** |
+| 最大回撤 | **8.79%** |
+| 标准夏普 | **1.211** |
+| 周胜率 | ~59% |
+| 回测区间 | 2013-05 ~ 2026-06 |
 
-cfg = load_config('config/strategy_v3_0_invvol.yaml')
-result = run_backtest(cfg)
-# result.metrics → {sharpe_ratio, annual_return, max_drawdown, ...}
-# result.nav_series → 逐周净值、回撤、仓位
-```
+## 实时调仓（每周操作）
 
-### 评估体系（5 指标）
+### 准备工作
 
-| 指标 | 问什么 | Python 函数 |
-|------|--------|------------|
-| DSR | 真 alpha 还是运气？| `robustness.compute_dsr()` |
-| PSS/MC | 参数飘了还能赚？| `robustness.run_mc_survival_test()` |
-| WF | 各窗口跑赢等权基准？| `robustness.compute_benchmark_relative_win_rate()` |
-| SPS | 最倒霉入场还能赚？| `robustness.compute_starting_point_sensitivity()` |
-| OAT | 每个参数悬崖在哪？| `robustness.run_oat_sensitivity()` |
+1. 确认 `data/all_etfs_nav_2013_20260622_scaled.csv` 中已添加最新一周的净值数据
+2. 安装依赖：`pip install numpy pandas scipy pyyaml`
 
-### 运行命令
+### 运行
 
 ```bash
-# 基准回测
-python scripts/run_backtest.py --config config/strategy_v3_0_invvol.yaml
-
-# 消融实验
-python scripts/run_ablation.py --config config/strategy_v3_0_invvol.yaml
-
-# 网格搜索
-python scripts/run_grid_search.py --param-space '{"inv_vol_window":[4,6,8,10,12]}'
-
-# 鲁棒性评估
-python scripts/robustness_evaluation.py --config config/strategy_v3_0_invvol.yaml
+cd /home/ubuntu/claw_etf_strategy
+python scripts/rebalance_live.py data/all_etfs_nav_2013_20260622_scaled.csv --amount 500000
 ```
-
----
-
-## 五、实时调仓
-
-### 使用方法
-
-```bash
-python scripts/rebalance_live.py                      # 最新数据 → 下周一调仓
-python scripts/rebalance_live.py --verify             # 全量回测 vs 引擎验证
-python scripts/rebalance_live.py --week 2026-06-22    # 查看特定周
-```
-
-### 需要准备
-
-1. **数据文件**: CSV 末尾追加最新一周数据 (手动填入 5 只 ETF 周五净值)
-2. **运行时机**: 周日晚或周一早上 — 用最新数据跑脚本
-3. **执行调仓**: 脚本输出即下周持仓比例, 按比例下单
 
 ### 输出示例
 
 ```
-══════════════════════════════════════════════════════════════════════
- 虾池ETF轮动 v3.0  实时调仓计算
-══════════════════════════════════════════════════════════════════════
- 基准日: 2026-06-22  (本周净值)
- 调仓日: 下周一
+══════════════════════════════════════════════════════════════
+ 虾池ETF轮动 v3.0  实时调仓
+══════════════════════════════════════════════════════════════
+ 数据: data/all_etfs_nav_2013_20260622_scaled.csv
+ 基准: 2026-06-22 | 调仓: 下周一
 
  Layer 1 (买什么): score = mom4 − 0.857×vol20
-  ETF            mom4    vol20    score   rank
-  ──────────────────────────────────────────
-  沪深300ETF      3.12%    19.2%  -0.1337    TOP
-  纳指ETF         0.85%    33.9%  -0.2816    TOP
-  黄金ETF        -8.37%    43.5%  -0.4565
+  纳指ETF        0.85%   33.9%  -0.2816
+  沪深300ETF     3.12%   19.2%  -0.1337 ← TOP
+  黄金ETF       -8.37%   43.5%  -0.4565
 
- Layer 3 (防多少): 纳指vol20 =  33.9% → 线性插值 → 防御  90%
+ Layer 3 (防多少): 纳指vol20=33.9% → 防御=90%
+ Layer 2 (买多少): inv-vol8 权重
 
- ── 本周计算结果(目标持仓) ──
-  纳指ETF        3.1%  ≈   15,405元
-  红利低波ETF    44.8%  ≈  224,086元
-  沪深300ETF     7.3%  ≈   36,424元
-  国债ETF       44.8%  ≈  224,086元
- ══════════════════════════════════════════════════════════════════════
- ✅ 下周一按此比例调仓
+ ── 下周一持仓 ──
+  纳指ETF        3.1%  ≈  15,405元
+  红利低波ETF    44.8%  ≈ 224,086元
+  沪深300ETF     7.3%  ≈  36,424元
+  国债ETF       44.8%  ≈ 224,086元
+ ────────────────────────────────
+  合计         100.0%
 ```
 
 ### 注意事项
 
-| 要点 | 说明 |
-|------|------|
-| **数据用周五净值** | 回测使用 W-MON 锚点, 实际操作周五收盘价代替周一开盘价 |
-| **CSV 末尾追加** | 每周手动加一行新数据, 不需要 Tushare 等数据源 |
-| **最少 20 周数据** | vol20 窗口需要 20 周历史 |
-| **调仓阈值 7%** | 若本周 vs 上周最大仓位变化 <7%, 不调仓 (减少摩擦成本) |
-| **防御比例** | 纳指 vol20 <20%→基准25%, 20~35%→线性插值, >35%→极限95% |
-| **权重上限** | 单个 ETF 不超过 40%, 防过度集中 |
+- 调仓日为**下周一**（使用上周五净值计算）
+- 如果调仓幅度 < 7%，脚本会提示"不调仓"——此时维持上周持仓
+- CSV 数据必须包含 ≥20 周历史（因子计算窗口需求）
+- 纳指ETF如出现 QDII 溢价 > 2%，需人工判断是否延迟买入
 
----
+## 技术评估
 
-## 六、关键设计决策
+完整鲁棒性评估（DSR/PSS/MC/WF/SPS）报告在 `output/robustness_v5b/`。
 
-| 决策 | 原因 |
-|------|------|
-| 零门控 | 消除 OAT 参数悬崖, 提高鲁棒性 |
-| inv-vol8 权重 | 单一因子决定买多少, 天然连续 |
-| score = mom4 − 0.857×vol20 | 固定 mom_w=1 → 只有 1 个参数 (vol_w), 减少冗余测试 |
-| 周五净值 → 周一调仓 | 日频 DD 与周频差异 0.1pp, 可忽略 |
-| 固定 top_n=2 | 消融实验验证唯一最优解 (top_n=1 Sharpe 暴跌, top_n=3 灾难) |
-| cap 0.40 | 防单 ETF 过度集中 |
+## 备注
 
----
-
-## 七、历史演进
-
-| 版本 | 策略 | Sharpe | 年化 | DD | 说明 |
-|------|------|:-----:|:---:|:--:|------|
-| v2.3 基线 | scoring + vol3tier | 1.102 | 14.1% | 7.4% | 原始基准 |
-| v2.3+cap040 | +单标的上限 0.40 | 1.102 | 14.1% | 7.4% | 加风控 |
-| v2.3+cap040+D4 | +8周动量门控 | 1.216 | 15.7% | 7.6% | 峰值 Sharpe, 有悬崖 |
-| **v3.0 inv-vol8** | **scoring + invvol + vol3tier** | **1.211** | **14.3%** | **8.8%** | ★ 当前推荐: 零悬崖 |
-| v3.0 inv-vol (新数据) | 扩展至 2026-06-22 | **1.211** | **14.3%** | **8.8%** | 新 2 月确认稳定 |
-
----
-
-## 八、相关文档
-
-- `goal.md` — 项目目标与基础要求
-- `虾池ETF轮动策略 —— 技术方案定稿.md` — v2.3 技术方案 (含消融实验)
-- `ARCHITECTURE.md` — 工程架构设计
-- `docs/ROBUSTNESS_3_METRICS.md` — 鲁棒性三指标定义
-- `docs/ROBUSTNESS_IMPL_SPEC.md` — 鲁棒性评估实现规范
-
----
-
-*策略设计: quant-se | 工程实现: quant-coder | 测试验证: quant-tester | 项目管理: quant-pm*
-
-*策略风险提示: 过往回测表现不代表未来收益。实盘需考虑滑点、冲击成本、QDII 溢价等因素。建议初期仓位 50% 验证 3 个月后调整。*
+- 数据中红利低波ETF 2013-2018 年使用 H20269 全收益指数替代（经独立验证相关性 0.9978）
+- 策略源于技术方案 v2.3，经多轮消融实验和鲁棒性评估后精简为 v3.0

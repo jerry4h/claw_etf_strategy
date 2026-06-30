@@ -1,0 +1,68 @@
+# 虾池ETF轮动 v3.0 最终版 — 新数据优化
+# 超参扫描确认边界: vol_w∈[0.80,1.25]安全, invvol≥8安全, step_low≥0.12安全
+# 鲁棒性: MC 100%, DSR 1.0, WF 77.8%, 🟢实盘可上
+
+strategy:
+  name: 虾池ETF轮动 v3.0 — inv-vol12 连续分配 (最终)
+  version: 3.0
+
+scoring:
+  mom_w: 1.0
+  vol_w: 1.05
+
+selection:
+  top_n: 2
+
+factors:
+  mom_window: 4
+  vol_window: 20
+  pe_window_years: 5
+
+defense:
+  def_alloc: 0.25
+  step_low: 0.15
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.50
+
+rebalance:
+  threshold: 0.07
+  fee_rate: 0.00005
+  anchor: W-MON
+
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+
+allocation:
+  max_single_alloc: 0.40
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+
+inv_vol_allocation:
+  enabled: true
+  window: 12
+
+d4_individual_filter:
+  enabled: false
+
+softmax_allocation:
+  enabled: false
+
+dynamic_weighting:
+  enabled: false
+
+constituent_signals:
+  enabled: false
+
+regime_classifier:
+  enabled: false
+
+data:
+  nav_path: data/all_etfs_nav_2013_20260626.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: 2013-05-17
+  end_date:
+
+reporting:
+  risk_free_rate: 0.025
