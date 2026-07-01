@@ -1,0 +1,68 @@
+# 虾池ETF轮动 v3.0 — 新数据优化基准配置
+# vol_w, inv_vol_window 等被 optimize_v3_0_newdata.py 覆盖扫描
+# 仅提供防御/选股/风控等非扫描参数
+
+strategy:
+  name: 虾池ETF轮动 v3.0 — 新数据优化
+  version: 3.0
+
+scoring:
+  mom_w: 1.0         # 被脚本覆盖
+  vol_w: 1.05         # 被脚本覆盖
+
+selection:
+  top_n: 2
+
+factors:
+  mom_window: 4
+  vol_window: 20
+  pe_window_years: 5
+
+defense:
+  def_alloc: 0.25
+  step_low: 0.15
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.50
+
+rebalance:
+  threshold: 0.07
+  fee_rate: 0.00005
+  anchor: W-MON
+
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+
+allocation:
+  max_single_alloc: 0.40
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+
+inv_vol_allocation:
+  enabled: true
+  window: 8            # 被脚本覆盖
+
+d4_individual_filter:
+  enabled: false
+
+softmax_allocation:
+  enabled: false
+
+dynamic_weighting:
+  enabled: false
+
+constituent_signals:
+  enabled: false
+
+regime_classifier:
+  enabled: false
+
+data:
+  nav_path: data/all_etfs_nav_2013_20260626.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date:
+  end_date:
+
+reporting:
+  risk_free_rate: 0.025

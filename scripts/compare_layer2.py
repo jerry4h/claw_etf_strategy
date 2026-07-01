@@ -6,12 +6,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 from src.backtest import run_backtest
 from src.strategy import load_config
+CONFIG_PATH = 'config/strategy_v3_0_final.yaml'
 
-CSV = 'data/all_etfs_nav_2013_20260626.csv'
 
 def run(mom_w, vol_w, iv_en, iv_w):
-    cfg = load_config('config/strategy_v3_0_final.yaml')
-    cfg.nav_path = CSV; cfg.end_date = None; cfg.start_date = None
+    cfg = load_config(CONFIG_PATH)
+    cfg.end_date = None; cfg.start_date = None
     cfg.inv_vol_enabled = iv_en
     cfg.inv_vol_window = iv_w
     return run_backtest(cfg)

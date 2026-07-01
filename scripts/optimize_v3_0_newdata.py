@@ -20,12 +20,11 @@ import itertools, json
 from collections import OrderedDict
 
 CONFIG = PROJECT / 'config/strategy_v3_0_invvol_newdata.yaml'
-CSV = 'data/all_etfs_nav_2013_20260626.csv'
 
 
 def run_one(mom_w, vol_w, invvol_w):
     cfg = load_config(CONFIG)
-    cfg.nav_path = CSV
+    csv_path = cfg.nav_path  # 从 YAML 读取，避免硬编码
     cfg.end_date = None
     cfg.start_date = None
     cfg.mom_w = mom_w
@@ -56,7 +55,7 @@ def main():
     print("=" * 90)
     print(" v3.0 inv-vol8 — 新数据超参数扫描")
     print("=" * 90)
-    print(f" 数据: {CSV}")
+    print(f" 数据: {load_config(CONFIG).nav_path}")
     print(f" mom_w 固定 = 1.0")
     print(f" vol_w 范围 = {vol_w_grid}")
     print(f" invvol 范围 = {invvol_grid}")
