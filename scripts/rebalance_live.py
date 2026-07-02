@@ -33,7 +33,7 @@ MOM_W, VOL_W, TOP_N            = 1.0, 1.05, 2
 INV_VOL_W                      = 12
 DEF_ALLOC, STEP_LOW, STEP_HIGH, MAX_DEF = 0.25, 0.15, 0.35, 0.95
 HONGLI_RATIO, MAX_SINGLE       = 0.50, 0.40
-REBAL_THRESH, FEE, RISK_FREE   = 0.07, 0.00005, 0.025
+REBAL_THRESH, FEE, RISK_FREE   = 0.06, 0.00005, 0.025
 DEFAULT_CSV                    = 'data/all_etfs_nav_2013_20260626.csv'
 
 
