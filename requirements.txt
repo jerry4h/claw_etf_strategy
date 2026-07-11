@@ -1,0 +1,9 @@
+numpy>=1.24
+pandas>=2.0
+pyyaml>=6.0
+matplotlib>=3.7
+tushare>=1.0
+
+# scipy, seaborn are optional — only used by src/robustness.py
+# scipy>=1.10
+# seaborn>=0.12

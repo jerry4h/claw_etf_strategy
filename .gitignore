@@ -7,26 +7,25 @@ __pycache__/
 .vscode/
 *.log
 *.tmp
-**/output/*.html
-**/output/*.jpeg
-**/output/*.png
-**/output/*.pdf
 
-# Hermes Agent - kanban, cron, skills
+# Hermes Agent profile artifacts
 .hermes/
 test_venv/
 scripts/_*.py
 
-# Big data files (keep only latest CSVs)
-data/*.csv
-!data/all_etfs_nav_2013_20260626.csv
+# Generated output artifacts
+output/*.html
+output/*.jpeg
+output/*.png
+output/*.pdf
+output/tmp_*
 
-# Temp configs
-config/tmp_*.yaml
-config/strategy_v2*
-
-# Robustness outputs
+# Robustness evaluation temp files
 robustness_results.json
 ROBUSTNESS_COMPARISON_REPORT.md
 ROBUSTNESS_REPORT.md
-output/tmp_*
+
+# Data files: only track the latest CSV
+data/*.csv
+!data/all_etfs_nav_latest.csv
+!data/300etf_pe_percentile_weekly.csv
