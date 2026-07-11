@@ -6,19 +6,22 @@
   python scripts/rebalance_live.py                     # 最新数据 → 下周一调仓
   python scripts/rebalance_live.py --verify            # 全量回测 vs 引擎验证
   python scripts/rebalance_live.py --week 2026-06-26   # 查看特定周
+  python scripts/rebalance_live.py --save-state        # 确认调仓并保存状态
 
 策略:
-  Layer 1: score = mom4 − 1.05×vol20, top_n=2
+  Layer 1: score = mom4 - 1.05*vol20, top_n=2
   Layer 2: inv-vol12 weights
   Layer 3: nasdaq vol 3-tier [25%, 95%]
   零门控, 零阈值 (除 cap040)
 
-⚠️ 所有因子计算通过 src/factors.py (ddof=0)，杜绝重复实现。
+所有因子计算通过 src/factors.py (ddof=0)，杜绝重复实现。
+阈值基于上一次实际调仓的仓位（通过状态文件 data/.last_alloc.json 维护），
+非上周的理论计算仓位。运行 --save-state 确认调仓后自动更新状态文件。
 CSV格式: 日期,纳指ETF,红利低波ETF,沪深300ETF,黄金ETF,国债ETF
 """
 
 from __future__ import annotations
-import argparse, math, sys
+import argparse, json, math, sys
 from pathlib import Path
 import numpy as np, pandas as pd
 
@@ -29,7 +32,6 @@ from src.utils import compute_sharpe, annualize_return
 from src.factors import calculate_momentum, calculate_volatility
 from src.strategy import load_config
 
-# ── v3.0 参数 (从 config/strategy_v3_0_final.yaml 加载) ──
 cfg = load_config(PROJECT / 'config/strategy_v3_0_final.yaml')
 MOM_W = cfg.mom_w
 VOL_W = cfg.vol_w
@@ -44,9 +46,19 @@ REBAL_THRESH = cfg.rebalance_threshold
 FEE = cfg.fee_rate
 RISK_FREE = cfg.risk_free_rate
 
-# ══════════════════════════════════════════════════════════════════════
-# 核心计算 (统一使用 src/factors.py 引擎, ddof=0)
-# ══════════════════════════════════════════════════════════════════════
+STATE_FILE = PROJECT / 'data' / '.last_alloc.json'
+
+def load_state() -> dict | None:
+    if STATE_FILE.exists():
+        try:
+            return json.loads(STATE_FILE.read_text())
+        except (json.JSONDecodeError, KeyError):
+            return None
+    return None
+
+def save_state(alloc: dict):
+    STATE_FILE.write_text(json.dumps(alloc, ensure_ascii=False, indent=2))
+    print(f"  已保存调仓状态到 {STATE_FILE}")
 
 def load(csv):
     df = pd.read_csv(csv)
@@ -57,14 +69,9 @@ def load(csv):
             df[c] = pd.to_numeric(df[c], errors='coerce')
     return df[ETFS].ffill().dropna()
 
-
 def engine_factors(nav):
-    """通过引擎标准因子模块计算, ddof=0.
-    返回 (wr_df, m4, v20) — 与 backtest.py 完全对齐.
-    """
     m4 = calculate_momentum(nav, window=4)
     v20 = calculate_volatility(nav, window=20)
-    # 手动计算 w_rets (引擎格式: diff returns), 用于 invvol
     prices = nav[ETFS].values
     wr_df = pd.DataFrame(
         np.diff(prices, axis=0) / prices[:-1],
@@ -72,16 +79,13 @@ def engine_factors(nav):
     )
     return wr_df, m4, v20
 
-
 def score_etf(etf, m4, v20, i):
     mv, vv = m4[etf].iloc[i], v20[etf].iloc[i]
     if pd.isna(mv) or pd.isna(vv):
         return None
     return MOM_W * mv - VOL_W * vv
 
-
 def defense_ratio(v_nasdaq):
-    """vol 三段式防御 (与 src/strategy.py::calculate_defense_ratio 完全一致)"""
     if pd.isna(v_nasdaq):
         return DEF_ALLOC
     if v_nasdaq < STEP_LOW:
@@ -90,13 +94,7 @@ def defense_ratio(v_nasdaq):
         return MAX_DEF
     return DEF_ALLOC + (v_nasdaq - STEP_LOW) / (STEP_HIGH - STEP_LOW) * (MAX_DEF - DEF_ALLOC)
 
-
 def invvol_weights(selected, wr, i):
-    """inv-vol 权重分配 (ddof=0, 与引擎对齐).
-    
-    wr: 引擎格式的 diff returns (shape n_weeks-1, columns=ETFS)
-    取 wr[i-INV_VOL_W:i] 窗口 (i 是 nav 索引, wr 少一行)
-    """
     iv = {}
     for e in selected:
         start = max(0, i - 1 - INV_VOL_W + 1)
@@ -109,12 +107,7 @@ def invvol_weights(selected, wr, i):
         return {e: 1.0 / max(len(selected), 1) for e in selected}
     return {e: w / t for e, w in iv.items()}
 
-
 def compute(nav, i):
-    """给定周索引 i, 返回 (alloc, scores, factors)
-    
-    注意: wr (diff returns) 比 nav 少一行; score_etf 使用 m4/v20 (与 nav 等长).
-    """
     wr, m4, v20 = engine_factors(nav)
     sc = {e: s for e in OFFENSIVE if (s := score_etf(e, m4, v20, i)) is not None}
     ranked = sorted(sc, key=lambda e: sc[e], reverse=True)
@@ -136,63 +129,47 @@ def compute(nav, i):
                 alloc[e] += excess * alloc[e] / df_total
     return alloc, sc, wr, m4, v20
 
-
-def should_rebalance(curr, prev, weekly=False):
-    """检查是否需要调仓: 单只ETF权重变化最大值 vs 阈值"""
+def should_rebalance(curr, prev):
     if not prev:
         return True, 0.0
     max_chg = max(abs(curr.get(e, 0) - prev.get(e, 0))
                   for e in set(curr) | set(prev))
     return max_chg >= REBAL_THRESH, max_chg
 
-
-# ══════════════════════════════════════════════════════════════════════
-# 输出格式化
-# ══════════════════════════════════════════════════════════════════════
-
 def fmt_alloc(alloc, amount=500000):
     lines = []
     for e in ETFS:
         w = alloc.get(e, 0)
         if w > 0.001:
-            lines.append(f"  {e:<10s} {w*100:>5.1f}%  ≈ {w*amount:>8,.0f}元")
+            lines.append(f"  {e:<10s} {w*100:>5.1f}%  ~ {w*amount:>8,.0f}元")
     lines.append(f"  {'合计':<10s} {sum(alloc.values())*100:>5.1f}%")
     return '\n'.join(lines)
 
-
 def print_scores(sc, m4, v20, idx):
-    """打印 Layer 1 scoring 详情"""
-    print(f"\nLayer 1 (买什么) — scoring = mom4 − {VOL_W}×vol20")
+    print(f"\nLayer 1 (买什么)  scoring = mom4 - {VOL_W}*vol20")
     print(f"  {'ETF':<10s} {'mom4':>8s} {'vol20':>8s} {'score':>9s} {'rank':>6s}")
     print(f"  {'-'*45}")
     sel = sorted(sc, key=lambda e: sc[e], reverse=True)[:TOP_N]
     for e in sorted(sc, key=lambda e: sc[e], reverse=True):
         mv = m4[e].iloc[idx]
         vv = v20[e].iloc[idx]
-        rk = '← TOP' if e in sel else ''
+        rk = '<- TOP' if e in sel else ''
         print(f"  {e:<10s} {mv*100:>7.2f}% {vv*100:>7.1f}% {sc[e]:>9.4f} {rk:>6s}")
 
-
 def print_rebalance(prev_al, curr_al):
-    """打印调仓对比"""
-    print(f"\n  ── 调仓操作 ──")
-    print(f"  {'ETF':<10s} {'上周':>7s} {'本周':>7s} {'变化':>7s} {'操作':>8s}")
+    print(f"\n  -- 调仓操作 --")
+    print(f"  {'ETF':<10s} {'上次':>7s} {'本周':>7s} {'变化':>7s} {'操作':>8s}")
     print(f"  {'-'*42}")
     for e in curr_al:
         pw = prev_al.get(e, 0) * 100
         cw = curr_al[e] * 100
         dw = cw - pw
-        act = '买入' if dw > 0.5 else ('卖出' if dw < -0.5 else '—')
+        act = '买入' if dw > 0.5 else ('卖出' if dw < -0.5 else '-')
         print(f"  {e:<10s} {pw:>6.1f}% {cw:>6.1f}% {dw:>+6.1f}% {act:>8s}")
     for e in prev_al:
         if e not in curr_al and prev_al[e] > 0.001:
             pw = prev_al[e] * 100
             print(f"  {e:<10s} {pw:>6.1f}% {'0.0':>6}% {-pw:>+6.1f}% {'卖出':>8s}")
-
-
-# ══════════════════════════════════════════════════════════════════════
-# CLI
-# ══════════════════════════════════════════════════════════════════════
 
 def main():
     p = argparse.ArgumentParser(description='虾池ETF轮动 v3.0 实时调仓')
@@ -200,14 +177,13 @@ def main():
     p.add_argument('--verify', action='store_true', help='全量回测 vs 引擎验证')
     p.add_argument('--week', type=str, default=None, help='指定日期 YYYY-MM-DD')
     p.add_argument('--amount', type=float, default=500000, help='总资金(元)')
+    p.add_argument('--save-state', action='store_true', help='确认调仓并保存状态')
     a = p.parse_args()
 
     if a.verify:
-        # 用 run_backtest 引擎做全量回测对比验证
         from src.backtest import run_backtest
         r = run_backtest(cfg)
         eng = r.metrics
-
         df = load(PROJECT / a.csv)
         n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0; prev_al = {}; wrets = []
         for i in range(20, n - 1):
@@ -226,11 +202,9 @@ def main():
             dd_max = max(dd_max, dd)
             wrets.append(wr)
             prev_al = al
-
         scr_s = compute_sharpe(pd.Series(wrets), RISK_FREE)
         scr_r = annualize_return(nav - 1, len(wrets))
         scr_d = dd_max
-
         print(f"\n{'='*60}")
         print(" 验证: 实时脚本 vs 引擎回测")
         print(f"{'='*60}")
@@ -239,7 +213,7 @@ def main():
         print(f" 年化     {eng['annual_return']*100:.2f}%      {scr_r*100:.2f}%       {abs(eng['annual_return']-scr_r)*100:.2f}pp")
         print(f" DD       {eng['max_drawdown']*100:.2f}%      {scr_d*100:.2f}%       {abs(eng['max_drawdown']-scr_d)*100:.2f}pp")
         ok = abs(eng['sharpe_ratio'] - scr_s) < 0.02
-        print(f"\n {'✅ 通过' if ok else '⚠️ 偏差较大, 需排查'}")
+        print(f"\n {'通过' if ok else '偏差较大, 需排查'}")
         return
 
     df = load(PROJECT / a.csv)
@@ -262,32 +236,48 @@ def main():
     print(f" mom_w={MOM_W}  vol_w={VOL_W}  top_n={TOP_N}  invvol{INV_VOL_W}  "
           f"step_low={STEP_LOW}  thresh={REBAL_THRESH}")
 
-    prev_al = {}
-    if idx > 20:
+    last_state = load_state()
+    if last_state is not None:
+        prev_al = last_state
+        ref_label = "上次实仓"
+    elif idx > 20:
         prev_al, _, _, _, _ = compute(df, idx - 1)
-        do_reb, max_chg = should_rebalance(alloc, prev_al, weekly=True)
-        print(f"\n调仓阈值 {REBAL_THRESH*100:.0f}%: 周最大变化 {max_chg*100:.1f}% "
-              f"→ {'⚡ 调仓!' if do_reb else '— 不调仓'}")
+        ref_label = "上周理论"
+    else:
+        prev_al = {}
+        ref_label = "无"
+
+    if prev_al:
+        do_reb, max_chg = should_rebalance(alloc, prev_al)
+        print(f"\n调仓阈值 {REBAL_THRESH*100:.0f}%: 参考{ref_label} 最大变化 {max_chg*100:.1f}% "
+              f"-> {'调仓!' if do_reb else '不调仓'}")
+    else:
+        do_reb = True
 
     print_scores(sc, m4, v20, idx)
 
     vn = v20['纳指ETF'].iloc[idx]
     dr = defense_ratio(vn)
     print(f"\nLayer 3 (防多少): 纳指vol20={vn*100:5.1f}% "
-          f"→ {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
+          f"-> {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
 
     print(f"\nLayer 2 (买多少): inv-vol{INV_VOL_W} 权重")
-    print(f"\n── 下周一持仓 ──")
+    print(f"\n-- 下周一持仓 --")
     print(fmt_alloc(alloc, a.amount))
 
     if prev_al:
-        _, cur_mc = should_rebalance(alloc, prev_al, weekly=True)
+        _, cur_mc = should_rebalance(alloc, prev_al)
         if cur_mc >= REBAL_THRESH:
             print_rebalance(prev_al, alloc)
 
-    print(f"\n{'='*70}")
-    print(f" 下周一按此比例调仓")
+    if a.save_state:
+        save_state(alloc)
 
+    print(f"\n{'='*70}")
+    if a.save_state:
+        print(f" 已保存调仓状态 - 下次运行将基于本次仓位做阈值判断")
+    else:
+        print(f" 提示: 确认调仓后请加 --save-state 保存仓位状态，下次阈值判断更准")
 
 if __name__ == '__main__':
     main()
