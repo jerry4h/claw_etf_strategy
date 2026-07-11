@@ -1,6 +1,6 @@
 # 虾池ETF轮动 v3.0 最终版 — 新数据优化
-# 超参扫描确认边界: vol_w∈[0.80,1.25]安全, invvol≥8安全, step_low≥0.12安全
-# 鲁棒性: MC 100%, DSR 1.0, WF 77.8%, 🟢实盘可上
+# 超参扫描确认: vol_w范围[0.80,1.25]全安全, invvol>=8安全, step_low>=0.12安全
+# 鲁棒性: MC 100%, DSR 1.0, WF 77.8%, 综合评级 实盘可上
 
 strategy:
   name: 虾池ETF轮动 v3.0 — inv-vol12 连续分配 (最终)
@@ -59,7 +59,7 @@ regime_classifier:
   enabled: false
 
 data:
-  nav_path: data/all_etfs_nav_2013_20260626.csv
+  nav_path: data/all_etfs_nav_latest.csv
   pe_path: data/300etf_pe_percentile_weekly.csv
   start_date: 2013-05-17
   end_date:

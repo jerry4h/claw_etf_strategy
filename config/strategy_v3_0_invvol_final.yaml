@@ -1,76 +1,77 @@
-# 虾池ETF轮动策略 v3.0 — 多参数鲁棒性验证终版
-# 超参数经过 4 维边界扫描 + 12 组鲁棒性评估验证
-# 数据: docs/etf_data_build.md (PM 修复 QFQ 前复权)
-#
-# 超参边界总结:
-#   vol_w:      0.70-1.25 全部安全, 最优  1.05
-#   invvol:     ≥8 安全, ≤5 失效, 最优 12
-#   step_low:   ≥0.12 安全, <0.10 退化, 最优 0.15
-#   step_high:  0.25-0.45 全部安全, 最优 0.35
-#   vol_window: 10-30 全部安全, WF最佳 20
-#   mom_window: 4 为最佳(5 → WF 44%)
-
-strategy:
-  name: 虾池ETF轮动 v3.0 — 鲁棒性验证终版
-  version: 3.0-final
-
-scoring:
-  mom_w: 1.0
-  vol_w: 1.05
-
-selection:
-  top_n: 2
-
-factors:
-  mom_window: 4
-  vol_window: 20
-  pe_window_years: 5
-
-defense:
-  def_alloc: 0.25
-  step_low: 0.15
-  step_high: 0.35
-  max_def: 0.95
-  hongli_ratio: 0.50
-
-rebalance:
-  threshold: 0.07
-  fee_rate: 0.00005
-  anchor: W-MON
-
-risk_control:
-  stop_loss: 0.08
-  recovery_weeks: 4
-
-allocation:
-  max_single_alloc: 0.40
-  overflow_to_defense_only: true
-  dynamic_weight_cap: false
-
-inv_vol_allocation:
-  enabled: true
-  window: 12
-
-d4_individual_filter:
-  enabled: false
-
-softmax_allocation:
-  enabled: false
-
-dynamic_weighting:
-  enabled: false
-
-constituent_signals:
-  enabled: false
-
-regime_classifier:
-  enabled: false
-
-data:
-  nav_path: data/all_etfs_nav_2013_20260626.csv
-  pe_path: data/300etf_pe_percentile_weekly.csv
-  start_date: 2013-05-17
-  end_date:
-
-reporting:
-  risk_free_rate: 0.025
+1|# 虾池ETF轮动策略 v3.0 — 多参数鲁棒性验证终版
+2|# 超参数经过 4 维边界扫描 + 12 组鲁棒性评估验证
+3|# 数据: docs/etf_data_build.md (PM 修复 QFQ 前复权)
+4|#
+5|# 超参边界总结:
+6|#   vol_w:      0.70-1.25 全部安全, 最优  1.05
+7|#   invvol:     ≥8 安全, ≤5 失效, 最优 12
+8|#   step_low:   ≥0.12 安全, <0.10 退化, 最优 0.15
+9|#   step_high:  0.25-0.45 全部安全, 最优 0.35
+10|#   vol_window: 10-30 全部安全, WF最佳 20
+11|#   mom_window: 4 为最佳(5 → WF 44%)
+12|
+13|strategy:
+14|  name: 虾池ETF轮动 v3.0 — 鲁棒性验证终版
+15|  version: 3.0-final
+16|
+17|scoring:
+18|  mom_w: 1.0
+19|  vol_w: 1.05
+20|
+21|selection:
+22|  top_n: 2
+23|
+24|factors:
+25|  mom_window: 4
+26|  vol_window: 20
+27|  pe_window_years: 5
+28|
+29|defense:
+30|  def_alloc: 0.25
+31|  step_low: 0.15
+32|  step_high: 0.35
+33|  max_def: 0.95
+34|  hongli_ratio: 0.50
+35|
+36|rebalance:
+37|  threshold: 0.07
+38|  fee_rate: 0.00005
+39|  anchor: W-MON
+40|
+41|risk_control:
+42|  stop_loss: 0.08
+43|  recovery_weeks: 4
+44|
+45|allocation:
+46|  max_single_alloc: 0.40
+47|  overflow_to_defense_only: true
+48|  dynamic_weight_cap: false
+49|
+50|inv_vol_allocation:
+51|  enabled: true
+52|  window: 12
+53|
+54|d4_individual_filter:
+55|  enabled: false
+56|
+57|softmax_allocation:
+58|  enabled: false
+59|
+60|dynamic_weighting:
+61|  enabled: false
+62|
+63|constituent_signals:
+64|  enabled: false
+65|
+66|regime_classifier:
+67|  enabled: false
+68|
+69|data:
+70|  nav_path: data/all_etfs_nav_latest.csv
+71|  pe_path: data/300etf_pe_percentile_weekly.csv
+72|  start_date: 2013-05-17
+73|  end_date:
+74|
+75|reporting:
+76|  risk_free_rate: 0.025
+77|
