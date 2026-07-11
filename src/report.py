@@ -43,7 +43,7 @@ def generate_metrics_table(result: BacktestResult) -> str:
 | 年化收益 | {m['annual_return']*100:.2f}% |
 | 最大回撤 | {m['max_drawdown']*100:.2f}% |
 | 标准夏普 | {m['sharpe_ratio']:.3f} |
-| 简化夏普 | {m['simple_sharpe']:.3f} |
+| 标准夏普 | {m['sharpe_ratio']:.3f} |
 | 卡尔马比率 | {m['calmar_ratio']:.2f} |
 | 年化波动率 | {m['annual_volatility']*100:.2f}% |
 | 周胜率 | {m['win_rate']*100:.1f}% |

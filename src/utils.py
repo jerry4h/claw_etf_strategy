@@ -1,4 +1,9 @@
-"""共享工具函数 — 年化、回撤、夏普、卡尔马等指标计算。零依赖。"""
+"""共享工具函数 — 年化、回撤、夏普、卡尔马等指标计算。零依赖。
+
+⚠️ 只有一个 Sharpe 定义（标准夏普，扣无风险利率）。
+   之前存在简化夏普（不扣无风险利率），两者相差约 0.3，
+   曾导致 README 中的指标被误读。已统一。
+"""
 
 import numpy as np
 import pandas as pd
@@ -35,7 +40,7 @@ def compute_max_drawdown(nav: pd.Series) -> float:
 
 def compute_sharpe(returns: pd.Series, risk_free: float = 0.025) -> float:
     """
-    标准夏普比率（扣无风险利率）。
+    标准夏普比率（扣无风险利率）。这是唯一的 Sharpe 定义。
 
     Args:
         returns: 周收益率序列
@@ -49,21 +54,6 @@ def compute_sharpe(returns: pd.Series, risk_free: float = 0.025) -> float:
     rfr_weekly = risk_free / 52
     excess = returns - rfr_weekly
     return excess.mean() / excess.std() * np.sqrt(52)
-
-
-def compute_simple_sharpe(returns: pd.Series) -> float:
-    """
-    简化夏普比率（不扣无风险利率，仅供参考）。
-
-    Args:
-        returns: 周收益率序列
-
-    Returns:
-        简化夏普比率（年化）
-    """
-    if returns.std() == 0:
-        return 0.0
-    return returns.mean() / returns.std() * np.sqrt(52)
 
 
 def compute_calmar(annual_return: float, max_drawdown: float) -> float:

@@ -75,7 +75,7 @@ def main():
     print(f'  年化收益:      {m["annual_return"]*100:.2f}%')
     print(f'  最大回撤:      {m["max_drawdown"]*100:.2f}%')
     print(f'  标准夏普:      {m["sharpe_ratio"]:.3f}')
-    print(f'  简化夏普:      {m["simple_sharpe"]:.3f}')
+    # 只有标准夏普（扣无风险利率），没有简化夏普
     print(f'  卡尔马:        {m["calmar_ratio"]:.2f}')
     print(f'  年化波动率:    {m["annual_volatility"]*100:.2f}%')
     print(f'  周胜率:        {m["win_rate"]*100:.1f}%')

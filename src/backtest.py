@@ -51,7 +51,7 @@ except ImportError:
     def get_regime_overrides_3state(*args, **kwargs) -> dict: return {}
 from src.utils import (
     annualize_return, compute_max_drawdown, compute_sharpe,
-    compute_simple_sharpe, compute_calmar, compute_annual_volatility
+    compute_calmar, compute_annual_volatility
 )
 
 
@@ -552,7 +552,7 @@ def compute_metrics(
             "annual_return": 0.1406,
             "max_drawdown": 0.0821,
             "sharpe_ratio": 1.102,
-            "simple_sharpe": 1.60,
+            # simple_sharpe removed — use sharpe_ratio only
             "calmar_ratio": 1.71,
             "win_rate": 0.583,
             "avg_weekly_return": 0.0027,
@@ -572,7 +572,8 @@ def compute_metrics(
     annual_ret = annualize_return(total_return, n_weeks)
     max_dd = nav_series['drawdown'].max()
     sharpe = compute_sharpe(weekly_returns, risk_free_rate)
-    simple_sharpe = compute_simple_sharpe(weekly_returns)
+    # simple_sharpe removed — use sharpe (with risk-free) only.
+    # Two definitions caused confusion (simplified ~0.3 higher than standard).
     calmar = compute_calmar(annual_ret, max_dd) if max_dd > 0 else float('inf')
     annual_vol = compute_annual_volatility(weekly_returns)
     win_rate = (weekly_returns > 0).mean()
@@ -593,7 +594,6 @@ def compute_metrics(
         'annual_return': annual_ret,
         'max_drawdown': max_dd,
         'sharpe_ratio': sharpe,
-        'simple_sharpe': simple_sharpe,
         'calmar_ratio': calmar,
         'win_rate': win_rate,
         'avg_weekly_return': avg_wret,
