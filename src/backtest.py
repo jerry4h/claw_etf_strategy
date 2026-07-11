@@ -26,11 +26,29 @@ from src.strategy import (
     apply_individual_momentum_filter, compute_dynamic_weights,
     compute_softmax_allocation
 )
-from src.regime import (
-    load_regime_data, build_regime_lookup, build_regime_lookup_3state,
-    get_regime_overrides, get_regime_overrides_3state,
-    Regime
-)
+# regime features are disabled in final config; import only when available
+try:
+    from src.regime import (
+        load_regime_data, build_regime_lookup, build_regime_lookup_3state,
+        get_regime_overrides, get_regime_overrides_3state,
+        Regime
+    )
+except ImportError:
+    # Stubs for when regime module is not available
+    class Regime:
+        RISK_ON = "RISK_ON"
+        CAUTIOUS = "CAUTIOUS"
+        DEFENSIVE = "DEFENSIVE"
+        BUBBLE_WARN = "BUBBLE_WARN"
+        CRISIS = "CRISIS"
+        @staticmethod
+        def _missing_(name):  # support Regime(name) calls used in the code
+            return name
+    def load_regime_data(*args, **kwargs) -> None: return None
+    def build_regime_lookup(*args, **kwargs) -> None: return None
+    def build_regime_lookup_3state(*args, **kwargs) -> None: return None
+    def get_regime_overrides(*args, **kwargs) -> dict: return {}
+    def get_regime_overrides_3state(*args, **kwargs) -> dict: return {}
 from src.utils import (
     annualize_return, compute_max_drawdown, compute_sharpe,
     compute_simple_sharpe, compute_calmar, compute_annual_volatility

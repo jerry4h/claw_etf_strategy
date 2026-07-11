@@ -4,7 +4,7 @@
 
 用法：
     python scripts/run_backtest.py
-    python scripts/run_backtest.py --config config/strategy_v2_3.yaml
+    python scripts/run_backtest.py --config config/strategy_v3_0_final.yaml
     python scripts/run_backtest.py --start 2020-01-01 --end 2025-12-31
 """
 
@@ -26,8 +26,8 @@ def main():
         description='虾池ETF轮动策略 — 单次回测'
     )
     parser.add_argument(
-        '--config', type=str, default='config/strategy_v2_3.yaml',
-        help='策略配置文件路径（默认: config/strategy_v2_3.yaml）'
+        '--config', type=str, default='config/strategy_v3_0_final.yaml',
+        help='策略配置文件路径（默认: config/strategy_v3_0_final.yaml）'
     )
     parser.add_argument(
         '--start', type=str, default=None,
@@ -38,8 +38,8 @@ def main():
         help='回测结束日期（YYYY-MM-DD）'
     )
     parser.add_argument(
-        '--output', type=str, default='output/report_v2_3.md',
-        help='报告输出路径（默认: output/report_v2_3.md）'
+        '--output', type=str, default='output/report_v3_0.md',
+        help='报告输出路径（默认: output/report_v3_0.md）'
     )
     parser.add_argument(
         '--no-charts', action='store_true',
@@ -85,7 +85,7 @@ def main():
 
     # 生成报告
     output_path = PROJECT_ROOT / args.output
-    report = generate_full_report(
+    _ = generate_full_report(
         result,
         output_path,
         include_charts=not args.no_charts

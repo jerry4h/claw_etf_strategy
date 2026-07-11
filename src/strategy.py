@@ -178,6 +178,8 @@ class StrategyConfig:
 
 def _parse_regime_overrides(raw: dict) -> dict:
     """Convert string-keyed regime overrides from YAML to Regime-enum-keyed dict."""
+    if not raw:
+        return {}
     from src.regime import Regime
     STRING_TO_REGIME = {
         'RISK_ON': Regime.RISK_ON,
@@ -196,6 +198,8 @@ def _parse_regime_overrides(raw: dict) -> dict:
 
 def _parse_regime_softmax_enabled(raw: dict) -> dict:
     """Parse per-regime softmax_enabled overrides from YAML regime section."""
+    if not raw:
+        return {}
     from src.regime import Regime
     STRING_TO_REGIME = {
         'RISK_ON': Regime.RISK_ON,
@@ -216,6 +220,8 @@ def _parse_regime_softmax_enabled(raw: dict) -> dict:
 
 def _parse_regime_softmax_temperature(raw: dict) -> dict:
     """Parse per-regime softmax_temperature overrides from YAML regime section."""
+    if not raw:
+        return {}
     from src.regime import Regime
     STRING_TO_REGIME = {
         'RISK_ON': Regime.RISK_ON,
