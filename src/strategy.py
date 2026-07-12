@@ -23,6 +23,7 @@ class StrategyConfig:
 
     # 选股
     top_n: int = 2            # 选几只进攻 ETF
+    score_margin: float = 0.0     # TOP_N 分数差距门槛（防噪声换仓）
 
     # 因子窗口
     mom_window: int = 4
@@ -279,6 +280,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         mom_w=scoring.get('mom_w', 0.35),
         vol_w=scoring.get('vol_w', 0.30),
         top_n=selection.get('top_n', 2),
+        score_margin=selection.get('score_margin', 0.0),
         mom_window=factors_cfg.get('mom_window', 4),
         vol_window=factors_cfg.get('vol_window', 20),
         pe_window_years=factors_cfg.get('pe_window_years', 5),

@@ -47,6 +47,7 @@ MAX_SINGLE = cfg.max_single_alloc
 REBAL_THRESH = cfg.rebalance_threshold
 FEE = cfg.fee_rate
 RISK_FREE = cfg.risk_free_rate
+SCORE_MARGIN = cfg.score_margin
 
 STATE_FILE = PROJECT / 'data' / '.last_alloc.json'
 
@@ -109,10 +110,19 @@ def invvol_weights(selected, wr, i):
         return {e: 1.0 / max(len(selected), 1) for e in selected}
     return {e: w / t for e, w in iv.items()}
 
-def compute(nav, i):
+def compute(nav, i, prev_sel=None):
     wr, m4, v20 = engine_factors(nav)
     sc = {e: s for e in OFFENSIVE if (s := score_etf(e, m4, v20, i)) is not None}
     ranked = sorted(sc, key=lambda e: sc[e], reverse=True)
+
+    # --- Score Margin: 防噪声换仓 ---
+    if SCORE_MARGIN > 0 and prev_sel is not None and len(ranked) > TOP_N:
+        gap = sc[ranked[TOP_N - 1]] - sc[ranked[TOP_N]]
+        if gap < SCORE_MARGIN:
+            valid_prev = [e for e in prev_sel if e in sc]
+            if len(valid_prev) == TOP_N:
+                ranked = valid_prev
+
     sel = ranked[:TOP_N]
     def_r = defense_ratio(v20['纳指ETF'].iloc[i])
     wts = invvol_weights(sel, wr, i)
@@ -187,9 +197,10 @@ def main():
         r = run_backtest(cfg)
         eng = r.metrics
         df = load(PROJECT / a.csv)
-        n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0; prev_al = {}; wrets = []
+        n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0
+        prev_al = {}; prev_sel = None; wrets = []
         for i in range(max(MOM_WINDOW, VOL_WINDOW), n - 1):
-            al, _, _, _, _ = compute(df, i)
+            al, sc, _, _, _ = compute(df, i, prev_sel=prev_sel)
             if not al:
                 continue
             do, mc = should_rebalance(al, prev_al)
@@ -204,6 +215,7 @@ def main():
             dd_max = max(dd_max, dd)
             wrets.append(wr)
             prev_al = al
+            prev_sel = sorted(sc, key=lambda e: sc[e], reverse=True)[:TOP_N]
         scr_s = compute_sharpe(pd.Series(wrets), RISK_FREE)
         scr_r = annualize_return(nav - 1, len(wrets))
         scr_d = dd_max
@@ -225,7 +237,13 @@ def main():
         print(f"[ERROR] 数据不足. 最早: {df.index[max(MOM_WINDOW, VOL_WINDOW)].date()}")
         return
 
-    alloc, sc, wr, m4, v20 = compute(df, idx)
+    # 计算上次选中的进攻ETF（用于score_margin）
+    prev_sel = None
+    if idx > max(MOM_WINDOW, VOL_WINDOW):
+        prev_sc = compute(df, idx - 1)[1]  # sc is index 1
+        prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N]
+
+    alloc, sc, wr, m4, v20 = compute(df, idx, prev_sel=prev_sel)
     if not alloc:
         print("[ERROR] 无法计算")
         return

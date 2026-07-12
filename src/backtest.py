@@ -201,6 +201,7 @@ def run_backtest(
     nav = 1.0
     peak = 1.0
     last_alloc = np.zeros(n_etfs)
+    last_selected = None  # 上一次选中的进攻 ETF（用于 score_margin 过滤）
     max_dd = 0.0
 
     # 止损状态（原始 + 三层 + 状态感知）
@@ -290,6 +291,15 @@ def run_backtest(
             selected_off = [j for _, j in off_scores]
         else:
             selected_off = [j for _, j in off_scores[:eff_top_n]]
+
+        # --- Score Margin: 防噪声换仓（仅非 softmax 模式）---
+        if config.score_margin > 0 and not eff_softmax_enabled and last_selected is not None:
+            if len(off_scores) > eff_top_n:
+                gap = off_scores[eff_top_n - 1][0] - off_scores[eff_top_n][0]
+                if gap < config.score_margin:
+                    valid_last = [j for j in last_selected if j in off_idx and not np.isnan(scores_vec[j])]
+                    if len(valid_last) == eff_top_n:
+                        selected_off = valid_last
 
         # --- D4: 单ETF动量过滤器 (P0, 默认关闭, 纯无状态) ---
         # D4 runs before softmax — filters weak ETFs before weights are computed
@@ -516,6 +526,7 @@ def run_backtest(
 
         weekly_records.append(record)
         last_alloc = alloc.copy()
+        last_selected = selected_off.copy()
 
     # === 6. 构建 nav_series ===
     nav_df_result = pd.DataFrame(weekly_records)
