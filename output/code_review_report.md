@@ -161,86 +161,74 @@
 | 函数文档 | ✅ 大部分函数有 docstring |
 | 中英文混合 | ⚠️ 注释以中文为主，变量名和代码符号保持英文，合理 |
 
-### 3.2 发现的问题（含 Bug）
+### 3.2 已修复的问题（commit 21b704d）
 
-#### 🔴 Bug 1：rebalance_live.py 潜在 NameError（边界条件）
+| 问题 | 修复内容 | 状态 |
+|------|----------|------|
+| rebalance_live.py 边界条件 NameError | `idx >` → `idx >=` + 赋值移入 if 块 | ✅ |
+| web_app.py 不再需要 | 已删除 | ✅ |
+| rebalance_live.py print 标签混淆 | 第二行标签修正 | ✅ |
+| report.py "标准夏普"重复行 | 已删除 | ✅ |
+| calc_performance.py 硬编码 0.2 | 改为 `1.0/len(cols)` | ✅ |
+| tmp/ 目录清理 | 已删除 | ✅ |
 
-**位置**：`scripts/rebalance_live.py` 第 240-244 行
+### 3.3 本轮排查发现的新问题
+
+#### 🔴 Bug 1：robustness.py score_margin 未传递给任何 StrategyConfig 构造函数
+
+**位置**：`src/robustness.py` L399（_mc_single_worker）、L734（_apply_grid_overrides）、`src/backtest.py` L624（_run_single_grid）
+
+**问题**：三处构造 `StrategyConfig(...)` 时均未传入 `score_margin=base_cfg.score_margin`，导致：
+- **MC 鲁棒性测试**：使用 score_margin=0.0（默认值），而非配置值 0.02
+- **Grid 网格搜索**：同样使用默认值 0.0
+- **OAT 敏感度分析**：同样使用默认值 0.0
+
+这意味着报告的鲁棒性结果（MC 100%、DSR 1.0）是在 **错误参数** 下计算的，需要修复后重新评估。
+
+**修复**：在三处构造函数参数末尾添加 `score_margin=base_cfg.score_margin`。
+
+#### 🔴 Bug 2：robustness.py OAT momentum_threshold clamp 不一致
+
+**位置**：`src/robustness.py` L692
 
 ```python
-prev_sel = None
-if idx > max(MOM_WINDOW, VOL_WINDOW):       # idx > 11
-    prev_sc = compute(df, idx - 1)[1]        # [1] = sc
-prev_sel = sorted(prev_sc, ...) if prev_sc else None  # ⚠️ prev_sc 可能未定义
+# OAT（L692）：
+new_val = max(-0.20, min(0.05, new_val))
+
+# MC（L602-604）：
+new_val = max(-0.07, min(0.05, new_val))
+
+# GRID_CLAMP（L388）：
+'momentum_threshold': (-0.07, 0.05),
 ```
 
-**问题**：当 `idx == max(MOM_WINDOW, VOL_WINDOW)`（即 idx == 11）时：
-1. `idx > 11` 为 False，跳过赋值
-2. 但变量 `prev_sc` 从未定义
-3. 第 244 行访问 `prev_sc` → **NameError**
+**问题**：OAT 分析使用 -0.20 下限，而 MC 和 Grid 使用 -0.07。三处应统一。
 
-**影响**：当查询日期恰好等于第 11 个数据点时（即最早可计算因子的边界），程序崩溃。
+#### 🔴 Bug 3：robustness.py _mc_single_worker 不对称 clamp
 
-**修复**：`if idx > ...` 改为 `if idx >= ...`，或在 `if` 内部完成所有 prev_sel 计算：
+**位置**：`src/robustness.py` L444
 
 ```python
-prev_sel = None
-if idx > max(MOM_WINDOW, VOL_WINDOW):
-    prev_sc = compute(df, idx - 1)[1]  # sc is index 1
-    prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N] if prev_sc else None
+d4_momentum_threshold=max(params.get('momentum_threshold', base_cfg.d4_momentum_threshold), -0.07),
 ```
 
-#### 🔴 Bug 2：web_app.py 硬编码因子窗口与配置不匹配
+**问题**：仅钳制了下限 `-0.07`，但未钳制上限 `0.05`。当随机扰动产生 >0.05 的值时，可能传递非法参数。
 
-**位置**：`scripts/web_app.py` 第 69-70 行
+**修复**：改为 `min(max(params.get(..., base_cfg.d4_momentum_threshold), -0.07), 0.05)`
 
-```python
-m4 = calculate_momentum(nav, window=4)   # 硬编码 4
-v20 = calculate_volatility(nav, window=20) # 硬编码 20
-```
+#### ⚠️ 建议：engine_factors 变量命名混淆
 
-**问题**：
-- config 中 `vol_window = 11`，而 web_app.py 使用 `window=20`
-- 这导致 Web 界面计算的波动率与引擎回测不一致
-- `--verify` 如果用于 web_app 结果，偏差会很大
-
-**影响**：Web 界面展示的调仓方案可能错误（尤其影响 `vol` 三段式防御和 inv-vol 权重）。
-
-**修复**：从 cfg 读取窗口参数：
+**位置**：`scripts/rebalance_live.py` L76-77
 
 ```python
-MOM_WINDOW = cfg.mom_window
-VOL_WINDOW = cfg.vol_window
-
 def engine_factors(nav):
-    m4 = calculate_momentum(nav, window=MOM_WINDOW)
-    v20 = calculate_volatility(nav, window=VOL_WINDOW)
-    ...
+    m4 = calculate_momentum(nav, window=MOM_WINDOW)   # OK: MOM_WINDOW=4
+    v20 = calculate_volatility(nav, window=VOL_WINDOW) # MISLEADING: VOL_WINDOW=11!
 ```
 
-#### 🔴 Bug 3（关联）：web_app.py print 标签错误
+`v20` 这个名字暗示窗口是 20 周，但引擎实际配置的是 11 周。建议重命名为泛化名称如 `vol` 或 `vol_df`。
 
-**位置**：`scripts/rebalance_live.py` 第 256-258 行
-
-```python
-print(f" mom_w={MOM_W}  vol_w={VOL_W}  top_n={TOP_N}  invvol{INV_VOL_W}  "
-      f"mom_w={MOM_WINDOW}  vol_w={VOL_WINDOW}  "  # ⚠️ 标签错
-      f"step_low={STEP_LOW}  thresh={REBAL_THRESH}")
-```
-
-**问题**：第二行 `mom_w={MOM_WINDOW}` 标签写着 `mom_w` 但实际显示的是 `mom_window`（窗口值 4），同理 `vol_w={VOL_WINDOW}` 显示的是 `vol_window`（11）。这会严重混淆使用者。
-
-**预期输出**：
-```
-mom_w=1.0  vol_w=1.10  top_n=2  invvol10  mom_window=4  vol_window=11  step_low=0.15  thresh=0.025
-```
-
-**实际输出**（当前代码）：
-```
-mom_w=1.0  vol_w=1.10  top_n=2  invvol10  mom_w=4  vol_w=11  step_low=0.15  thresh=0.025
-```
-
-### 3.3 其他改进建议
+### 3.4 其他改进建议
 
 #### ⚠️ 问题 1：report.py 中多余输出行
 
@@ -333,25 +321,41 @@ for i in range(1, len(w_prices)):
 | ✅ Sharpe 定义统一性 | 通过 — 已移除简化夏普，仅保留标准夏普 |
 | ✅ Git 提交质量 | 通过 — 提交信息清晰，变更范围合理 |
 
-### 待改进项目
+### 已修复项目（第 1 轮审查后已处理的 6 项）
 
-| 优先级 | 问题 | 类型 | 建议 |
+| 问题 | 修复内容 | 状态 |
+|------|----------|------|
+| rebalance_live.py 边界条件 NameError | `idx > max(...)` → `idx >= max(...)` + 赋值移入 if 块 | ✅ 已修复 |
+| web_app.py 不再需要 | 已删除 | ✅ 已删除 |
+| rebalance_live.py print 标签混淆 | `mom_w`→`mom_window`, `vol_w`→`vol_window` | ✅ 已修复 |
+| report.py "标准夏普"重复行 | 已删除冗余行 | ✅ 已修复 |
+| calc_performance.py 硬编码 0.2 | 改为 `1.0 / len(cols)` | ✅ 已修复 |
+| tmp/ 目录清理 | 已删除临时脚本 | ✅ 已清理 |
+
+### 第 2 轮深入排查发现的 3 个新 Bug
+
+| 优先级 | 问题 | 类型 | 说明 |
 |--------|------|------|------|
-| 🔴 高 | rebalance_live.py 边界条件 NameError | **Bug** | `if idx > ...` 改为 `if idx >= ...` 或将赋值移入 if 块内 |
-| 🔴 高 | web_app.py 硬编码 vol_window=20（应为 11） | **Bug** | 从 cfg 读取窗口参数，与引擎保持一致 |
-| 🔴 中 | rebalance_live.py print 标签混淆 | **Bug** | 第二行标签 mom_w→mom_window, vol_w→vol_window |
-| 🟡 中 | report.py "标准夏普"重复行 | 清理 | 删除冗余行 |
-| 🟢 低 | calc_performance.py 硬编码 0.2 | 可维护性 | 改为自动计算 1.0/len(cols) |
-| 🟢 低 | tmp/ 目录临时脚本 | 清理 | 完成验证后清理或移入 scripts/ |
-| 🟢 低 | tests/ 缺少测试文件 | 质量 | 补充核心模块单元测试 |
+| 🔴 **高** | **robustness.py：score_margin 未传给任何 StrategyConfig 构造函数** | **Bug** | `_mc_single_worker`(L399)、`_apply_grid_overrides`(L734)、`backtest.py._run_single_grid`(L624) 共 3 处构造 StrategyConfig 时均缺少 `score_margin=base_cfg.score_margin`，导致 MC/Grid 鲁棒性评估使用默认值 **0.0** 而非配置值 **0.02**。这意味着公布的鲁棒性结果（MC 100%、DSR 1.0）是在错误参数下计算的。 |
+| 🔴 **高** | **robustness.py OAT momentum_threshold clamp 不一致** | **Bug** | L692 `new_val = max(-0.20, min(0.05, new_val))` 使用 -0.20 下限，而 MC(L602) 和 GRID_CLAMP(L388) 使用 -0.07。OAT 分析结果会与 MC/Grid 偏移。 |
+| 🔴 **中** | **robustness.py `_mc_single_worker` 不对称 clamp** | **Bug** | L444 `d4_momentum_threshold = max(params.get(...), -0.07)` 仅钳制下限，未钳制上限 0.05。应改为 `min(max(..., -0.07), 0.05)`。 |
+
+### 改进建议（低优先级）
+
+| 建议 | 说明 |
+|------|------|
+| `rebalance_live.py engine_factors()` 变量命名 | 返回 `m4`（窗口 4 时没问题）和 `v20`（窗口 11 时严重误导），建议改为泛化名称 `mom`/`vol` |
+| `tests/` 缺少测试文件 | 建议补充核心模块单元测试 |
 
 ### 总体评价
 
-quant-se 的变更工程规范，核心逻辑正确。主要做了一项关键重构（ETF迁移）和多项修复（硬编码→配置驱动、score_margin 防噪声换仓、save-state 状态持久化、Sharpe 定义统一）。代码质量良好，架构清晰，参数流闭合。
+quant-se 的变更工程规范，核心逻辑正确。主要做了一项关键重构（ETF迁移）和多项修复（硬编码→配置驱动、score_margin、save-state、Sharpe 统一）。代码质量良好，架构清晰，参数流闭合。
 
-**发现 3 个需要提前修复的 Bug**：
-1. **rebalance_live.py 边界条件 NameError**：当 `idx == max(MOM_WINDOW, VOL_WINDOW)` 时，`prev_sc` 未定义导致崩溃
-2. **web_app.py 硬编码 vol_window=20**：config 实际为 11，Web 展示的波动率与引擎不一致
-3. **rebalance_live.py 打印标签混淆**：`mom_w` 处实际打印了 `mom_window`（4），`vol_w` 处实际打印了 `vol_window`（11）
+**第 1 轮修正（commit 21b704d）**：第 1 轮发现的所有 6 项问题已全部修复 ✅。
 
-建议优先修复这三项后重新验证 `--verify`，以保证所有入口路径结果一致。
+**第 2 轮深入排查发现 3 个新 Bug**，均在 robustness.py 中：
+1. **`score_margin` 未传递给 MC/Grid 构造函数** — 鲁棒性评估使用了错误参数值（0.0 而非 0.02），需要补充 `score_margin=base_cfg.score_margin` 后**重跑全量鲁棒性评估**
+2. **OAT `momentum_threshold` clamp 下限不一致** — OAT 用 -0.20，MC/Grid 用 -0.07，统一为 -0.07
+3. **MC worker `d4_momentum_threshold` 缺少上限钳制** — 补全为 `min(max(..., -0.07), 0.05)`
+
+建议修复后重新运行鲁棒性评估，对比前后 MC/DSR/OAT 指标是否有变化。

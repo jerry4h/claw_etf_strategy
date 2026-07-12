@@ -438,10 +438,11 @@ def _mc_single_worker(args: tuple) -> dict | None:
             p_l3_position=base_cfg.p_l3_position,
             max_single_alloc=base_cfg.max_single_alloc,
             stateful_stop_loss=base_cfg.stateful_stop_loss,
+            score_margin=base_cfg.score_margin,
             d4_enabled=base_cfg.d4_enabled,
             # Phase A-1: hard-clamp D4 params
             d4_momentum_window=min(params.get('momentum_window', base_cfg.d4_momentum_window), 8),
-            d4_momentum_threshold=max(params.get('momentum_threshold', base_cfg.d4_momentum_threshold), -0.07),
+            d4_momentum_threshold=min(max(params.get('momentum_threshold', base_cfg.d4_momentum_threshold), -0.07), 0.05),
             d4_action=base_cfg.d4_action,
             d4_min_candidates=base_cfg.d4_min_candidates,
             d1_enabled=base_cfg.d1_enabled,
@@ -690,7 +691,7 @@ def run_oat_sensitivity(
                 elif param_name in ('step_low', 'step_high'):
                     new_val = max(0.05, min(0.60, new_val))
                 elif param_name == 'momentum_threshold':
-                    new_val = max(-0.20, min(0.05, new_val))
+                    new_val = max(-0.07, min(0.05, new_val))
             params[param_name] = new_val
             oat_args.append((params, base_cfg, param_name, level))
 
@@ -737,6 +738,7 @@ def _apply_grid_overrides(
         mom_w=overrides.get('mom_w', base_cfg.mom_w),
         vol_w=overrides.get('vol_w', base_cfg.vol_w),
         top_n=overrides.get('top_n', base_cfg.top_n),
+        score_margin=base_cfg.score_margin,
         mom_window=base_cfg.mom_window,
         vol_window=base_cfg.vol_window,
         pe_window_years=base_cfg.pe_window_years,

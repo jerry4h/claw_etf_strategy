@@ -624,7 +624,7 @@ def _run_single_grid(params: tuple, base_config: StrategyConfig) -> dict | None:
     cfg = StrategyConfig(
         name=base_config.name,
         version=base_config.version,
-        mom_w=param_dict.get('mom_w', base_config.mom_w),
+        mom_w=param_dict.get('mom_w', base_config.mom_w, score_margin=base_config.score_margin),
         vol_w=param_dict.get('vol_w', base_config.vol_w),
         top_n=param_dict.get('top_n', base_config.top_n),
         mom_window=base_config.mom_window,

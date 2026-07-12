@@ -159,9 +159,11 @@ def fmt_alloc(alloc, amount=500000):
 
 def print_scores(sc, m4, v20, idx, actual_sel=None):
     print(f"\nLayer 1 (买什么)  scoring = mom{MOM_WINDOW} - {VOL_W}*vol{VOL_WINDOW}")
-    print(f"  {'ETF':<10s} {'mom{MOM_WINDOW}':>10s} {'vol{VOL_WINDOW}':>10s} {'score':>9s} {'rank':>6s}")
+    mom_label = f"mom{MOM_WINDOW}"
+    vol_label = f"vol{VOL_WINDOW}"
+    print(f"  {'ETF':<10s} {mom_label:>10s} {vol_label:>10s} {'score':>9s} {'rank':>6s}")
     print(f"  {'-'*45}")
-    sel = sorted(sc, key=lambda e: sc[e], reverse=True)[:TOP_N]
+    sel = actual_sel if actual_sel is not None else sorted(sc, key=lambda e: sc[e], reverse=True)[:TOP_N]
     for e in sorted(sc, key=lambda e: sc[e], reverse=True):
         mv = m4[e].iloc[idx]
         vv = v20[e].iloc[idx]
@@ -240,7 +242,7 @@ def main():
     # 计算上次选中的进攻ETF（用于score_margin）
     prev_sel = None
     if idx > max(MOM_WINDOW, VOL_WINDOW):
-        prev_sc, _, _, _, _, _ = compute(df, idx - 1)
+        _, prev_sc, _, _, _, _ = compute(df, idx - 1)
         prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N]
 
     alloc, sc, wr, m4, v20, actual_sel = compute(df, idx, prev_sel=prev_sel)
