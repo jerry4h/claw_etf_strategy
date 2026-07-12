@@ -240,8 +240,8 @@ def main():
     # 计算上次选中的进攻ETF（用于score_margin）
     prev_sel = None
     if idx > max(MOM_WINDOW, VOL_WINDOW):
-        prev_sc = compute(df, idx - 1)[1]  # sc is index 1
-    prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N] if prev_sc else None
+        prev_sc, _, _, _, _, _ = compute(df, idx - 1)
+        prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N]
 
     alloc, sc, wr, m4, v20, actual_sel = compute(df, idx, prev_sel=prev_sel)
     if not alloc:
@@ -254,7 +254,7 @@ def main():
     print(f" 数据: {a.csv} | 基准: {df.index[idx].date()} | 调仓: 下周一")
     print(f" 范围: {df.index[0].date()} ~ {df.index[-1].date()} ({len(df)}周)")
     print(f" mom_w={MOM_W}  vol_w={VOL_W}  top_n={TOP_N}  invvol{INV_VOL_W}  "
-          f"mom_w={MOM_WINDOW}  vol_w={VOL_WINDOW}  "
+          f"mom_window={MOM_WINDOW}  vol_window={VOL_WINDOW}  "
           f"step_low={STEP_LOW}  thresh={REBAL_THRESH}")
 
     last_state = load_state()
@@ -262,7 +262,7 @@ def main():
         prev_al = last_state
         ref_label = "上次实仓"
     elif idx > max(MOM_WINDOW, VOL_WINDOW):
-        prev_al, _, _, _, _ = compute(df, idx - 1)
+        prev_al, _, _, _, _, _ = compute(df, idx - 1)
         ref_label = "上周理论"
     else:
         prev_al = {}

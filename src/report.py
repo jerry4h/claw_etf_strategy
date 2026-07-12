@@ -43,7 +43,6 @@ def generate_metrics_table(result: BacktestResult) -> str:
 | 年化收益 | {m['annual_return']*100:.2f}% |
 | 最大回撤 | {m['max_drawdown']*100:.2f}% |
 | 标准夏普 | {m['sharpe_ratio']:.3f} |
-| 标准夏普 | {m['sharpe_ratio']:.3f} |
 | 卡尔马比率 | {m['calmar_ratio']:.2f} |
 | 年化波动率 | {m['annual_volatility']*100:.2f}% |
 | 周胜率 | {m['win_rate']*100:.1f}% |
@@ -114,7 +113,7 @@ def chart_nav_curve(result: BacktestResult) -> str:
     ax.plot(df.index, df['nav'], color='#2196F3', linewidth=1.2, label='Strategy NAV')
     ax.fill_between(df.index, 1.0, df['nav'], alpha=0.1, color='#2196F3')
     ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.8, alpha=0.5)
-    ax.set_title('虾池ETF轮动策略 v2.3 — 净值曲线', fontsize=14)
+    ax.set_title('虾池ETF轮动策略 v3.0 — 净值曲线', fontsize=14)
     ax.set_ylabel('Net Asset Value')
     ax.legend(loc='upper left')
     ax.grid(True, alpha=0.3)

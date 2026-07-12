@@ -43,7 +43,7 @@ def compute_navs():
     w_rets = np.diff(w_prices, axis=0) / w_prices[:-1]
     bn = np.ones(len(w_prices))
     for i in range(1, len(w_prices)):
-        wret = sum(0.2 * w_rets[i-1, j] for j in range(len(cols))
+        wret = sum(1.0/len(cols) * w_rets[i-1, j] for j in range(len(cols))
                    if not np.isnan(w_rets[i-1, j]))
         bn[i] = bn[i-1] * (1 + wret)
     bench_nav = pd.Series(bn, index=df.index)
@@ -90,7 +90,7 @@ def compute_perf(strat_nav, bench_nav):
 
 def fmt_table(perf):
     lines = [
-        "📊 绩效对比: 策略 vs 等权持有 (5 ETF 各 20%，每周再均衡)",
+        "📊 绩效对比: 策略 vs 等权持有 (各 1/N，每周再均衡)",
         f"  数据截至 {perf['last_date']}",
         f"{'─'*50}",
         f"  {'':>22s} {'策略':>10s} {'等权持有':>10s}",
