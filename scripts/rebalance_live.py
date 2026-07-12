@@ -9,8 +9,8 @@
   python scripts/rebalance_live.py --save-state        # 确认调仓并保存状态
 
 策略:
-  Layer 1: score = mom4 - 1.05*vol20, top_n=2
-  Layer 2: inv-vol12 weights
+  Layer 1: score = mom4 - 1.10*vol11, top_n=2
+  Layer 2: inv-vol10 weights
   Layer 3: nasdaq vol 3-tier [25%, 95%]
   零门控, 零阈值 (除 cap040)
 
@@ -37,6 +37,8 @@ MOM_W = cfg.mom_w
 VOL_W = cfg.vol_w
 TOP_N = cfg.top_n
 INV_VOL_W = cfg.inv_vol_window
+MOM_WINDOW = cfg.mom_window
+VOL_WINDOW = cfg.vol_window
 DEF_ALLOC = cfg.def_alloc
 STEP_LOW = cfg.step_low
 STEP_HIGH = cfg.step_high
@@ -70,8 +72,8 @@ def load(csv):
     return df[ETFS].ffill().dropna()
 
 def engine_factors(nav):
-    m4 = calculate_momentum(nav, window=4)
-    v20 = calculate_volatility(nav, window=20)
+    m4 = calculate_momentum(nav, window=MOM_WINDOW)
+    v20 = calculate_volatility(nav, window=VOL_WINDOW)
     prices = nav[ETFS].values
     wr_df = pd.DataFrame(
         np.diff(prices, axis=0) / prices[:-1],
@@ -146,8 +148,8 @@ def fmt_alloc(alloc, amount=500000):
     return '\n'.join(lines)
 
 def print_scores(sc, m4, v20, idx):
-    print(f"\nLayer 1 (买什么)  scoring = mom4 - {VOL_W}*vol20")
-    print(f"  {'ETF':<10s} {'mom4':>8s} {'vol20':>8s} {'score':>9s} {'rank':>6s}")
+    print(f"\nLayer 1 (买什么)  scoring = mom{MOM_WINDOW} - {VOL_W}*vol{VOL_WINDOW}")
+    print(f"  {'ETF':<10s} {'mom{MOM_WINDOW}':>10s} {'vol{VOL_WINDOW}':>10s} {'score':>9s} {'rank':>6s}")
     print(f"  {'-'*45}")
     sel = sorted(sc, key=lambda e: sc[e], reverse=True)[:TOP_N]
     for e in sorted(sc, key=lambda e: sc[e], reverse=True):
@@ -186,7 +188,7 @@ def main():
         eng = r.metrics
         df = load(PROJECT / a.csv)
         n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0; prev_al = {}; wrets = []
-        for i in range(20, n - 1):
+        for i in range(max(MOM_WINDOW, VOL_WINDOW), n - 1):
             al, _, _, _, _ = compute(df, i)
             if not al:
                 continue
@@ -213,14 +215,14 @@ def main():
         print(f" 年化     {eng['annual_return']*100:.2f}%      {scr_r*100:.2f}%       {abs(eng['annual_return']-scr_r)*100:.2f}pp")
         print(f" DD       {eng['max_drawdown']*100:.2f}%      {scr_d*100:.2f}%       {abs(eng['max_drawdown']-scr_d)*100:.2f}pp")
         ok = abs(eng['sharpe_ratio'] - scr_s) < 0.02
-        print(f"\n {'通过' if ok else '偏差较大, 需排查'}")
+        print(f"\n {'✅ 通过' if ok else '⚠️ 偏差较大, 需排查'}")
         return
 
     df = load(PROJECT / a.csv)
     idx = (len(df) - 1 if not a.week
            else df.index.get_indexer([pd.to_datetime(a.week)])[0])
-    if idx < 20:
-        print(f"[ERROR] 数据不足. 最早: {df.index[20].date()}")
+    if idx < max(MOM_WINDOW, VOL_WINDOW):
+        print(f"[ERROR] 数据不足. 最早: {df.index[max(MOM_WINDOW, VOL_WINDOW)].date()}")
         return
 
     alloc, sc, wr, m4, v20 = compute(df, idx)
@@ -234,13 +236,14 @@ def main():
     print(f" 数据: {a.csv} | 基准: {df.index[idx].date()} | 调仓: 下周一")
     print(f" 范围: {df.index[0].date()} ~ {df.index[-1].date()} ({len(df)}周)")
     print(f" mom_w={MOM_W}  vol_w={VOL_W}  top_n={TOP_N}  invvol{INV_VOL_W}  "
+          f"mom_w={MOM_WINDOW}  vol_w={VOL_WINDOW}  "
           f"step_low={STEP_LOW}  thresh={REBAL_THRESH}")
 
     last_state = load_state()
     if last_state is not None:
         prev_al = last_state
         ref_label = "上次实仓"
-    elif idx > 20:
+    elif idx > max(MOM_WINDOW, VOL_WINDOW):
         prev_al, _, _, _, _ = compute(df, idx - 1)
         ref_label = "上周理论"
     else:
@@ -250,7 +253,7 @@ def main():
     if prev_al:
         do_reb, max_chg = should_rebalance(alloc, prev_al)
         print(f"\n调仓阈值 {REBAL_THRESH*100:.0f}%: 参考{ref_label} 最大变化 {max_chg*100:.1f}% "
-              f"-> {'调仓!' if do_reb else '不调仓'}")
+              f"→ {'调仓!' if do_reb else '不调仓'}")
     else:
         do_reb = True
 
@@ -258,8 +261,8 @@ def main():
 
     vn = v20['纳指ETF'].iloc[idx]
     dr = defense_ratio(vn)
-    print(f"\nLayer 3 (防多少): 纳指vol20={vn*100:5.1f}% "
-          f"-> {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
+    print(f"\nLayer 3 (防多少): 纳指vol{VOL_WINDOW}={vn*100:5.1f}% "
+          f"→ {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
 
     print(f"\nLayer 2 (买多少): inv-vol{INV_VOL_W} 权重")
     print(f"\n-- 下周一持仓 --")
