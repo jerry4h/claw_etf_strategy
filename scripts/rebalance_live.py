@@ -139,7 +139,7 @@ def compute(nav, i, prev_sel=None):
             excess = 1.0 - tot
             for e in DEFENSIVE:
                 alloc[e] += excess * alloc[e] / df_total
-    return alloc, sc, wr, m4, v20
+    return alloc, sc, wr, m4, v20, sel
 
 def should_rebalance(curr, prev):
     if not prev:
@@ -157,7 +157,7 @@ def fmt_alloc(alloc, amount=500000):
     lines.append(f"  {'合计':<10s} {sum(alloc.values())*100:>5.1f}%")
     return '\n'.join(lines)
 
-def print_scores(sc, m4, v20, idx):
+def print_scores(sc, m4, v20, idx, actual_sel=None):
     print(f"\nLayer 1 (买什么)  scoring = mom{MOM_WINDOW} - {VOL_W}*vol{VOL_WINDOW}")
     print(f"  {'ETF':<10s} {'mom{MOM_WINDOW}':>10s} {'vol{VOL_WINDOW}':>10s} {'score':>9s} {'rank':>6s}")
     print(f"  {'-'*45}")
@@ -200,7 +200,7 @@ def main():
         n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0
         prev_al = {}; prev_sel = None; wrets = []
         for i in range(max(MOM_WINDOW, VOL_WINDOW), n - 1):
-            al, sc, _, _, _ = compute(df, i, prev_sel=prev_sel)
+            al, sc, _, _, _, sel_actual = compute(df, i, prev_sel=prev_sel)
             if not al:
                 continue
             do, mc = should_rebalance(al, prev_al)
@@ -215,7 +215,7 @@ def main():
             dd_max = max(dd_max, dd)
             wrets.append(wr)
             prev_al = al
-            prev_sel = sorted(sc, key=lambda e: sc[e], reverse=True)[:TOP_N]
+            prev_sel = sel_actual
         scr_s = compute_sharpe(pd.Series(wrets), RISK_FREE)
         scr_r = annualize_return(nav - 1, len(wrets))
         scr_d = dd_max
@@ -241,9 +241,9 @@ def main():
     prev_sel = None
     if idx > max(MOM_WINDOW, VOL_WINDOW):
         prev_sc = compute(df, idx - 1)[1]  # sc is index 1
-        prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N]
+    prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N] if prev_sc else None
 
-    alloc, sc, wr, m4, v20 = compute(df, idx, prev_sel=prev_sel)
+    alloc, sc, wr, m4, v20, actual_sel = compute(df, idx, prev_sel=prev_sel)
     if not alloc:
         print("[ERROR] 无法计算")
         return
@@ -275,7 +275,7 @@ def main():
     else:
         do_reb = True
 
-    print_scores(sc, m4, v20, idx)
+    print_scores(sc, m4, v20, idx, actual_sel=actual_sel)
 
     vn = v20['纳指ETF'].iloc[idx]
     dr = defense_ratio(vn)
