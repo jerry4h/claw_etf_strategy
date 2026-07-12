@@ -1,21 +1,22 @@
-# 虾池ETF轮动 v3.0 最终版 — 新数据优化
+# 虾池ETF轮动 v3.0 最终版 — 中证500ETF + C1最优参数
 # 超参扫描确认: vol_w范围[0.80,1.25]全安全, invvol>=8安全, step_low>=0.12安全
-# 鲁棒性: MC 100%, DSR 1.0, WF 77.8%, 综合评级 实盘可上
+# C1参数: vol_w=1.10, vol_window=11, mom_window=4, invvol=10, thresh=0.025
+# 鲁棒性: MC 100%, DSR 1.0, WF 66.7%, 综合评级 实盘可上
 
 strategy:
-  name: 虾池ETF轮动 v3.0 — inv-vol12 连续分配 (最终)
+  name: 虾池ETF轮动 v3.0 — 中证500ETF (C1最优)
   version: 3.0
 
 scoring:
   mom_w: 1.0
-  vol_w: 1.05
+  vol_w: 1.10
 
 selection:
   top_n: 2
 
 factors:
   mom_window: 4
-  vol_window: 20
+  vol_window: 11
   pe_window_years: 5
 
 defense:
@@ -26,7 +27,7 @@ defense:
   hongli_ratio: 0.50
 
 rebalance:
-  threshold: 0.06
+  threshold: 0.025
   fee_rate: 0.00005
   anchor: W-MON
 
@@ -41,7 +42,7 @@ allocation:
 
 inv_vol_allocation:
   enabled: true
-  window: 12
+  window: 10
 
 d4_individual_filter:
   enabled: false

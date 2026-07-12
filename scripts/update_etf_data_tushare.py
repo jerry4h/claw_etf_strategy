@@ -29,7 +29,7 @@ OLD_FILE = os.path.join(DATA_DIR, 'all_etfs_nav_2013_2026_h20269_scaled.csv')
 ETF_MAP = {
     '纳指ETF': '513100.SH',
     '红利低波ETF': '512890.SH',
-    '沪深300ETF': '510300.SH',
+    '中证500ETF': '510500.SH',
     '黄金ETF': '518880.SH',
     '国债ETF': '511010.SH',
 }

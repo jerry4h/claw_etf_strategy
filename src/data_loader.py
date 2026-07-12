@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 # === ETF 定义 ===
-ETFS: list[str] = ['纳指ETF', '红利低波ETF', '沪深300ETF', '黄金ETF', '国债ETF']
-OFFENSIVE: list[str] = ['纳指ETF', '沪深300ETF', '黄金ETF']  # 进攻层
+ETFS: list[str] = ['纳指ETF', '红利低波ETF', '中证500ETF', '黄金ETF', '国债ETF']
+OFFENSIVE: list[str] = ['纳指ETF', '中证500ETF', '黄金ETF']  # 进攻层
 DEFENSIVE: list[str] = ['红利低波ETF', '国债ETF']           # 防御层
 
 # ETF 索引（用于 numpy 数组操作）

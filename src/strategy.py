@@ -406,8 +406,8 @@ def load_config(config_path: str | Path) -> StrategyConfig:
 
 
 # === ETF 定义（与 data_loader 保持一致） ===
-ETFS = ['纳指ETF', '红利低波ETF', '沪深300ETF', '黄金ETF', '国债ETF']
-OFFENSIVE_IDX = [0, 2, 3]  # 纳指, 沪深300, 黄金
+ETFS = ['纳指ETF', '红利低波ETF', '中证500ETF', '黄金ETF', '国债ETF']
+OFFENSIVE_IDX = [0, 2, 3]  # 纳指, 中证500, 黄金
 DEFENSIVE_IDX = [1, 4]     # 红利低波, 国债
 
 
@@ -433,7 +433,7 @@ def score_offensive(
         off_idx: 进攻层 ETF 索引列表（默认使用全局 OFFENSIVE_IDX）
 
     Returns:
-        {"纳指ETF": 0.12, "沪深300ETF": 0.05, "黄金ETF": 0.08}
+        {"纳指ETF": 0.12, "中证500ETF": 0.05, "黄金ETF": 0.08}
     """
     _off_idx = off_idx if off_idx is not None else OFFENSIVE_IDX
 

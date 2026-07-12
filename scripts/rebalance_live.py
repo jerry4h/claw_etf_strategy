@@ -17,7 +17,7 @@
 所有因子计算通过 src/factors.py (ddof=0)，杜绝重复实现。
 阈值基于上一次实际调仓的仓位（通过状态文件 data/.last_alloc.json 维护），
 非上周的理论计算仓位。运行 --save-state 确认调仓后自动更新状态文件。
-CSV格式: 日期,纳指ETF,红利低波ETF,沪深300ETF,黄金ETF,国债ETF
+CSV格式: 日期,纳指ETF,红利低波ETF,中证500ETF,黄金ETF,国债ETF
 """
 
 from __future__ import annotations

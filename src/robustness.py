@@ -1196,7 +1196,7 @@ def _compute_equal_weight_benchmark_sharpe(
 ) -> float:
     """计算等权 5 ETF 基准的 Sharpe。
 
-    基准：5 只 ETF（纳指、红利低波、沪深300、黄金、国债）各 20%，每周再平衡。
+    基准：5 只 ETF（纳指、红利低波、中证500、黄金、国债）各 20%，每周再平衡。
     """
     mask = (weekly_nav.index >= start_dt) & (weekly_nav.index < end_dt)
     window_nav = weekly_nav.loc[mask]
