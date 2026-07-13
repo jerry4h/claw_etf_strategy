@@ -377,8 +377,8 @@ GRID_ALL_PARAMS = GRID_CONTINUOUS_PARAMS + GRID_DISCRETE_PARAMS + GRID_D4_PARAMS
 
 # clamp 范围
 GRID_CLAMP = {
-    'mom_w': (0.05, 0.80),
-    'vol_w': (0.05, 0.80),
+    'mom_w': (0.05, 1.50),
+    'vol_w': (0.05, 1.50),
     'def_alloc': (0.05, 0.60),
     'step_low': (0.05, 0.60),
     'step_high': (0.05, 0.60),
@@ -399,8 +399,8 @@ def _mc_single_worker(args: tuple) -> dict | None:
         cfg = StrategyConfig(
             name=base_cfg.name,
             version=base_cfg.version,
-            mom_w=min(max(params.get('mom_w', base_cfg.mom_w), 0.20), 0.50),
-            vol_w=min(max(params.get('vol_w', base_cfg.vol_w), 0.15), 0.45),
+            mom_w=min(max(params.get('mom_w', base_cfg.mom_w), 0.05), 1.50),
+            vol_w=min(max(params.get('vol_w', base_cfg.vol_w), 0.05), 1.50),
             top_n=base_cfg.top_n,
             mom_window=base_cfg.mom_window,
             vol_window=base_cfg.vol_window,
@@ -595,7 +595,7 @@ def run_mc_survival_test(
                 new_val = base_val + noise
                 # Clamp to reasonable bounds
                 if key in ('mom_w', 'vol_w'):
-                    new_val = max(0.05, min(0.80, new_val))
+                    new_val = max(0.05, min(1.50, new_val))
                 elif key == 'def_alloc':
                     new_val = max(0.05, min(0.60, new_val))
                 elif key in ('step_low', 'step_high'):
@@ -685,7 +685,7 @@ def run_oat_sensitivity(
             else:
                 new_val = base_val * (1 + level)
                 if param_name in ('mom_w', 'vol_w'):
-                    new_val = max(0.05, min(0.80, new_val))
+                    new_val = max(0.05, min(1.50, new_val))
                 elif param_name == 'def_alloc':
                     new_val = max(0.05, min(0.60, new_val))
                 elif param_name in ('step_low', 'step_high'):
