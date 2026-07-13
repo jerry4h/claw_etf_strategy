@@ -624,7 +624,7 @@ def _run_single_grid(params: tuple, base_config: StrategyConfig) -> dict | None:
     cfg = StrategyConfig(
         name=base_config.name,
         version=base_config.version,
-        mom_w=param_dict.get('mom_w', base_config.mom_w, score_margin=base_config.score_margin),
+        mom_w=param_dict.get('mom_w', base_config.mom_w),
         vol_w=param_dict.get('vol_w', base_config.vol_w),
         top_n=param_dict.get('top_n', base_config.top_n),
         mom_window=base_config.mom_window,
@@ -693,6 +693,7 @@ def _run_single_grid(params: tuple, base_config: StrategyConfig) -> dict | None:
         start_date=base_config.start_date,
         end_date=base_config.end_date,
         risk_free_rate=base_config.risk_free_rate,
+        score_margin=base_config.score_margin,
     )
 
     result = run_backtest(cfg)

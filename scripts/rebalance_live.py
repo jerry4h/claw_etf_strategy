@@ -130,8 +130,20 @@ def compute(nav, i, prev_sel=None):
     off_t = 1.0 - def_r
     for e, w in wts.items():
         alloc[e] = alloc.get(e, 0) + w * off_t
-    for e in alloc:
-        alloc[e] = min(alloc[e], MAX_SINGLE)
+    # Cap only offensive ETFs, overflow -> defense
+    overflow = 0.0
+    for e in OFFENSIVE:
+        if e in alloc and alloc[e] > MAX_SINGLE:
+            overflow += alloc[e] - MAX_SINGLE
+            alloc[e] = MAX_SINGLE
+    if overflow > 0:
+        def_total = sum(alloc.get(e, 0) for e in DEFENSIVE)
+        if def_total > 0:
+            for e in DEFENSIVE:
+                alloc[e] += overflow * alloc[e] / def_total
+        else:
+            for e in DEFENSIVE:
+                alloc[e] += overflow / len(DEFENSIVE)
     tot = sum(alloc.values())
     if tot < 1.0:
         df_total = sum(alloc.get(e, 0) for e in DEFENSIVE)
