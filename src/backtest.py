@@ -318,7 +318,7 @@ def run_backtest(
                                if not np.isnan(scores_vec[j])}
             sm_weights = compute_softmax_allocation(off_scores_dict, eff_softmax_temperature)
 
-        # --- vol 三段式防御（含 regime def_alloc override）---
+        # --- vol 三段式防御（纳指 vol 原始逻辑，经验证最优）---
         nasdaq_vol = vol_values[i, NASDAQ_IDX]
         if pd.isna(nasdaq_vol):
             def_ratio = eff_def_alloc
