@@ -415,12 +415,25 @@ def run_backtest(
         # --- 构建仓位 ---
         alloc = np.zeros(n_etfs)
 
-        # 防御层分配：第一个防御ETF得 hongli_ratio，其余平分 (1-hongli_ratio)
+        # 动态hongli_ratio：红利低波根据自身momentum+vol分配防御配额
+        # score = mom4 * MOM_W - vol11 * VOL_W (同进攻层评分公式)
+        if def_idx and len(def_idx) >= 2:
+            hl_mom = mom_values[i, def_idx[0]]
+            hl_vol = vol_values[i, def_idx[0]]
+            if not np.isnan(hl_mom) and not np.isnan(hl_vol):
+                hl_score = d1_mom_w * hl_mom - d1_vol_w * hl_vol
+                # hl_score=-0.30→ratio=0.0, hl_score=+0.05→ratio=0.70
+                eff_hl_ratio = max(0.0, min(0.70, (hl_score + 0.30) / 0.35 * 0.70))
+            else:
+                eff_hl_ratio = config.hongli_ratio
+        else:
+            eff_hl_ratio = config.hongli_ratio
+        # 防御层分配
         if def_idx:
-            alloc[def_idx[0]] = def_ratio * config.hongli_ratio
+            alloc[def_idx[0]] = def_ratio * eff_hl_ratio
             n_rest = len(def_idx) - 1
             if n_rest > 0:
-                rest_weight = def_ratio * (1 - config.hongli_ratio) / n_rest
+                rest_weight = def_ratio * (1 - eff_hl_ratio) / n_rest
                 for j in def_idx[1:]:
                     alloc[j] = rest_weight
 

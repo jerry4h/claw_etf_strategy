@@ -48,6 +48,7 @@ REBAL_THRESH = cfg.rebalance_threshold
 FEE = cfg.fee_rate
 RISK_FREE = cfg.risk_free_rate
 SCORE_MARGIN = cfg.score_margin
+HONGLI_RATIO = cfg.hongli_ratio
 
 STATE_FILE = PROJECT / 'data' / '.last_alloc.json'
 
@@ -126,7 +127,20 @@ def compute(nav, i, prev_sel=None):
     sel = ranked[:TOP_N]
     def_r = defense_ratio(v20['纳指ETF'].iloc[i])
     wts = invvol_weights(sel, wr, i)
-    alloc = {e: def_r / len(DEFENSIVE) for e in DEFENSIVE}
+    # 动态hongli_ratio
+    if len(DEFENSIVE) >= 2:
+        hl_mom = m4['红利低波ETF'].iloc[i]
+        hl_vol = v20['红利低波ETF'].iloc[i]
+        if not np.isnan(hl_mom) and not np.isnan(hl_vol):
+            hl_score = MOM_W * hl_mom - VOL_W * hl_vol
+            eff_hl_ratio = max(0.0, min(0.70, (hl_score + 0.30) / 0.35 * 0.70))
+        else:
+            eff_hl_ratio = HONGLI_RATIO
+    else:
+        eff_hl_ratio = HONGLI_RATIO
+    alloc = {DEFENSIVE[0]: def_r * eff_hl_ratio} if len(DEFENSIVE) > 0 else {}
+    if len(DEFENSIVE) > 1:
+        alloc[DEFENSIVE[1]] = def_r * (1 - eff_hl_ratio)
     off_t = 1.0 - def_r
     for e, w in wts.items():
         alloc[e] = alloc.get(e, 0) + w * off_t
