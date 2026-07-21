@@ -28,4 +28,4 @@ ROBUSTNESS_REPORT.md
 # Data files: only track the latest CSV
 data/*.csv
 !data/all_etfs_nav_latest.csv
-!data/300etf_pe_percentile_weekly.csv
+!data/300etf_pe_percentile_weekly.csv.env

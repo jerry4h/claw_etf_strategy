@@ -1317,7 +1317,7 @@ def evaluate_robustness(
     config_path: str,
     n_mc: int = 400,
     n_wf_windows: int = 9,
-    n_trials: int = 2,
+    n_trials: int = 30,  # 保守估计: v2.3~v3.0 经历 D1-D6, Phase A, T32/T35/T40, 资产池替换等 ~30 个独立变体
     n_jobs: int = -1,
     perturbation: float = 0.15,
     oat: bool = False,

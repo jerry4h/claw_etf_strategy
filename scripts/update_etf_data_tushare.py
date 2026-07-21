@@ -21,7 +21,18 @@ import sys
 from datetime import datetime, timedelta
 
 # ---------- 配置 ----------
-TUSHARE_TOKEN = '44b2cb657caaddd0c5c9ea6bdcfcbeed72f0a09470c7dbba54d16a4d'
+# 优先从环境变量读取，其次从 .env 文件读取
+_env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+if os.path.exists(_env_file):
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+TUSHARE_TOKEN = os.environ.get('TUSHARE_TOKEN', '')
+if not TUSHARE_TOKEN:
+    raise RuntimeError('请设置环境变量 TUSHARE_TOKEN（可在 ~/.bashrc 或 .env 中配置）')
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
 OLD_FILE = os.path.join(DATA_DIR, 'all_etfs_nav_2013_2026_h20269_scaled.csv')
 

@@ -1,5 +1,10 @@
 # ETF 周线数据构建文档
 
+> **注意 (2026-07-21)**: 本文档记录数据初始构建的历史流程。文中引用的
+> generate_etf_weekly_qfq.py 已不存在，当前数据增量更新使用
+> update_etf_data_tushare.py（从 Tushare 拉取增量并拼接）。
+> 全量重建需参考本文档手动执行。
+
 ## 概述
 
 本文档记录从 Tushare Pro 拉取 ETF 行情数据，聚合成周线 CSV 的完整流程、技术决策、踩坑记录。
@@ -269,4 +274,4 @@ python3 scripts/generate_etf_weekly_qfq.py
 
 ---
 
-*最后更新: 2026-06-29*
+*最后更新: 2026-07-21*
