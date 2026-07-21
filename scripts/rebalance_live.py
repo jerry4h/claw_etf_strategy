@@ -12,7 +12,7 @@
   Layer 1: score = mom4 - 1.10*vol11, top_n=2
   Layer 2: inv-vol10 weights
   Layer 3: nasdaq vol 3-tier [25%, 95%]
-  零门控, 零阈值 (除 cap040)
+  DefAlloc: hl_ratio = clip(0.80 - 2.67*vol_hongli, 0, 0.80)  T=0.30
 
 所有因子计算通过 src/factors.py (ddof=0)，杜绝重复实现。
 阈值基于上一次实际调仓的仓位（通过状态文件 data/.last_alloc.json 维护），
