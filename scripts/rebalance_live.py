@@ -132,8 +132,8 @@ def compute(nav, i, prev_sel=None):
         hl_mom = m4['红利低波ETF'].iloc[i]
         hl_vol = v20['红利低波ETF'].iloc[i]
         if not np.isnan(hl_mom) and not np.isnan(hl_vol):
-            hl_score = MOM_W * hl_mom - VOL_W * hl_vol
-            eff_hl_ratio = max(0.0, min(0.70, (hl_score + 0.30) / 0.35 * 0.70))
+            hl_score = np.clip(0.80 - 2.67 * hl_vol, 0, 0.80)  # linear T=0.30
+            eff_hl_ratio = hl_score
         else:
             eff_hl_ratio = HONGLI_RATIO
     else:

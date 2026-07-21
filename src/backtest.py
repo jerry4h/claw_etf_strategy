@@ -421,9 +421,9 @@ def run_backtest(
             hl_mom = mom_values[i, def_idx[0]]
             hl_vol = vol_values[i, def_idx[0]]
             if not np.isnan(hl_mom) and not np.isnan(hl_vol):
-                hl_score = d1_mom_w * hl_mom - d1_vol_w * hl_vol
+                hl_score = np.clip(0.80 - 2.67 * hl_vol, 0, 0.80)  # linear T=0.30
                 # hl_score=-0.30→ratio=0.0, hl_score=+0.05→ratio=0.70
-                eff_hl_ratio = max(0.0, min(0.70, (hl_score + 0.30) / 0.35 * 0.70))
+                eff_hl_ratio = hl_score
             else:
                 eff_hl_ratio = config.hongli_ratio
         else:
