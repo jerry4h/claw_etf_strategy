@@ -213,6 +213,15 @@ print(f"时间范围: {combined['日期'].min()} ~ {combined['日期'].max()}")
 print("\n最后5行:")
 print(combined.tail(5).to_string(index=False))
 
+# ---------- 6.5 回滚备份 ----------
+link_path_check = os.path.join(DATA_DIR, 'all_etfs_nav_latest.csv')
+if os.path.islink(link_path_check):
+    prev_target = os.readlink(link_path_check)
+    backup_path = os.path.join(DATA_DIR, '.last_backup_target')
+    with open(backup_path, 'w') as bf:
+        bf.write(prev_target)
+    print(f'  回滚备份: 上一版本 -> {prev_target}')
+
 # ---------- 7. 写出新文件 ----------
 print("\nStep 7: 写出新文件")
 print("-" * 40)

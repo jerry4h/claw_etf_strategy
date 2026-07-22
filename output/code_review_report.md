@@ -1,6 +1,6 @@
 # 虾池ETF轮动策略 v3.0 — 整体审视报告（终版）
 
-**审查日期**: 2026-07-22
+**审查日期**: 2026-07-22（更新: 2026-07-23 整合 GPT 审计建议）
 **审查范围**: /home/ubuntu/claw_etf_strategy 全量代码、配置、数据、文档
 **审查视角**: 量化方法论 + 工程实现 + 鲁棒性验证
 **代码版本**: b06a242 + 未提交修复（6 files modified, 3 new）
@@ -102,7 +102,7 @@
 | 维度 | 评级 | 说明 |
 |------|------|------|
 | 架构设计 | 🟢 | 四层分离、配置驱动、因子集中管理 |
-| 测试覆盖 | 🟢 | 34 个单元测试 + 3 个一致性测试，全部通过 |
+| 测试覆盖 | 🟢 | 39 个单元测试 + 3 个一致性测试，全部通过 |
 | 配置管理 | 🟢 | 单一 YAML 配置，参数与逻辑分离 |
 | 安全性 | 🟢 | Token 已移至 .env（gitignore），不再硬编码 |
 | 可维护性 | 🟡 | StrategyConfig 仍有 ~80 字段（多数禁用），backtest.py 含大量死分支 |
@@ -113,7 +113,7 @@
 
 
 
-运行:  → 34 passed
+运行:  → 39 passed
 
 ### 5.3 实盘工具链
 
@@ -122,8 +122,9 @@
 | scripts/rebalance_live.py | 每周一调仓计算 | 🟢 与引擎一致性已验证 |
 | scripts/run_backtest.py | 单次回测 + 报告生成 | 🟢 |
 | scripts/calc_performance.py | 当年/近1年/回撤对比 | 🟢 |
-| scripts/cost_sensitivity.py | 交易成本敏感性（本次新增） | 🟢 |
-| scripts/update_etf_data_tushare.py | Tushare 增量数据更新 | 🟢 token 已修复 |
+| scripts/cost_sensitivity.py | 交易成本敏感性分析 | 🟢 |
+| scripts/stress_test.py | 压力测试（2015/2016/2018/2020/2022/2024） | 🟢 |
+| scripts/update_etf_data_tushare.py | Tushare 增量数据更新 | 🟢 token+回滚已修复 |
 
 ---
 
@@ -178,14 +179,16 @@
 | 11 | MC/OAT/Grid clamp 与 C1 不兼容 | 拓宽至 [0.05, 1.50] | 1a56ba0 |
 | 12 | Tushare token 硬编码 | 环境变量 + .env | 本次（未提交） |
 
-### 本次新增（未提交）
+### 本次新增
 
 | 变更 | 文件 |
 |------|------|
-| 单元测试 34 cases | tests/test_factors.py, test_strategy.py, test_consistency.py |
+| 单元测试 39 cases（含前视偏差验证） | tests/test_factors.py, test_strategy.py, test_consistency.py, test_no_lookahead.py |
 | 交易成本敏感性脚本 | scripts/cost_sensitivity.py |
+| 压力测试脚本（6个极端窗口） | scripts/stress_test.py |
 | DSR n_trials 2→30 | src/robustness.py |
-| Token 环境变量化 | scripts/update_etf_data_tushare.py, .env |
+| Token 环境变量化 + 数据回滚机制 | scripts/update_etf_data_tushare.py, .env |
+| QDII 溢价检查提示 | scripts/rebalance_live.py |
 | README 数据刷新 | README.md |
 | 文档一致性修复 | output/code_review_report.md, docs/etf_data_build.md |
 
@@ -209,8 +212,19 @@
 1. **设计样本外验证**: 用 2013-2023 数据冻结策略，2024-2026 做纯 OOS 测试
 2. **防御信号多元化**: 加入中证500 vol 作为 Layer 3 补充触发
 3. **精简死代码**: 在测试保护下移除 StrategyConfig 中 ~60 个未使用字段
-4. **数据管线加固**: 增加回滚机制、完整性校验、快照日统一
+4. **动态 ETF Universe**: 基于流动性/相关性自动筛选资产池（P1）
 5. **结构化日志**: 替换 print 为 logging 模块，便于实盘排查
+6. **实盘监控 Dashboard**: 跟踪策略 vs 回测偏差（P2）
+
+### 已完成（本轮 GPT 报告建议落地）
+
+| 建议来源 | 建议内容 | 落地方式 |
+|----------|----------|----------|
+| 两份报告 P0 | 信号/执行时点验证 | tests/test_no_lookahead.py（5 cases 全部通过） |
+| 两份报告 P0 | 压力测试 | scripts/stress_test.py（6 窗口，5/6 跑赢等权） |
+| 两份报告 P0 | 数据回滚机制 | update 脚本自动备份上一版本软链接 |
+| 两份报告 P0 | QDII 溢价过滤 | rebalance_live.py 输出溢价提醒（>2% 建议延迟） |
+| 投委会报告 | 分阶段部署 | 已纳入结论（小资金→6-12月验证→扩大） |
 
 ---
 

@@ -319,6 +319,16 @@ def main():
         if cur_mc >= REBAL_THRESH:
             print_rebalance(prev_al, alloc)
 
+
+    # QDII 溢价检查提示
+    if alloc.get('纳指ETF', 0) > 0.01:
+        print(f"\n  ⚠️  QDII 溢价提醒: 纳指ETF(513100) 目标仓位 {alloc['纳指ETF']*100:.1f}%")
+        print(f"     请在交易前检查实时溢价率（天天基金/集思录）:")
+        print(f"     - 溢价 < 1%: 正常买入")
+        print(f"     - 溢价 1~2%: 谨慎，可分批买入")
+        print(f"     - 溢价 > 2%: 建议延迟买入或减少仓位")
+        print(f"     溢价买入的收益需覆盖溢价回落风险。")
+
     if a.save_state:
         save_state(alloc)
 
