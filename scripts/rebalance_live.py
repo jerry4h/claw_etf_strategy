@@ -61,7 +61,16 @@ def load_state() -> dict | None:
     return None
 
 def save_state(alloc: dict):
-    STATE_FILE.write_text(json.dumps(alloc, ensure_ascii=False, indent=2))
+    """Atomic write: write to temp file then rename to prevent corruption."""
+    import tempfile, os
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=STATE_FILE.parent, suffix='.tmp')
+    try:
+        with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(alloc, ensure_ascii=False, indent=2))
+        os.replace(tmp_path, STATE_FILE)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
     print(f"  已保存调仓状态到 {STATE_FILE}")
 
 def load(csv):

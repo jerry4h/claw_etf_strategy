@@ -14,8 +14,8 @@ class StrategyConfig:
     """从 YAML 加载的策略参数"""
 
     # 策略标识
-    name: str = "虾池ETF轮动 v2.3"
-    version: str = "2.3"
+    name: str = "虾池ETF轮动 v3.0"
+    version: str = "3.0"
 
     # 评分权重
     mom_w: float = 0.35       # 4周动量权重

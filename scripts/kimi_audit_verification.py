@@ -19,8 +19,17 @@ from src.factors import calculate_momentum, calculate_volatility
 from src.utils import compute_sharpe
 
 
-def run_with_ddof(cfg, weekly_nav, ddof_val):
-    """Run backtest logic with a specific ddof value for volatility."""
+def run_with_ddof(cfg, weekly_nav, ddof_val, hedge_cost_weekly=0.0, nasdaq_idx_override=None):
+    """Run backtest logic with a specific ddof value for volatility.
+
+    Args:
+        cfg: StrategyConfig
+        weekly_nav: Weekly NAV DataFrame
+        ddof_val: Degrees of freedom for volatility std
+        hedge_cost_weekly: Weekly hedge cost to deduct from Nasdaq ETF returns.
+            Applied as: wret -= alloc[nasdaq_idx] * hedge_cost_weekly
+        nasdaq_idx_override: Optional override for Nasdaq ETF column index
+    """
     prices = weekly_nav.values
     n_weeks, n_etfs = prices.shape
     w_rets = np.diff(prices, axis=0) / prices[:-1]
@@ -35,6 +44,8 @@ def run_with_ddof(cfg, weekly_nav, ddof_val):
 
     etf_names = list(weekly_nav.columns)
     off_idx, def_idx, nasdaq_idx = classify_etfs(etf_names)
+    if nasdaq_idx_override is not None:
+        nasdaq_idx = nasdaq_idx_override
 
     nav = 1.0
     peak = 1.0
@@ -115,6 +126,11 @@ def run_with_ddof(cfg, weekly_nav, ddof_val):
         turnover = np.sum(np.abs(alloc - last_alloc))
         fee = turnover * cfg.fee_rate
         wret = sum(alloc[j] * w_rets[i, j] for j in range(n_etfs) if not np.isnan(w_rets[i, j]))
+
+        # FX hedge cost: deduct from strategy return proportional to Nasdaq allocation
+        if hedge_cost_weekly > 0:
+            wret -= alloc[nasdaq_idx] * hedge_cost_weekly
+
         nav *= (1 + wret - fee)
         peak = max(peak, nav)
         weekly_rets.append(wret - fee)
@@ -293,24 +309,16 @@ def main():
     print(" " + "-" * 50)
 
     for hedge_cost in [0.0, 0.01, 0.015, 0.02, 0.03]:
-        # Deduct weekly hedge cost from Nasdaq ETF returns
-        weekly_adj = weekly.copy()
-        prices_adj = weekly_adj.values.copy()
-        weekly_hedge = hedge_cost / 52
-        # Apply cumulative deduction to Nasdaq column
-        for i in range(1, len(prices_adj)):
-            prices_adj[i, nasdaq_idx_col] = prices_adj[i-1, nasdaq_idx_col] * (
-                prices_adj[i, nasdaq_idx_col] / prices_adj[i-1, nasdaq_idx_col] - weekly_hedge
-            )
-        weekly_adj = pd.DataFrame(prices_adj, index=weekly.index, columns=weekly.columns)
-
-        r = run_with_ddof(cfg, weekly_adj, ddof_val=0)
+        weekly_hedge = hedge_cost / 52  # Convert annual cost to weekly
+        r = run_with_ddof(cfg, weekly, ddof_val=0,
+                          hedge_cost_weekly=weekly_hedge,
+                          nasdaq_idx_override=nasdaq_idx_col)
         label = "{:.1f}%".format(hedge_cost * 100) if hedge_cost > 0 else "0 (无对冲)"
         print(" {:<16s} {:>10.3f} {:>11.2f}% {:>9.2f}%".format(
             label, r['sharpe'], r['annual_return']*100, r['max_dd']*100))
 
     print()
-    print(" 结论: 即使扣除年化 2% 的汇率对冲成本，策略 Sharpe 仍 > 1.3")
+    print(" 结论: 即使扣除年化 2% 的汇率对冲成本，策略 Sharpe 仍保持较高水平")
 
     # === 3. Ablation: Layer 3 / Layer 4 contribution ===
     print("\n" + "=" * 75)
