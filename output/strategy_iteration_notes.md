@@ -70,3 +70,46 @@ Even with 3% annual hedge cost, Sharpe remains 1.439. FX exposure is NOT a criti
 - hl_ratio_base: 0.80 (= 1 - T/0.375 approximately)
 - hl_ratio_slope: 2.67 (= 0.80 / 0.30)
 - This allows T to be parameterized without code changes
+
+---
+
+## Updated 2026-07-22: Round 2 Analysis Results
+
+### S-P1: ETF Universe validation [RESOLVED]
+
+Compared current universe (with 中证500ETF) vs synthetic old universe (沪深300 proxy):
+- Sharpe: 1.522 vs 1.476 (+0.046)
+- Annual return: 15.97% vs 15.49% (+0.48pp)
+- MaxDD: 6.38% vs 6.50% (-0.12pp)
+
+**Conclusion**: Universe change is validated. Improvement is modest but consistent.
+
+### S-P1: Crisis correlation convergence [ANALYZED]
+
+Rolling 26-week correlation between offensive ETF pairs:
+- Convergence (corr > 0.6) occurs in only 28/675 weeks (4.1%)
+- Crisis windows show elevated correlations (NASDAQ-ZZ500 peaks at 0.64-0.65)
+- **Strategy is highly vulnerable during convergence**: Sharpe drops from 1.610 to -0.374
+
+**Iteration direction**: Consider risk-parity variant or correlation-adjusted inv-vol weighting.
+
+### S-P2: Momentum window noise [ANALYZED]
+
+- Current (mom_window=4): 79 switches over 664 weeks (1 per 8.4 weeks)
+- score_margin=0.02 prevents 35 switches (30.7% noise reduction)
+- mom_window=6 is actually the sweet spot: Sharpe 1.555 (vs 1.522 for window=4)
+- mom_window=8 reduces switches by only 3 more but hurts Sharpe to 1.387
+
+**Iteration direction**: Consider switching to mom_window=6 for better Sharpe with minimal switch increase.
+
+### S-P2: Interest rate sensitivity [ANALYZED]
+
+During 2022-2023 Fed rate hikes:
+- Strategy: +10.70% total, Sharpe 0.361
+- Equal-weight: +7.34% total, Sharpe 0.186
+- Strategy beat EW by +3.37% with lower MaxDD (4.84% vs 7.06%)
+
+Surprise: 国债ETF had +5.44% returns during rate hikes (PBoC easing > Fed tightening).
+Defense layer (avg 38.1% allocation) meaningfully protected portfolio.
+
+**Conclusion**: No interest rate sensitivity issue detected for this strategy.
