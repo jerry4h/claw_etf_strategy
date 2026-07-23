@@ -1,6 +1,6 @@
 # 虾池ETF轮动 v3.0 最终版 — 中证500ETF + C1最优参数
 # 超参扫描确认: vol_w范围[0.80,1.25]全安全, invvol>=8安全, step_low>=0.12安全
-# C1参数: vol_w=1.10, vol_window=11, mom_window=4, invvol=10, thresh=0.025
+# C1参数: vol_w=1.10, vol_window=11, mom_window=6, invvol=10, thresh=0.025
 # 鲁棒性: MC 100%, DSR 1.0, WF 66.7%, 综合评级 实盘可上
 # score_margin 在 selection 段定义（默认 0=关闭）
 
@@ -17,7 +17,7 @@ selection:
   score_margin: 0.02
 
 factors:
-  mom_window: 4
+  mom_window: 6
   vol_window: 11
   pe_window_years: 5
 
