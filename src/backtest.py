@@ -330,6 +330,25 @@ def run_backtest(
             slope = (nasdaq_vol - config.step_low) / (config.step_high - config.step_low)
             def_ratio = eff_def_alloc + (config.max_def - eff_def_alloc) * slope
 
+        # --- Layer 3.5: 危机相关性收敛保护 ---
+        # 进攻 ETF 间 26 周滚动成对相关性 > 0.6 时提升防御比例
+        # (corr>0.6 → 4.3% 周, 收敛期 Sharpe 从 1.61 崩至 -0.37)
+        if i >= 26 and off_idx and len(off_idx) >= 2:
+            off_ret_win = w_rets[i-26:i, off_idx]
+            max_pair_corr = 0.0
+            n_off = off_ret_win.shape[1]
+            for a in range(n_off):
+                for b in range(a + 1, n_off):
+                    mask = ~(np.isnan(off_ret_win[:, a]) | np.isnan(off_ret_win[:, b]))
+                    if mask.sum() >= 5:
+                        c = np.corrcoef(off_ret_win[mask, a], off_ret_win[mask, b])[0, 1]
+                        if not np.isnan(c):
+                            max_pair_corr = max(max_pair_corr, abs(c))
+            if max_pair_corr > 0.6:
+                # 线性: 0.6→0pp, 0.68→15pp，上限 15pp
+                corr_boost = min((max_pair_corr - 0.6) * 1.875, 0.15)
+                def_ratio = min(def_ratio + corr_boost, 1.0)
+
         # --- 市场状态感知止损（P1 Fix #1, 替代三层止损）---
         if config.stateful_stop_loss:
             # 计算状态判定所需信号

@@ -98,14 +98,32 @@ def score_etf(etf, m4, v20, i):
         return None
     return MOM_W * mv - VOL_W * vv
 
-def defense_ratio(v_nasdaq):
-    if pd.isna(v_nasdaq):
-        return DEF_ALLOC
-    if v_nasdaq < STEP_LOW:
-        return DEF_ALLOC
-    if v_nasdaq > STEP_HIGH:
-        return MAX_DEF
-    return DEF_ALLOC + (v_nasdaq - STEP_LOW) / (STEP_HIGH - STEP_LOW) * (MAX_DEF - DEF_ALLOC)
+def defense_ratio(v_nasdaq, wr=None, idx=None, offensive_cols=None):
+    dr = DEF_ALLOC
+    if not pd.isna(v_nasdaq):
+        if v_nasdaq < STEP_LOW:
+            dr = DEF_ALLOC
+        elif v_nasdaq > STEP_HIGH:
+            dr = MAX_DEF
+        else:
+            dr = DEF_ALLOC + (v_nasdaq - STEP_LOW) / (STEP_HIGH - STEP_LOW) * (MAX_DEF - DEF_ALLOC)
+
+    # Layer 3.5: Crisis correlation convergence protection
+    if idx is not None and idx >= 26 and wr is not None and offensive_cols is not None and len(offensive_cols) >= 2:
+        off_win = wr[offensive_cols].iloc[idx-25:idx+1]
+        max_c = 0.0
+        cs = off_win.columns
+        for a in range(len(cs)):
+            for b in range(a + 1, len(cs)):
+                v = off_win[[cs[a], cs[b]]].dropna()
+                if len(v) >= 5:
+                    c = v[cs[a]].corr(v[cs[b]])
+                    if not np.isnan(c):
+                        max_c = max(max_c, abs(c))
+        if max_c > 0.6:
+            cb = min((max_c - 0.6) * 1.875, 0.15)
+            dr = min(dr + cb, 1.0)
+    return dr
 
 def invvol_weights(selected, wr, i):
     iv = {}
@@ -134,7 +152,7 @@ def compute(nav, i, prev_sel=None):
                 ranked = valid_prev
 
     sel = ranked[:TOP_N]
-    def_r = defense_ratio(v20['纳指ETF'].iloc[i])
+    def_r = defense_ratio(v20['纳指ETF'].iloc[i], wr, i, OFFENSIVE)
     wts = invvol_weights(sel, wr, i)
     # 动态hongli_ratio
     if len(DEFENSIVE) >= 2:
@@ -315,7 +333,7 @@ def main():
     print_scores(sc, m4, v20, idx, actual_sel=actual_sel)
 
     vn = v20['纳指ETF'].iloc[idx]
-    dr = defense_ratio(vn)
+    dr = defense_ratio(vn, wr, idx, OFFENSIVE)
     print(f"\nLayer 3 (防多少): 纳指vol{VOL_WINDOW}={vn*100:5.1f}% "
           f"→ {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
 
