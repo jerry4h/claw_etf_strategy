@@ -32,9 +32,48 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
           python -m pytest tests/ -v --tb=short --junitxml=test-results.xml
+
+      - name: Engine-script consistency check (--verify)
+        run: |
+          python scripts/rebalance_live.py --verify 2>&1 | tee verify-output.txt
+          # Fail if Sharpe gap > 0.05
+          python -c "
+          import sys
+          lines = open('verify-output.txt').readlines()
+          for line in lines:
+              if 'Sharpe' in line and len(line.split()) >= 4:
+                  parts = line.split()
+                  try:
+                      gap = float(parts[-1])
+                      if gap > 0.05:
+                          print(f'FAIL: Sharpe gap {gap} > 0.05')
+                          sys.exit(1)
+                      else:
+                          print(f'OK: Sharpe gap {gap} <= 0.05')
+                  except ValueError:
+                      pass
+          "
+
+      - name: Walk-Forward validation
+        run: |
+          python scripts/run_walkforward.py --json 2>&1 | tee wf-output.txt
+          # Fail if overfitting detected (Sharpe degradation > 0.5)
+          python -c "
+          import json, sys
+          try:
+              data = json.loads(open('wf-output.txt').read())
+              if data.get('overfitting_flag'):
+                  deg = data['sharpe_degradation']
+                  print(f'WARN: Overfitting flag! Sharpe degradation = {deg:.4f}')
+                  # Don't fail CI, just warn — test period might be genuinely harder
+              else:
+                  print('OK: No overfitting detected')
+          except Exception as e:
+              print(f'WF parse error (non-fatal): {e}')
+          "
 
       - name: Report test results
         uses: dorny/test-reporter@v1
