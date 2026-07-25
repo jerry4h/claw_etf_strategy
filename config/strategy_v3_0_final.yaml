@@ -15,6 +15,9 @@ scoring:
 selection:
   top_n: 2
   score_margin: 0.02
+  dynamic_margin_sensitivity: 1.0  # 动态margin: 基于score gap波动率自适应调节
+  dynamic_margin_window: 3          # 动态margin回看窗口(周)
+  trend_confirm_weeks: 0  # 趋势确认：0=关闭（实验证明延迟入场代价 > 过滤噪声收益）
 
 factors:
   mom_window: 6

@@ -202,6 +202,9 @@ def run_backtest(
     peak = 1.0
     last_alloc = np.zeros(n_etfs)
     last_selected = None  # 上一次选中的进攻 ETF（用于 score_margin 过滤）
+    pending_selected = None  # 趋势确认：候选进攻对（indices frozenset）
+    pending_count = 0        # 候选对连续保持的周数
+    gap_history = []         # 动态margin: score gap历史记录
     max_dd = 0.0
 
     # 止损状态（原始 + 三层 + 状态感知）
@@ -293,13 +296,41 @@ def run_backtest(
             selected_off = [j for _, j in off_scores[:eff_top_n]]
 
         # --- Score Margin: 防噪声换仓（仅非 softmax 模式）---
-        if config.score_margin > 0 and not eff_softmax_enabled and last_selected is not None:
+        # 支持动态margin: effective_margin = base + sensitivity * std(recent_gaps)
+        if not eff_softmax_enabled and last_selected is not None:
             if len(off_scores) > eff_top_n:
                 gap = off_scores[eff_top_n - 1][0] - off_scores[eff_top_n][0]
-                if gap < config.score_margin:
-                    valid_last = [j for j in last_selected if j in off_idx and not np.isnan(scores_vec[j])]
-                    if len(valid_last) == eff_top_n:
-                        selected_off = valid_last
+
+                # 动态margin: 基于近N周gap波动率自适应调节
+                eff_margin = config.score_margin
+                if config.dynamic_margin_sensitivity > 0:
+                    gap_history.append(gap)
+                    if len(gap_history) > config.dynamic_margin_window:
+                        gap_history.pop(0)
+                    if len(gap_history) >= 2:
+                        gap_std = float(np.std(gap_history))
+                        eff_margin = config.score_margin + config.dynamic_margin_sensitivity * gap_std
+
+                if config.score_margin > 0 or config.dynamic_margin_sensitivity > 0:
+                    if gap < eff_margin:
+                        valid_last = [j for j in last_selected if j in off_idx and not np.isnan(scores_vec[j])]
+                        if len(valid_last) == eff_top_n:
+                            selected_off = valid_last
+            else:
+                # off_scores <= eff_top_n: no gap to track, keep gap_history fresh
+                pass
+
+        # --- Trend Confirmation: 趋势确认（候选对连续N周一致才切换）---
+        if config.trend_confirm_weeks > 0 and not eff_softmax_enabled and last_selected is not None:
+            candidate_set = frozenset(selected_off)
+            last_set = frozenset(last_selected)
+            if candidate_set != pending_selected:
+                pending_selected = candidate_set
+                pending_count = 1
+            else:
+                pending_count += 1
+            if candidate_set != last_set and pending_count < config.trend_confirm_weeks:
+                selected_off = list(last_selected)
 
         # --- D4: 单ETF动量过滤器 (P0, 默认关闭, 纯无状态) ---
         # D4 runs before softmax — filters weak ETFs before weights are computed

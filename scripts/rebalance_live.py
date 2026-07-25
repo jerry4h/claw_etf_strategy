@@ -48,6 +48,9 @@ REBAL_THRESH = cfg.rebalance_threshold
 FEE = cfg.fee_rate
 RISK_FREE = cfg.risk_free_rate
 SCORE_MARGIN = cfg.score_margin
+TREND_CONFIRM = getattr(cfg, 'trend_confirm_weeks', 0) or 0
+DM_SENS = getattr(cfg, 'dynamic_margin_sensitivity', 0.0) or 0.0
+DM_WIN = getattr(cfg, 'dynamic_margin_window', 4)
 HONGLI_RATIO = cfg.hongli_ratio
 
 STATE_FILE = PROJECT / 'data' / '.last_alloc.json'
@@ -138,20 +141,47 @@ def invvol_weights(selected, wr, i):
         return {e: 1.0 / max(len(selected), 1) for e in selected}
     return {e: w / t for e, w in iv.items()}
 
-def compute(nav, i, prev_sel=None):
+def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_history=None):
     wr, m4, v20 = engine_factors(nav)
     sc = {e: s for e in OFFENSIVE if (s := score_etf(e, m4, v20, i)) is not None}
     ranked = sorted(sc, key=lambda e: sc[e], reverse=True)
 
-    # --- Score Margin: 防噪声换仓 ---
-    if SCORE_MARGIN > 0 and prev_sel is not None and len(ranked) > TOP_N:
+    # --- Score Margin: 防噪声换仓 (支持动态margin) ---
+    if gap_history is None:
+        gap_history = []
+    if prev_sel is not None and len(ranked) > TOP_N:
         gap = sc[ranked[TOP_N - 1]] - sc[ranked[TOP_N]]
-        if gap < SCORE_MARGIN:
-            valid_prev = [e for e in prev_sel if e in sc]
-            if len(valid_prev) == TOP_N:
-                ranked = valid_prev
+        eff_margin = SCORE_MARGIN
+        if DM_SENS > 0:
+            gap_history.append(gap)
+            if len(gap_history) > DM_WIN:
+                gap_history.pop(0)
+            if len(gap_history) >= 2:
+                gap_std = float(np.std(gap_history))
+                eff_margin = SCORE_MARGIN + DM_SENS * gap_std
+        if SCORE_MARGIN > 0 or DM_SENS > 0:
+            if gap < eff_margin:
+                valid_prev = [e for e in prev_sel if e in sc]
+                if len(valid_prev) == TOP_N:
+                    ranked = valid_prev
 
-    sel = ranked[:TOP_N]
+    candidate_sel = ranked[:TOP_N]
+
+    # --- Trend Confirmation: 趋势确认 ---
+    pending = prev_pending
+    pending_cnt = prev_pending_count
+    if TREND_CONFIRM > 0 and prev_sel is not None:
+        cand_set = frozenset(candidate_sel)
+        prev_set = frozenset(prev_sel)
+        if cand_set != (pending or frozenset()):
+            pending = cand_set
+            pending_cnt = 1
+        else:
+            pending_cnt = (pending_cnt or 0) + 1
+        if cand_set != prev_set and pending_cnt < TREND_CONFIRM:
+            candidate_sel = list(prev_sel)
+
+    sel = candidate_sel
     def_r = defense_ratio(v20['纳指ETF'].iloc[i], wr, i, OFFENSIVE)
     wts = invvol_weights(sel, wr, i)
     # 动态hongli_ratio
@@ -192,7 +222,7 @@ def compute(nav, i, prev_sel=None):
             excess = 1.0 - tot
             for e in DEFENSIVE:
                 alloc[e] += excess * alloc[e] / df_total
-    return alloc, sc, wr, m4, v20, sel
+    return alloc, sc, wr, m4, v20, sel, pending, pending_cnt, gap_history
 
 def should_rebalance(curr, prev):
     if not prev:
@@ -253,9 +283,9 @@ def main():
         eng = r.metrics
         df = load(PROJECT / a.csv)
         n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0
-        prev_al = {}; prev_sel = None; wrets = []
+        prev_al = {}; prev_sel = None; wrets = []; prev_pending = None; prev_pending_count = 0; gap_hist = []
         for i in range(max(MOM_WINDOW, VOL_WINDOW), n - 1):
-            al, sc, _, _, _, sel_actual = compute(df, i, prev_sel=prev_sel)
+            al, sc, _, _, _, sel_actual, prev_pending, prev_pending_count, gap_hist = compute(df, i, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=prev_pending_count, gap_history=gap_hist)
             if not al:
                 continue
             do, mc = should_rebalance(al, prev_al)
@@ -292,13 +322,32 @@ def main():
         print(f"[ERROR] 数据不足. 最早: {df.index[max(MOM_WINDOW, VOL_WINDOW)].date()}")
         return
 
-    # 计算上次选中的进攻ETF（用于score_margin）
+    # 计算上次选中的进攻ETF（用于score_margin + trend confirmation）
     prev_sel = None
+    prev_gap_hist = []
+    prev_pending = None
+    prev_pending_count = 0
     if idx > max(MOM_WINDOW, VOL_WINDOW):
-        _, prev_sc, _, _, _, _ = compute(df, idx - 1)
-        prev_sel = sorted(prev_sc, key=lambda e: prev_sc[e], reverse=True)[:TOP_N]
+        # Build pending state by replaying recent weeks
+        lookback = max(TREND_CONFIRM + 2, 3)
+        start_replay = max(MOM_WINDOW, VOL_WINDOW)
+        replay_from = max(start_replay, idx - lookback)
+        _prev_sel = None
+        _prev_pending = None
+        _prev_pending_count = 0
+        for _ri in range(replay_from, idx):
+            _, _, _, _, _, _sel, _prev_pending, _prev_pending_count, gap_hist_replay = compute(
+                df, _ri, prev_sel=_prev_sel, prev_pending=_prev_pending, prev_pending_count=_prev_pending_count, gap_history=gap_hist_replay
+            )
+            _prev_sel = _sel
+        prev_sel = _prev_sel
+        prev_pending = _prev_pending
+        prev_pending_count = _prev_pending_count
+        prev_gap_hist = gap_hist_replay
 
-    alloc, sc, wr, m4, v20, actual_sel = compute(df, idx, prev_sel=prev_sel)
+    alloc, sc, wr, m4, v20, actual_sel, _, _, _ = compute(
+        df, idx, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=prev_pending_count, gap_history=prev_gap_hist
+    )
     if not alloc:
         print("[ERROR] 无法计算")
         return
@@ -317,7 +366,7 @@ def main():
         prev_al = last_state
         ref_label = "上次实仓"
     elif idx > max(MOM_WINDOW, VOL_WINDOW):
-        prev_al, _, _, _, _, _ = compute(df, idx - 1)
+        prev_al, _, _, _, _, _, _, _, _ = compute(df, idx - 1, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=max(0, prev_pending_count - 1))
         ref_label = "上周理论"
     else:
         prev_al = {}

@@ -85,6 +85,8 @@ class TestEngineLiveConsistency:
         last_alloc = np.zeros(len(etf_names))
         weekly_rets = []
         start_idx = cfg.vol_window
+        gap_history = []
+        last_selected = None
 
         for i in range(start_idx, n_weeks - 1):
             scores_vec = np.full(len(etf_names), -np.inf)
@@ -97,6 +99,27 @@ class TestEngineLiveConsistency:
             off_scores = [(scores_vec[j], j) for j in off_idx if not np.isnan(scores_vec[j])]
             off_scores.sort(key=lambda x: x[0], reverse=True)
             selected_off = [j for _, j in off_scores[:cfg.top_n]]
+
+            # Score Margin (static + dynamic)
+            if i > start_idx and len(off_scores) > cfg.top_n:
+                gap = off_scores[cfg.top_n - 1][0] - off_scores[cfg.top_n][0]
+                eff_margin = cfg.score_margin
+                if cfg.dynamic_margin_sensitivity > 0:
+                    gap_history.append(gap)
+                    if len(gap_history) > cfg.dynamic_margin_window:
+                        gap_history.pop(0)
+                    if len(gap_history) >= 2:
+                        gap_std = float(np.std(gap_history))
+                        eff_margin = cfg.score_margin + cfg.dynamic_margin_sensitivity * gap_std
+                if gap < eff_margin and last_selected is not None:
+                    valid_last = [j for j in last_selected if j in off_idx and not np.isnan(scores_vec[j])]
+                    if len(valid_last) == cfg.top_n:
+                        selected_off = valid_last
+            elif cfg.dynamic_margin_sensitivity > 0 and len(off_scores) > cfg.top_n:
+                gap = off_scores[cfg.top_n - 1][0] - off_scores[cfg.top_n][0]
+                gap_history.append(gap)
+                if len(gap_history) > cfg.dynamic_margin_window:
+                    gap_history.pop(0)
 
             nasdaq_vol = vol.values[i, nasdaq_idx]
             if pd.isna(nasdaq_vol):
@@ -159,6 +182,7 @@ class TestEngineLiveConsistency:
             peak = max(peak, nav)
             weekly_rets.append(wret - fee)
             last_alloc = alloc.copy()
+            last_selected = selected_off.copy()
 
         manual_sharpe = compute_sharpe(pd.Series(weekly_rets), cfg.risk_free_rate)
         gap = abs(engine_sharpe - manual_sharpe)

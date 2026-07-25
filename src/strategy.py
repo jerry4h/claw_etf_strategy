@@ -33,6 +33,9 @@ class StrategyConfig:
     # 选股
     top_n: int = 2            # 选几只进攻 ETF
     score_margin: float = 0.0     # TOP_N 分数差距门槛（防噪声换仓）
+    trend_confirm_weeks: int = 0  # 趋势确认：候选对连续N周一致才切换（0=关闭）
+    dynamic_margin_sensitivity: float = 0.0  # 动态margin灵敏度（0=关闭）
+    dynamic_margin_window: int = 4           # 动态margin回看窗口（周）
 
     # 因子窗口
     mom_window: int = 4
@@ -287,6 +290,9 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         vol_w=scoring.get('vol_w', 0.30),
         top_n=selection.get('top_n', 2),
         score_margin=selection.get('score_margin', 0.0),
+        trend_confirm_weeks=selection.get('trend_confirm_weeks', 0),
+        dynamic_margin_sensitivity=selection.get('dynamic_margin_sensitivity', 0.0),
+        dynamic_margin_window=selection.get('dynamic_margin_window', 4),
         mom_window=factors_cfg.get('mom_window', 4),
         vol_window=factors_cfg.get('vol_window', 20),
         pe_window_years=factors_cfg.get('pe_window_years', 5),
