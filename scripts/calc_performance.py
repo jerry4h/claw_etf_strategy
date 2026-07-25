@@ -25,7 +25,7 @@ sys.path.insert(0, str(PROJECT))
 
 from src.backtest import run_backtest
 from src.strategy import load_config
-from src.data_loader import ETFS
+from src.data_loader import ETFS, load_nav_data, resample_weekly
 
 
 def compute_navs():
@@ -36,17 +36,20 @@ def compute_navs():
     strat_nav = r.nav_series['nav']
 
     # 等权基准 — 每周再均衡到 20%（不是买入持有让权重漂移）
+    # 使用 load_nav_data() + resample_weekly() 保证与引擎数据清洗一致
     csv_path = cfg.nav_path if Path(cfg.nav_path).is_absolute() else str(PROJECT / cfg.nav_path)
-    df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
-    cols = [c for c in df.columns if c in ETFS]
-    w_prices = df[cols].values
+    nav_df = load_nav_data(csv_path)
+    weekly_nav = resample_weekly(nav_df, anchor=cfg.anchor)
+
+    cols = [c for c in weekly_nav.columns if c in ETFS]
+    w_prices = weekly_nav[cols].values
     w_rets = np.diff(w_prices, axis=0) / w_prices[:-1]
     bn = np.ones(len(w_prices))
     for i in range(1, len(w_prices)):
         wret = sum(1.0/len(cols) * w_rets[i-1, j] for j in range(len(cols))
                    if not np.isnan(w_rets[i-1, j]))
         bn[i] = bn[i-1] * (1 + wret)
-    bench_nav = pd.Series(bn, index=df.index)
+    bench_nav = pd.Series(bn, index=weekly_nav.index)
 
     # 对齐两个序列到一个公共索引
     common = strat_nav.index.intersection(bench_nav.index)

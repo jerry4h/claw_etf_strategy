@@ -9,12 +9,14 @@
   python scripts/rebalance_live.py --save-state        # 确认调仓并保存状态
 
 策略:
-  Layer 1: score = mom4 - 1.10*vol11, top_n=2
-  Layer 2: inv-vol10 weights
-  Layer 3: nasdaq vol 3-tier [25%, 95%]
-  DefAlloc: hl_ratio = clip(0.80 - 2.67*vol_hongli, 0, 0.80)  T=0.30
+  Layer 1: score = mom_w * mom - vol_w * vol, top_n=2
+  Layer 2: inv-vol weights (shared engine_core)
+  Layer 3: nasdaq vol 3-tier [def_alloc, max_def]
+  Layer 3.5: crisis correlation convergence (shared engine_core)
+  DefAlloc: hl_ratio = clip(intercept - coeff*vol_hongli, 0, intercept)
 
-所有因子计算通过 src/factors.py (ddof=0)，杜绝重复实现。
+所有因子计算通过 src/factors.py (ddof=0)。
+核心决策逻辑通过 src/engine_core.py 共享，与回测引擎保持一致。
 阈值基于上一次实际调仓的仓位（通过状态文件 data/.last_alloc.json 维护），
 非上周的理论计算仓位。运行 --save-state 确认调仓后自动更新状态文件。
 CSV格式: 日期,纳指ETF,红利低波ETF,中证500ETF,黄金ETF,国债ETF
@@ -27,10 +29,15 @@ import numpy as np, pandas as pd
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
-from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE
+from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data
 from src.utils import compute_sharpe, annualize_return
 from src.factors import calculate_momentum, calculate_volatility
-from src.strategy import load_config
+from src.strategy import load_config, calculate_defense_ratio
+from src.engine_core import (
+    compute_crisis_boost, compute_dynamic_hongli,
+    compute_inv_vol_weights, compute_score_margin,
+    apply_trend_confirmation,
+)
 
 cfg = load_config(PROJECT / 'config/strategy_v3_0_final.yaml')
 MOM_W = cfg.mom_w
@@ -77,13 +84,8 @@ def save_state(alloc: dict):
     print(f"  已保存调仓状态到 {STATE_FILE}")
 
 def load(csv):
-    df = pd.read_csv(csv)
-    df['日期'] = pd.to_datetime(df['日期'])
-    df = df.set_index('日期').sort_index()
-    for c in ETFS:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors='coerce')
-    return df[ETFS].ffill().dropna()
+    """Load NAV data using shared load_nav_data() for consistent cleaning."""
+    return load_nav_data(csv)
 
 def engine_factors(nav):
     m4 = calculate_momentum(nav, window=MOM_WINDOW)
@@ -93,7 +95,9 @@ def engine_factors(nav):
         np.diff(prices, axis=0) / prices[:-1],
         index=nav.index[1:], columns=ETFS
     )
-    return wr_df, m4, v20
+    # Also return numpy w_rets for shared functions
+    wr_np = wr_df.values
+    return wr_df, wr_np, m4, v20
 
 def score_etf(etf, m4, v20, i):
     mv, vv = m4[etf].iloc[i], v20[etf].iloc[i]
@@ -101,64 +105,32 @@ def score_etf(etf, m4, v20, i):
         return None
     return MOM_W * mv - VOL_W * vv
 
-def defense_ratio(v_nasdaq, wr=None, idx=None, offensive_cols=None):
-    dr = DEF_ALLOC
-    if not pd.isna(v_nasdaq):
-        if v_nasdaq < STEP_LOW:
-            dr = DEF_ALLOC
-        elif v_nasdaq > STEP_HIGH:
-            dr = MAX_DEF
-        else:
-            dr = DEF_ALLOC + (v_nasdaq - STEP_LOW) / (STEP_HIGH - STEP_LOW) * (MAX_DEF - DEF_ALLOC)
+def compute_defense_with_crisis(v_nasdaq, wr_np, i):
+    """Layer 3 + Layer 3.5 defense ratio using shared functions."""
+    # Layer 3: vol-based defense ratio (uses shared strategy.calculate_defense_ratio)
+    dr = calculate_defense_ratio(v_nasdaq, cfg)
 
-    # Layer 3.5: Crisis correlation convergence protection
-    if idx is not None and idx >= 26 and wr is not None and offensive_cols is not None and len(offensive_cols) >= 2:
-        off_win = wr[offensive_cols].iloc[idx-25:idx+1]
-        max_c = 0.0
-        cs = off_win.columns
-        for a in range(len(cs)):
-            for b in range(a + 1, len(cs)):
-                v = off_win[[cs[a], cs[b]]].dropna()
-                if len(v) >= 5:
-                    c = v[cs[a]].corr(v[cs[b]])
-                    if not np.isnan(c):
-                        max_c = max(max_c, abs(c))
-        if max_c > 0.6:
-            cb = min((max_c - 0.6) * 1.875, 0.15)
-            dr = min(dr + cb, 1.0)
+    # Layer 3.5: crisis correlation convergence boost (shared engine_core)
+    # off_idx for live script: OFFENSIVE = ['纳指ETF', '中证500ETF', '黄金ETF']
+    # ETFS = ['纳指ETF', '红利低波ETF', '中证500ETF', '黄金ETF', '国债ETF']
+    off_idx = [ETFS.index(e) for e in OFFENSIVE]
+    boost = compute_crisis_boost(wr_np, i, off_idx, cfg)
+    if boost > 0:
+        dr = min(dr + boost, 1.0)
+
     return dr
 
-def invvol_weights(selected, wr, i):
-    iv = {}
-    for e in selected:
-        start = max(0, i - 1 - INV_VOL_W + 1)
-        end = i
-        s = wr[e].iloc[start:end].dropna()
-        v = np.std(s.values, ddof=0) * math.sqrt(52) if len(s) >= 3 else 0.20
-        iv[e] = 1.0 / max(v, 0.05)
-    t = sum(iv.values())
-    if t <= 0:
-        return {e: 1.0 / max(len(selected), 1) for e in selected}
-    return {e: w / t for e, w in iv.items()}
-
 def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_history=None):
-    wr, m4, v20 = engine_factors(nav)
+    wr_df, wr_np, m4, v20 = engine_factors(nav)
     sc = {e: s for e in OFFENSIVE if (s := score_etf(e, m4, v20, i)) is not None}
     ranked = sorted(sc, key=lambda e: sc[e], reverse=True)
 
-    # --- Score Margin: 防噪声换仓 (支持动态margin) ---
+    # --- Score Margin: 防噪声换仓 (使用共享 engine_core.compute_score_margin) ---
     if gap_history is None:
         gap_history = []
     if prev_sel is not None and len(ranked) > TOP_N:
         gap = sc[ranked[TOP_N - 1]] - sc[ranked[TOP_N]]
-        eff_margin = SCORE_MARGIN
-        if DM_SENS > 0:
-            gap_history.append(gap)
-            if len(gap_history) > DM_WIN:
-                gap_history.pop(0)
-            if len(gap_history) >= 2:
-                gap_std = float(np.std(gap_history))
-                eff_margin = SCORE_MARGIN + DM_SENS * gap_std
+        eff_margin, gap_history = compute_score_margin(gap, gap_history, cfg)
         if SCORE_MARGIN > 0 or DM_SENS > 0:
             if gap < eff_margin:
                 valid_prev = [e for e in prev_sel if e in sc]
@@ -167,34 +139,37 @@ def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_
 
     candidate_sel = ranked[:TOP_N]
 
-    # --- Trend Confirmation: 趋势确认 ---
+    # --- Trend Confirmation: 趋势确认 (使用共享 engine_core.apply_trend_confirmation) ---
     pending = prev_pending
     pending_cnt = prev_pending_count
     if TREND_CONFIRM > 0 and prev_sel is not None:
-        cand_set = frozenset(candidate_sel)
-        prev_set = frozenset(prev_sel)
-        if cand_set != (pending or frozenset()):
-            pending = cand_set
-            pending_cnt = 1
-        else:
-            pending_cnt = (pending_cnt or 0) + 1
-        if cand_set != prev_set and pending_cnt < TREND_CONFIRM:
-            candidate_sel = list(prev_sel)
+        # Convert to index-based for shared function, then back to names
+        off_idx_map = {e: idx for idx, e in enumerate(OFFENSIVE)}
+        cand_idx = [off_idx_map[e] for e in candidate_sel if e in off_idx_map]
+        last_idx = [off_idx_map[e] for e in prev_sel if e in off_idx_map]
+        result_idx, pending, pending_cnt = apply_trend_confirmation(
+            cand_idx, last_idx, pending, pending_cnt, cfg
+        )
+        candidate_sel = [OFFENSIVE[idx] for idx in result_idx]
 
     sel = candidate_sel
-    def_r = defense_ratio(v20['纳指ETF'].iloc[i], wr, i, OFFENSIVE)
-    wts = invvol_weights(sel, wr, i)
-    # 动态hongli_ratio
+
+    # Layer 3 + 3.5: defense ratio with crisis correlation boost
+    v_nasdaq = v20['纳指ETF'].iloc[i]
+    def_r = compute_defense_with_crisis(v_nasdaq, wr_np, i)
+
+    # Layer 2: inv-vol weights (shared engine_core)
+    off_indices = [ETFS.index(e) for e in sel]
+    inv_w = compute_inv_vol_weights(wr_np, off_indices, i, INV_VOL_W)
+    wts = {e: w for e, w in zip(sel, inv_w)}
+
+    # 动态hongli_ratio (shared engine_core.compute_dynamic_hongli)
     if len(DEFENSIVE) >= 2:
-        hl_mom = m4['红利低波ETF'].iloc[i]
         hl_vol = v20['红利低波ETF'].iloc[i]
-        if not np.isnan(hl_mom) and not np.isnan(hl_vol):
-            hl_score = np.clip(0.80 - 2.67 * hl_vol, 0, 0.80)  # linear T=0.30
-            eff_hl_ratio = hl_score
-        else:
-            eff_hl_ratio = HONGLI_RATIO
+        eff_hl_ratio = compute_dynamic_hongli(hl_vol, cfg)
     else:
         eff_hl_ratio = HONGLI_RATIO
+
     alloc = {DEFENSIVE[0]: def_r * eff_hl_ratio} if len(DEFENSIVE) > 0 else {}
     if len(DEFENSIVE) > 1:
         alloc[DEFENSIVE[1]] = def_r * (1 - eff_hl_ratio)
@@ -222,7 +197,7 @@ def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_
             excess = 1.0 - tot
             for e in DEFENSIVE:
                 alloc[e] += excess * alloc[e] / df_total
-    return alloc, sc, wr, m4, v20, sel, pending, pending_cnt, gap_history
+    return alloc, sc, wr_df, m4, v20, sel, pending, pending_cnt, gap_history
 
 def should_rebalance(curr, prev):
     if not prev:
@@ -335,12 +310,13 @@ def main():
         _prev_sel = None
         _prev_pending = None
         _prev_pending_count = 0
+        gap_hist_replay = []
         for _ri in range(replay_from, idx):
             _, _, _, _, _, _sel, _prev_pending, _prev_pending_count, gap_hist_replay = compute(
                 df, _ri, prev_sel=_prev_sel, prev_pending=_prev_pending, prev_pending_count=_prev_pending_count, gap_history=gap_hist_replay
             )
             _prev_sel = _sel
-        prev_sel = _prev_sel
+        prev_sel = _sel
         prev_pending = _prev_pending
         prev_pending_count = _prev_pending_count
         prev_gap_hist = gap_hist_replay
@@ -382,7 +358,7 @@ def main():
     print_scores(sc, m4, v20, idx, actual_sel=actual_sel)
 
     vn = v20['纳指ETF'].iloc[idx]
-    dr = defense_ratio(vn, wr, idx, OFFENSIVE)
+    dr = compute_defense_with_crisis(vn, wr.values if hasattr(wr, 'values') else wr, idx)
     print(f"\nLayer 3 (防多少): 纳指vol{VOL_WINDOW}={vn*100:5.1f}% "
           f"→ {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
 

@@ -16,6 +16,11 @@ from src.data_loader import (
     load_nav_data, load_pe_percentile, resample_weekly, classify_etfs
 )
 from src.factors import compute_all_factors
+from src.engine_core import (
+    compute_crisis_boost, compute_dynamic_hongli,
+    compute_inv_vol_weights, compute_score_margin,
+    apply_trend_confirmation,
+)
 from src.strategy import (
     StrategyConfig, load_config,
     score_offensive, select_top, calculate_defense_ratio,
@@ -296,20 +301,11 @@ def run_backtest(
             selected_off = [j for _, j in off_scores[:eff_top_n]]
 
         # --- Score Margin: 防噪声换仓（仅非 softmax 模式）---
-        # 支持动态margin: effective_margin = base + sensitivity * std(recent_gaps)
+        # 使用共享函数 (engine_core.compute_score_margin)
         if not eff_softmax_enabled and last_selected is not None:
             if len(off_scores) > eff_top_n:
                 gap = off_scores[eff_top_n - 1][0] - off_scores[eff_top_n][0]
-
-                # 动态margin: 基于近N周gap波动率自适应调节
-                eff_margin = config.score_margin
-                if config.dynamic_margin_sensitivity > 0:
-                    gap_history.append(gap)
-                    if len(gap_history) > config.dynamic_margin_window:
-                        gap_history.pop(0)
-                    if len(gap_history) >= 2:
-                        gap_std = float(np.std(gap_history))
-                        eff_margin = config.score_margin + config.dynamic_margin_sensitivity * gap_std
+                eff_margin, gap_history = compute_score_margin(gap, gap_history, config)
 
                 if config.score_margin > 0 or config.dynamic_margin_sensitivity > 0:
                     if gap < eff_margin:
@@ -321,16 +317,11 @@ def run_backtest(
                 pass
 
         # --- Trend Confirmation: 趋势确认（候选对连续N周一致才切换）---
+        # 使用共享函数 (engine_core.apply_trend_confirmation)
         if config.trend_confirm_weeks > 0 and not eff_softmax_enabled and last_selected is not None:
-            candidate_set = frozenset(selected_off)
-            last_set = frozenset(last_selected)
-            if candidate_set != pending_selected:
-                pending_selected = candidate_set
-                pending_count = 1
-            else:
-                pending_count += 1
-            if candidate_set != last_set and pending_count < config.trend_confirm_weeks:
-                selected_off = list(last_selected)
+            selected_off, pending_selected, pending_count = apply_trend_confirmation(
+                selected_off, last_selected, pending_selected, pending_count, config
+            )
 
         # --- D4: 单ETF动量过滤器 (P0, 默认关闭, 纯无状态) ---
         # D4 runs before softmax — filters weak ETFs before weights are computed
@@ -362,23 +353,10 @@ def run_backtest(
             def_ratio = eff_def_alloc + (config.max_def - eff_def_alloc) * slope
 
         # --- Layer 3.5: 危机相关性收敛保护 ---
-        # 进攻 ETF 间 26 周滚动成对相关性 > 0.6 时提升防御比例
-        # (corr>0.6 → 4.3% 周, 收敛期 Sharpe 从 1.61 崩至 -0.37)
-        if i >= 26 and off_idx and len(off_idx) >= 2:
-            off_ret_win = w_rets[i-26:i, off_idx]
-            max_pair_corr = 0.0
-            n_off = off_ret_win.shape[1]
-            for a in range(n_off):
-                for b in range(a + 1, n_off):
-                    mask = ~(np.isnan(off_ret_win[:, a]) | np.isnan(off_ret_win[:, b]))
-                    if mask.sum() >= 5:
-                        c = np.corrcoef(off_ret_win[mask, a], off_ret_win[mask, b])[0, 1]
-                        if not np.isnan(c):
-                            max_pair_corr = max(max_pair_corr, abs(c))
-            if max_pair_corr > 0.6:
-                # 线性: 0.6→0pp, 0.68→15pp，上限 15pp
-                corr_boost = min((max_pair_corr - 0.6) * 1.875, 0.15)
-                def_ratio = min(def_ratio + corr_boost, 1.0)
+        # 使用共享函数 (engine_core.compute_crisis_boost)
+        crisis_boost = compute_crisis_boost(w_rets, i, off_idx, config)
+        if crisis_boost > 0:
+            def_ratio = min(def_ratio + crisis_boost, 1.0)
 
         # --- 市场状态感知止损（P1 Fix #1, 替代三层止损）---
         if config.stateful_stop_loss:
@@ -465,19 +443,13 @@ def run_backtest(
         # --- 构建仓位 ---
         alloc = np.zeros(n_etfs)
 
-        # 动态hongli_ratio：红利低波根据自身momentum+vol分配防御配额
-        # score = mom4 * MOM_W - vol11 * VOL_W (同进攻层评分公式)
+        # 动态hongli_ratio：使用共享函数 (engine_core.compute_dynamic_hongli)
         if def_idx and len(def_idx) >= 2:
-            hl_mom = mom_values[i, def_idx[0]]
             hl_vol = vol_values[i, def_idx[0]]
-            if not np.isnan(hl_mom) and not np.isnan(hl_vol):
-                hl_score = np.clip(0.80 - 2.67 * hl_vol, 0, 0.80)  # linear T=0.30
-                # hl_score=-0.30→ratio=0.0, hl_score=+0.05→ratio=0.70
-                eff_hl_ratio = hl_score
-            else:
-                eff_hl_ratio = config.hongli_ratio
+            eff_hl_ratio = compute_dynamic_hongli(hl_vol, config)
         else:
             eff_hl_ratio = config.hongli_ratio
+
         # 防御层分配
         if def_idx:
             alloc[def_idx[0]] = def_ratio * eff_hl_ratio
@@ -493,30 +465,13 @@ def run_backtest(
                 etf_name = etf_names[j]
                 alloc[j] = (1 - def_ratio) * sm_weights.get(etf_name, 0.0)
         elif config.inv_vol_enabled and selected_off:
-            # D6: Inv-Vol8 Weighted Allocation (v3.0 Layer 2)
-            # 波动率倒数加权 — 波动率越低权重越高，纯连续无门控
-            if i >= config.inv_vol_window:
-                inv_vols = []
-                for j in selected_off:
-                    rets = w_rets[i - config.inv_vol_window:i, j]
-                    rets = rets[~np.isnan(rets)]
-                    if len(rets) < 3:
-                        inv_vols.append(0.0)
-                    else:
-                        vol8 = np.std(rets, ddof=0) * np.sqrt(52)
-                        inv_vols.append(1.0 / vol8 if vol8 > 0 else 0.0)
-                total_inv = sum(inv_vols)
-                if total_inv > 0:
-                    for k, j in enumerate(selected_off):
-                        alloc[j] = (1 - def_ratio) * (inv_vols[k] / total_inv)
-                else:
-                    w = (1 - def_ratio) / len(selected_off)
-                    for j in selected_off:
-                        alloc[j] = w
-            else:
-                w = (1 - def_ratio) / len(selected_off)
-                for j in selected_off:
-                    alloc[j] = w
+            # D6: Inv-Vol Weighted Allocation (v3.0 Layer 2)
+            # 使用共享函数 (engine_core.compute_inv_vol_weights)
+            inv_weights = compute_inv_vol_weights(
+                w_rets, selected_off, i, config.inv_vol_window
+            )
+            for k, j in enumerate(selected_off):
+                alloc[j] = (1 - def_ratio) * inv_weights[k]
         elif selected_off:
             for j in selected_off:
                 alloc[j] = (1 - def_ratio) / len(selected_off)
@@ -626,7 +581,6 @@ def compute_metrics(
             "annual_return": 0.1406,
             "max_drawdown": 0.0821,
             "sharpe_ratio": 1.102,
-            # simple_sharpe removed — use sharpe_ratio only
             "calmar_ratio": 1.71,
             "win_rate": 0.583,
             "avg_weekly_return": 0.0027,
@@ -646,8 +600,6 @@ def compute_metrics(
     annual_ret = annualize_return(total_return, n_weeks)
     max_dd = nav_series['drawdown'].max()
     sharpe = compute_sharpe(weekly_returns, risk_free_rate)
-    # simple_sharpe removed — use sharpe (with risk-free) only.
-    # Two definitions caused confusion (simplified ~0.3 higher than standard).
     calmar = compute_calmar(annual_ret, max_dd) if max_dd > 0 else float('inf')
     annual_vol = compute_annual_volatility(weekly_returns)
     win_rate = (weekly_returns > 0).mean()
@@ -726,96 +678,77 @@ def _run_single_grid(params: tuple, base_config: StrategyConfig) -> dict | None:
         softmax_temperature=base_config.softmax_temperature,
         softmax_hard_top_n_fallback=base_config.softmax_hard_top_n_fallback,
         softmax_min_candidates=base_config.softmax_min_candidates,
-        # D6: Inv-Vol8 Weighted Allocation
+        # D6: Inv-Vol Weighted Allocation
         inv_vol_enabled=base_config.inv_vol_enabled,
         inv_vol_window=base_config.inv_vol_window,
-        # D1: 动态权重
-        d1_enabled=base_config.d1_enabled,
-        d1_lookback=base_config.d1_lookback,
-        d1_tq_low=base_config.d1_tq_low,
-        d1_tq_high=base_config.d1_tq_high,
-        d1_mom_w_low=base_config.d1_mom_w_low,
-        d1_mom_w_high=base_config.d1_mom_w_high,
-        d1_vol_w_low=base_config.d1_vol_w_low,
-        d1_vol_w_high=base_config.d1_vol_w_high,
-        d1_weight_sum=base_config.d1_weight_sum,
-        # T32: Constituent-Stock Signals
-        constituent_signals_enabled=base_config.constituent_signals_enabled,
-        constituent_signals_path=base_config.constituent_signals_path,
-        cwm_weight=base_config.cwm_weight,
-        conc_weight=base_config.conc_weight,
-        cwm_window=base_config.cwm_window,
-        # T35: Regime classifier
-        regime_enabled=base_config.regime_enabled,
-        regime_data_path=base_config.regime_data_path,
-        regime_overrides=base_config.regime_overrides,
-        # T40 Fix 2: 3-state regime
-        regime_3state=base_config.regime_3state,
+        # D2B: 权重上限
+        overflow_to_defense_only=base_config.overflow_to_defense_only,
+        dynamic_weight_cap=base_config.dynamic_weight_cap,
+        dc_bull_cap=base_config.dc_bull_cap,
+        dc_normal_cap=base_config.dc_normal_cap,
+        dc_correction_cap=base_config.dc_correction_cap,
+        dc_crisis_cap=base_config.dc_crisis_cap,
+        # score margin
+        score_margin=base_config.score_margin,
+        dynamic_margin_sensitivity=base_config.dynamic_margin_sensitivity,
+        dynamic_margin_window=base_config.dynamic_margin_window,
+        trend_confirm_weeks=base_config.trend_confirm_weeks,
+        # Layer 3.5
+        crisis_corr_window=base_config.crisis_corr_window,
+        crisis_corr_threshold=base_config.crisis_corr_threshold,
+        crisis_corr_slope=base_config.crisis_corr_slope,
+        crisis_corr_max_boost=base_config.crisis_corr_max_boost,
+        # Hongli formula
+        hongli_intercept=base_config.hongli_intercept,
+        hongli_vol_coeff=base_config.hongli_vol_coeff,
+        # Data
         nav_path=base_config.nav_path,
         pe_path=base_config.pe_path,
         start_date=base_config.start_date,
         end_date=base_config.end_date,
         risk_free_rate=base_config.risk_free_rate,
-        score_margin=base_config.score_margin,
     )
 
-    result = run_backtest(cfg)
-    if result.nav_series.empty:
+    try:
+        result = run_backtest(cfg)
+        return {
+            **param_dict,
+            **result.metrics,
+        }
+    except Exception as e:
         return None
 
-    return {
-        **param_dict,
-        'annual_return': result.metrics['annual_return'],
-        'max_drawdown': result.metrics['max_drawdown'],
-        'sharpe_ratio': result.metrics['sharpe_ratio'],
-        'calmar_ratio': result.metrics['calmar_ratio'],
-        'win_rate': result.metrics['win_rate'],
-        'total_weeks': result.metrics['total_weeks'],
-    }
 
-
-def grid_search(
-    param_space: dict[str, list],
-    base_config_path: str | Path,
-    n_jobs: int = -1,
-    filters: dict | None = None
+def run_grid_search(
+    base_config: StrategyConfig,
+    param_grid: dict[str, list],
+    n_workers: int = 4,
 ) -> pd.DataFrame:
     """
-    网格搜索。每个参数组合调用一次 run_backtest()。
-    使用 multiprocessing 并行。
+    多进程参数网格搜索。
 
     Args:
-        param_space: {"mom_w": [0.30, 0.35, 0.40], "step_high": [0.35, 0.40, 0.45]}
+        base_config: 基础策略配置
+        param_grid: 参数网格 {"vol_w": [0.8, 1.0, 1.2], ...}
+        n_workers: 进程数
+
+    Returns:
+        DataFrame, 每组参数一行, 含所有绩效指标
     """
-    base_config = load_config(Path(__file__).parent.parent / base_config_path)
+    keys = list(param_grid.keys())
+    values = list(param_grid.values())
+    combos = list(itertools.product(*values))
 
-    keys = list(param_space.keys())
-    values = list(param_space.values())
-    combinations = list(itertools.product(*values))
-    params = [dict(zip(keys, combo)) for combo in combinations]
+    tasks = []
+    for combo in combos:
+        param_dict = dict(zip(keys, combo))
+        tasks.append((param_dict,))
 
-    # Apply filters
-    if filters:
-        filtered = []
-        for p in params:
-            ok = True
-            for k, v in filters.items():
-                if k in p and not v(p[k]):
-                    ok = False
-                    break
-            if ok:
-                filtered.append(p)
-        params = filtered
-
-    # Run
-    if len(params) == 0:
-        return pd.DataFrame()
-
-    task_args = [(p,) for p in params]
-    n_proc = multiprocessing.cpu_count() if n_jobs == -1 else n_jobs
-
-    with multiprocessing.Pool(n_proc) as pool:
-        results = pool.starmap(_run_single_grid, [(args, base_config) for args in task_args])
+    with multiprocessing.Pool(n_workers) as pool:
+        results = pool.starmap(
+            _run_single_grid,
+            [(t, base_config) for t in tasks]
+        )
 
     results = [r for r in results if r is not None]
     return pd.DataFrame(results)

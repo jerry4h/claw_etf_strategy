@@ -31,6 +31,20 @@ defense:
   max_def: 0.95
   hongli_ratio: 0.50
 
+# Layer 3.5: 危机相关性收敛保护
+# 进攻ETF间滚动成对相关性超过阈值时提升防御比例
+crisis_correlation:
+  window: 26              # 滚动窗口(周)
+  corr_threshold: 0.60    # 相关性触发阈值
+  boost_slope: 1.875      # 线性斜率: (corr - threshold) * slope
+  max_boost: 0.15         # 最大防御加成(pp)
+
+# 动态红利低波配比公式
+# hl_score = clip(hl_intercept - hl_vol_coeff * vol_hongli, 0, hl_intercept)
+hongli_formula:
+  intercept: 0.80         # 截距(也是clip上限)
+  vol_coeff: 2.67         # 波动率系数
+
 rebalance:
   threshold: 0.025
   fee_rate: 0.00005

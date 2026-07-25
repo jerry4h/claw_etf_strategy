@@ -1,6 +1,7 @@
 """一致性测试 - rebalance_live.py 与 backtest 引擎的逻辑一致性。
 
 验证实盘脚本的独立实现与引擎在相同输入下产生相同输出。
+手动验证循环使用 engine_core 共享函数，确保引擎与共享逻辑一致。
 """
 import sys
 from pathlib import Path
@@ -11,9 +12,13 @@ import pandas as pd
 import pytest
 from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data, resample_weekly, classify_etfs
 from src.factors import calculate_momentum, calculate_volatility
-from src.strategy import load_config, calculate_defense_ratio
+from src.strategy import load_config, calculate_defense_ratio, apply_max_alloc_cap
 from src.backtest import run_backtest
 from src.utils import compute_sharpe
+from src.engine_core import (
+    compute_crisis_boost, compute_dynamic_hongli,
+    compute_inv_vol_weights, compute_score_margin,
+)
 
 
 PROJECT = Path(__file__).resolve().parent.parent
@@ -36,9 +41,6 @@ class TestEngineLiveConsistency:
     def test_defense_ratio_in_valid_range(self, engine_result):
         """验证引擎最后一周的防御比例在合理范围 [def_alloc, max_def] 内，
         且与 vol 三段式公式一致（允许止损覆盖导致更高）。
-
-        注意: 引擎最后一条记录对应 index n_weeks-2（需要下一周收益计算P&L），
-        而实盘脚本看的是最后一行。因此用引擎对应的 vol 来验证。
         """
         result, cfg = engine_result
         nav_path = PROJECT / cfg.nav_path
@@ -55,12 +57,16 @@ class TestEngineLiveConsistency:
 
         engine_def = result.nav_series['def_ratio'].iloc[-1]
         # 引擎可能因止损覆盖而 >= vol三段式结果
-        assert engine_def >= expected_def - 0.005,             f'Engine def={engine_def:.4f} < expected={expected_def:.4f} (vol={nasdaq_vol:.4f})'
+        assert engine_def >= expected_def - 0.005, \
+            f'Engine def={engine_def:.4f} < expected={expected_def:.4f} (vol={nasdaq_vol:.4f})'
         # 防御比例应在合理范围
-        assert cfg.def_alloc - 0.001 <= engine_def <= cfg.max_def + 0.01,             f'Engine def={engine_def:.4f} out of range [{cfg.def_alloc}, {cfg.max_def}]'
+        assert cfg.def_alloc - 0.001 <= engine_def <= cfg.max_def + 0.01, \
+            f'Engine def={engine_def:.4f} out of range [{cfg.def_alloc}, {cfg.max_def}]'
 
     def test_full_verify_sharpe_gap(self):
-        """完整验证：引擎 vs 手动逐周回测的 Sharpe 差距 < 0.05。"""
+        """完整验证：引擎 vs 手动逐周回测的 Sharpe 差距 < 0.05。
+        手动循环使用 engine_core 共享函数，确保引擎与共享逻辑一致。
+        """
         cfg = load_config(CONFIG_PATH)
         result = run_backtest(cfg)
         engine_sharpe = result.metrics['sharpe_ratio']
@@ -100,75 +106,57 @@ class TestEngineLiveConsistency:
             off_scores.sort(key=lambda x: x[0], reverse=True)
             selected_off = [j for _, j in off_scores[:cfg.top_n]]
 
-            # Score Margin (static + dynamic)
+            # Score Margin (static + dynamic) — using shared function
             if i > start_idx and len(off_scores) > cfg.top_n:
                 gap = off_scores[cfg.top_n - 1][0] - off_scores[cfg.top_n][0]
-                eff_margin = cfg.score_margin
-                if cfg.dynamic_margin_sensitivity > 0:
-                    gap_history.append(gap)
-                    if len(gap_history) > cfg.dynamic_margin_window:
-                        gap_history.pop(0)
-                    if len(gap_history) >= 2:
-                        gap_std = float(np.std(gap_history))
-                        eff_margin = cfg.score_margin + cfg.dynamic_margin_sensitivity * gap_std
+                eff_margin, gap_history = compute_score_margin(gap, gap_history, cfg)
                 if gap < eff_margin and last_selected is not None:
                     valid_last = [j for j in last_selected if j in off_idx and not np.isnan(scores_vec[j])]
                     if len(valid_last) == cfg.top_n:
                         selected_off = valid_last
             elif cfg.dynamic_margin_sensitivity > 0 and len(off_scores) > cfg.top_n:
                 gap = off_scores[cfg.top_n - 1][0] - off_scores[cfg.top_n][0]
-                gap_history.append(gap)
-                if len(gap_history) > cfg.dynamic_margin_window:
-                    gap_history.pop(0)
+                _, gap_history = compute_score_margin(gap, gap_history, cfg)
 
+            # Layer 3: defense ratio
             nasdaq_vol = vol.values[i, nasdaq_idx]
-            if pd.isna(nasdaq_vol):
-                def_ratio = cfg.def_alloc
-            elif nasdaq_vol < cfg.step_low:
-                def_ratio = cfg.def_alloc
-            elif nasdaq_vol > cfg.step_high:
-                def_ratio = cfg.max_def
-            else:
-                slope = (nasdaq_vol - cfg.step_low) / (cfg.step_high - cfg.step_low)
-                def_ratio = cfg.def_alloc + (cfg.max_def - cfg.def_alloc) * slope
+            def_ratio = calculate_defense_ratio(nasdaq_vol, cfg)
 
+            # Layer 3.5: crisis correlation boost — using shared function
+            crisis_boost = compute_crisis_boost(w_rets, i, off_idx, cfg)
+            if crisis_boost > 0:
+                def_ratio = min(def_ratio + crisis_boost, 1.0)
+
+            # Build allocation
             alloc = np.zeros(len(etf_names))
             if def_idx:
+                # Dynamic hongli — using shared function
                 hl_vol_val = vol.values[i, def_idx[0]]
-                if not np.isnan(hl_vol_val):
-                    hl_ratio = np.clip(0.80 - 2.67 * hl_vol_val, 0, 0.80)
-                else:
-                    hl_ratio = cfg.hongli_ratio
+                hl_ratio = compute_dynamic_hongli(hl_vol_val, cfg)
                 alloc[def_idx[0]] = def_ratio * hl_ratio
                 if len(def_idx) > 1:
                     alloc[def_idx[1]] = def_ratio * (1 - hl_ratio)
 
+            # Inv-vol weights — using shared function
             if selected_off and i >= cfg.inv_vol_window:
-                inv_vols = []
-                for j in selected_off:
-                    rets = w_rets[i - cfg.inv_vol_window:i, j]
-                    rets = rets[~np.isnan(rets)]
-                    v = np.std(rets, ddof=0) * np.sqrt(52) if len(rets) >= 3 else 0.20
-                    inv_vols.append(1.0 / max(v, 0.05))
-                total = sum(inv_vols)
+                inv_weights = compute_inv_vol_weights(
+                    w_rets, selected_off, i, cfg.inv_vol_window
+                )
                 for k, j in enumerate(selected_off):
-                    alloc[j] = (1 - def_ratio) * (inv_vols[k] / total)
+                    alloc[j] = (1 - def_ratio) * inv_weights[k]
             elif selected_off:
                 for j in selected_off:
                     alloc[j] = (1 - def_ratio) / len(selected_off)
 
+            # Max alloc cap — using shared function
             if cfg.max_single_alloc < 1.0:
-                overflow = 0.0
-                for j in off_idx:
-                    if alloc[j] > cfg.max_single_alloc:
-                        overflow += alloc[j] - cfg.max_single_alloc
-                        alloc[j] = cfg.max_single_alloc
-                if overflow > 0 and def_idx:
-                    def_total = sum(alloc[j] for j in def_idx)
-                    if def_total > 0:
-                        for j in def_idx:
-                            alloc[j] += overflow * alloc[j] / def_total
+                alloc = apply_max_alloc_cap(
+                    alloc, cfg.max_single_alloc, off_idx,
+                    overflow_to_defense_only=cfg.overflow_to_defense_only,
+                    def_idx=def_idx
+                )
 
+            # Rebalance threshold
             if i > start_idx:
                 max_change = np.max(np.abs(alloc - last_alloc))
                 if max_change < cfg.rebalance_threshold:
@@ -186,7 +174,8 @@ class TestEngineLiveConsistency:
 
         manual_sharpe = compute_sharpe(pd.Series(weekly_rets), cfg.risk_free_rate)
         gap = abs(engine_sharpe - manual_sharpe)
-        assert gap < 0.05,             f'Sharpe gap too large: engine={engine_sharpe:.4f}, manual={manual_sharpe:.4f}, gap={gap:.4f}'
+        assert gap < 0.05, \
+            f'Sharpe gap too large: engine={engine_sharpe:.4f}, manual={manual_sharpe:.4f}, gap={gap:.4f}'
 
 
 if __name__ == '__main__':

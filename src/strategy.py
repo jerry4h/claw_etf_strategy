@@ -38,8 +38,8 @@ class StrategyConfig:
     dynamic_margin_window: int = 4           # 动态margin回看窗口（周）
 
     # 因子窗口
-    mom_window: int = 4
-    vol_window: int = 20
+    mom_window: int = 6       # P2 fix: was 4, matched to YAML default
+    vol_window: int = 11      # P2 fix: was 20, matched to YAML default
     pe_window_years: int = 5
 
     # 防御参数
@@ -48,6 +48,16 @@ class StrategyConfig:
     step_high: float = 0.35   # vol 三段式上限
     max_def: float = 0.95     # 极限防御比例
     hongli_ratio: float = 0.50  # 防御层中红利低波占比
+
+    # Layer 3.5: 危机相关性收敛保护
+    crisis_corr_window: int = 26        # 滚动窗口(周)
+    crisis_corr_threshold: float = 0.60  # 相关性触发阈值
+    crisis_corr_slope: float = 1.875     # 线性斜率
+    crisis_corr_max_boost: float = 0.15  # 最大防御加成(pp)
+
+    # 动态红利低波公式参数
+    hongli_intercept: float = 0.80   # 截距(也是clip上限)
+    hongli_vol_coeff: float = 2.67   # 波动率系数
 
     # 调仓
     rebalance_threshold: float = 0.07   # 调仓阈值
@@ -146,7 +156,7 @@ class StrategyConfig:
 
     # === Direction D6: Inv-Vol Weighted Allocation === ENABLED in v3.0 final
     inv_vol_enabled: bool = False
-    inv_vol_window: int = 8
+    inv_vol_window: int = 10  # P2 fix: was 8, matched to YAML default
 
     # === Direction D1: 动态动量/波动率权重 === DISABLED in v3.0 final
     d1_enabled: bool = False
@@ -268,6 +278,8 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     selection = raw.get('selection', {})
     factors_cfg = raw.get('factors', {})
     defense = raw.get('defense', {})
+    crisis_corr = raw.get('crisis_correlation', {})
+    hongli_formula = raw.get('hongli_formula', {})
     rebalance = raw.get('rebalance', {})
     risk = raw.get('risk_control', {})
     stop_loss_cfg = raw.get('stop_loss', {})
@@ -293,14 +305,22 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         trend_confirm_weeks=selection.get('trend_confirm_weeks', 0),
         dynamic_margin_sensitivity=selection.get('dynamic_margin_sensitivity', 0.0),
         dynamic_margin_window=selection.get('dynamic_margin_window', 4),
-        mom_window=factors_cfg.get('mom_window', 4),
-        vol_window=factors_cfg.get('vol_window', 20),
+        mom_window=factors_cfg.get('mom_window', 6),
+        vol_window=factors_cfg.get('vol_window', 11),
         pe_window_years=factors_cfg.get('pe_window_years', 5),
         def_alloc=defense.get('def_alloc', 0.25),
         step_low=defense.get('step_low', 0.20),
         step_high=defense.get('step_high', 0.35),
         max_def=defense.get('max_def', 0.95),
         hongli_ratio=defense.get('hongli_ratio', 0.50),
+        # Layer 3.5: 危机相关性收敛
+        crisis_corr_window=crisis_corr.get('window', 26),
+        crisis_corr_threshold=crisis_corr.get('corr_threshold', 0.60),
+        crisis_corr_slope=crisis_corr.get('boost_slope', 1.875),
+        crisis_corr_max_boost=crisis_corr.get('max_boost', 0.15),
+        # 动态红利低波公式
+        hongli_intercept=hongli_formula.get('intercept', 0.80),
+        hongli_vol_coeff=hongli_formula.get('vol_coeff', 2.67),
         rebalance_threshold=rebalance.get('threshold', 0.07),
         fee_rate=rebalance.get('fee_rate', 0.00005),
         anchor=rebalance.get('anchor', 'W-MON'),
@@ -381,7 +401,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         softmax_min_candidates=softmax_cfg.get('min_candidates', 2),
         # D6: Inv-Vol Weighted Allocation (ENABLED)
         inv_vol_enabled=inv_vol_cfg.get('enabled', False),
-        inv_vol_window=inv_vol_cfg.get('window', 8),
+        inv_vol_window=inv_vol_cfg.get('window', 10),
         # D1: 动态权重 (DISABLED)
         d1_enabled=d1_cfg.get('enabled', False),
         d1_lookback=d1_cfg.get('lookback', 12),
