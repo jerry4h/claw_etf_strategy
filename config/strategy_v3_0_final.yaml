@@ -2,6 +2,7 @@
 # 超参扫描确认: vol_w范围[0.80,1.25]全安全, invvol>=8安全, step_low>=0.12安全
 # C1参数: vol_w=1.10, vol_window=11, mom_window=6, invvol=10, thresh=0.025
 # 鲁棒性: MC 100%, DSR 1.0, WF 55.6%, 综合评级 基本可上
+# 回测指标(2026-07-25): Sharpe 1.610, 年化 17.05%, MaxDD 6.97%, 665周
 # score_margin 在 selection 段定义（默认 0=关闭）
 
 strategy:
