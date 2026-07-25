@@ -4,15 +4,20 @@ These issues are recorded for future strategy evolution, not to be fixed in the 
 
 ## S-P0: Walk-Forward failure pattern
 
-**Finding (2026-07-22)**: WF actually achieves 77.8% (7/9) win rate, not 55.6% as previously reported.
-The 2 failed windows are both during strong bull markets (2013-2015 Nasdaq ann=20%, 2023-2025 Nasdaq ann=33.5%).
-The defense mechanism holds back performance in strong trends — this is BY DESIGN, not a bug.
-The strategy sacrifices upside for downside protection, and both failed windows still had better Sharpe and lower MaxDD than EW.
+**Verified (2026-07-25)**: WF 胜率为 **55.6% (5/9)**（`compute_benchmark_relative_win_rate` 可复现）。
+此前文档中的 77.8% (7/9) 来自交互式分析会话，无可复现代码支撑，经 git 溯源已确认不可复现。
+
+4 个失败窗口（W0/W2/W5/W7）共性：
+1. 纳指 vol 低于 step_low(15%)，防御层无降波优势（<step_low 占比 35-77%）
+2. 评分公式 `score = mom - 1.1*vol` 的黄金偏好：黄金因低波（10-12%）长期占据 top-2，策略错过中证500 上涨窗口（W0: 中证500+20.5% vs 黄金0%，W5: 中证500+12.1% vs 黄金-2.8%）
+
+5 个胜利窗口共性：等权基准波动率高（策略防御层降波效果显著），Sharpe 优势来自风控。
 
 **Iteration direction**: If higher WF win rate is desired, consider:
-- Bull-market relaxation: reduce defense ratio during confirmed bull regimes (12w momentum > threshold)
-- Regime-conditional defense: lower step_low/step_high during bull markets
-- Accept the trade-off: current 77.8% WF win rate with 6.38% MaxDD is excellent risk-adjusted
+- 降低 vol 惩罚系数（vol_w 从 1.10 降至 ~0.80），减轻黄金偏好
+- 给中证500 加最小评分加成（hysteresis），避免等动量时被低波资产挤出
+- Bull-market relaxation: 纳指 vol < step_low 时降低基准防御比
+- Accept the trade-off: current 55.6% WF with 6.97% MaxDD — Sharpe 1.61 和 DSR 1.0 说明风险调整收益仍优秀
 
 ## S-P0: Train/Test split result
 
@@ -46,7 +51,7 @@ Even with 3% annual hedge cost, Sharpe remains 1.439. FX exposure is NOT a criti
 
 ## S-P2: Momentum window noise
 
-**Status**: mom_window=4 with score_margin=0.02 provides adequate noise suppression.
+**Status**: mom_window=6 (adopted in v3.0 final) with score_margin=0.02 provides adequate noise suppression.
 
 **Iteration direction**: If whipsawing becomes an issue:
 - Multi-period momentum composite: 0.5*mom4 + 0.3*mom8 + 0.2*mom12
@@ -95,12 +100,12 @@ Rolling 26-week correlation between offensive ETF pairs:
 
 ### S-P2: Momentum window noise [ANALYZED]
 
-- Current (mom_window=4): 79 switches over 664 weeks (1 per 8.4 weeks)
+- Baseline (mom_window=4): 79 switches over 664 weeks (1 per 8.4 weeks)
 - score_margin=0.02 prevents 35 switches (30.7% noise reduction)
 - mom_window=6 is actually the sweet spot: Sharpe 1.555 (vs 1.522 for window=4)
 - mom_window=8 reduces switches by only 3 more but hurts Sharpe to 1.387
 
-**Iteration direction**: Consider switching to mom_window=6 for better Sharpe with minimal switch increase.
+**Iteration direction**: ✅ Adopted — mom_window=6 is now the production config (Sharpe 1.555 vs 1.522 for window=4).
 
 ### S-P2: Interest rate sensitivity [ANALYZED]
 
