@@ -438,12 +438,9 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     )
 
 
-# ---------------------------------------------------------------------------
-# ETF definitions (aligned with data_loader)
-# ---------------------------------------------------------------------------
-ETFS = ['纳指ETF', '红利低波ETF', '中证500ETF', '黄金ETF', '国债ETF']
-OFFENSIVE_IDX = [0, 2, 3]  # 纳指, 中证500, 黄金
-DEFENSIVE_IDX = [1, 4]     # 红利低波, 国债
+# ETF definitions — single source of truth in data_loader.py, re-exported here
+# for backward compatibility with modules that import from strategy.py.
+from src.data_loader import ETFS, OFFENSIVE_IDX, DEFENSIVE_IDX  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -514,32 +511,37 @@ def select_top(
 
 def calculate_defense_ratio(
     nasdaq_vol: float,
-    config: StrategyConfig
+    config: StrategyConfig,
+    base_def_alloc: float | None = None,
 ) -> float:
     """
     Three-segment defense ratio based on Nasdaq volatility. Active in v3.0 final.
 
-    - nasdaq_vol < step_low:    def_alloc (baseline, e.g. 25%)
+    - nasdaq_vol < step_low:    base (baseline, e.g. 25%)
     - nasdaq_vol > step_high:   max_def (maximum, e.g. 95%)
     - between:                  linear interpolation
 
     Args:
         nasdaq_vol: Nasdaq annualized volatility
         config: Strategy configuration
+        base_def_alloc: Override baseline defense ratio. If None, uses config.def_alloc.
+                        Useful when regime system overrides the baseline.
 
     Returns:
         Defense ratio (0~1)
     """
+    base = base_def_alloc if base_def_alloc is not None else config.def_alloc
+
     if pd.isna(nasdaq_vol):
-        return config.def_alloc
+        return base
 
     if nasdaq_vol < config.step_low:
-        return config.def_alloc
+        return base
     elif nasdaq_vol > config.step_high:
         return config.max_def
     else:
         ratio = (nasdaq_vol - config.step_low) / (config.step_high - config.step_low)
-        return config.def_alloc + (config.max_def - config.def_alloc) * ratio
+        return base + (config.max_def - base) * ratio
 
 
 def allocate(
@@ -548,46 +550,71 @@ def allocate(
     config: StrategyConfig,
     etf_names: list[str] | None = None,
     off_idx: list[int] | None = None,
-    def_idx: list[int] | None = None
+    def_idx: list[int] | None = None,
+    eff_hl_ratio: float | None = None,
+    off_weights: list[float] | None = None,
+    apply_cap: bool = False,
 ) -> np.ndarray:
     """
     Compute full position allocation (numpy array). Active in v3.0 final.
 
-    Defense layer: first defensive ETF gets hongli_ratio, rest split (1-hongli_ratio)
-    Offensive layer: selected ETFs split (1-defense_ratio) equally
+    Integrates all allocation layers:
+      - Defense: dynamic hongli ratio + inv-vol offensive weights + max cap
+      - Falls back to static config values when optional params not provided
 
     Args:
         selected: Selected offensive ETF names
-        defense_ratio: Defense ratio
+        defense_ratio: Defense ratio (from Layer 3)
         config: Strategy configuration
         etf_names: ETF name list (defaults to global ETFS)
         off_idx: Offensive ETF index list
         def_idx: Defensive ETF index list
+        eff_hl_ratio: Effective hongli ratio (from compute_dynamic_hongli).
+                      If None, uses config.hongli_ratio.
+        off_weights: Per-ETF offensive weights (e.g., from compute_inv_vol_weights).
+                     Must match len(selected). If None, uses equal weight.
+        apply_cap: If True and config.max_single_alloc < 1.0, apply weight cap.
 
     Returns:
         np.ndarray shape=(n_etfs,), per-ETF positions
     """
     _etf_names = etf_names if etf_names is not None else ETFS
     _def_idx = def_idx if def_idx is not None else DEFENSIVE_IDX
+    _off_idx = off_idx if off_idx is not None else OFFENSIVE_IDX
     n_etfs = len(_etf_names)
+    hl_ratio = eff_hl_ratio if eff_hl_ratio is not None else config.hongli_ratio
 
     alloc = np.zeros(n_etfs)
 
     # Defense layer
     if _def_idx:
-        alloc[_def_idx[0]] = defense_ratio * config.hongli_ratio
+        alloc[_def_idx[0]] = defense_ratio * hl_ratio
         n_rest = len(_def_idx) - 1
         if n_rest > 0:
-            rest_weight = defense_ratio * (1 - config.hongli_ratio) / n_rest
+            rest_weight = defense_ratio * (1 - hl_ratio) / n_rest
             for j in _def_idx[1:]:
                 alloc[j] = rest_weight
 
     # Offensive layer
     if selected:
-        off_weight = (1 - defense_ratio) / len(selected)
-        for etf in selected:
-            idx = _etf_names.index(etf)
-            alloc[idx] = off_weight
+        off_total = 1 - defense_ratio
+        if off_weights is not None and len(off_weights) == len(selected):
+            for etf, w in zip(selected, off_weights):
+                idx = _etf_names.index(etf)
+                alloc[idx] = off_total * w
+        else:
+            off_weight = off_total / len(selected)
+            for etf in selected:
+                idx = _etf_names.index(etf)
+                alloc[idx] = off_weight
+
+    # Max allocation cap (D2B)
+    if apply_cap and config.max_single_alloc < 1.0:
+        alloc = apply_max_alloc_cap(
+            alloc, config.max_single_alloc, _off_idx,
+            overflow_to_defense_only=config.overflow_to_defense_only,
+            def_idx=_def_idx,
+        )
 
     return alloc
 

@@ -1,9 +1,7 @@
-"""统一回测引擎 — 所有回测（单次、网格搜索、消融实验）均走此引擎。"""
+"""统一回测引擎 — 单次回测与绩效计算。"""
 
 from __future__ import annotations
 
-import itertools
-import multiprocessing
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -202,7 +200,7 @@ def run_backtest(
             _regime_enabled = False
 
     # === 5. 逐周回测 ===
-    start_idx = config.vol_window  # 需要 vol_window 周预热
+    start_idx = max(config.vol_window, config.mom_window)  # 需要两个因子窗口中较大的一个来预热
     nav = 1.0
     peak = 1.0
     last_alloc = np.zeros(n_etfs)
@@ -340,17 +338,10 @@ def run_backtest(
                                if not np.isnan(scores_vec[j])}
             sm_weights = compute_softmax_allocation(off_scores_dict, eff_softmax_temperature)
 
-        # --- vol 三段式防御（纳指 vol 原始逻辑，经验证最优）---
+        # --- vol 三段式防御（纳指 vol 原始逻辑）---
+        # 使用共享函数 (strategy.calculate_defense_ratio)
         nasdaq_vol = vol_values[i, NASDAQ_IDX]
-        if pd.isna(nasdaq_vol):
-            def_ratio = eff_def_alloc
-        elif nasdaq_vol < config.step_low:
-            def_ratio = eff_def_alloc
-        elif nasdaq_vol > config.step_high:
-            def_ratio = config.max_def
-        else:
-            slope = (nasdaq_vol - config.step_low) / (config.step_high - config.step_low)
-            def_ratio = eff_def_alloc + (config.max_def - eff_def_alloc) * slope
+        def_ratio = calculate_defense_ratio(nasdaq_vol, config, base_def_alloc=eff_def_alloc)
 
         # --- Layer 3.5: 危机相关性收敛保护 ---
         # 使用共享函数 (engine_core.compute_crisis_boost)
@@ -440,9 +431,7 @@ def run_backtest(
         # --- D4 extra_defense: max(vol阶段防御, D4额外防御) ---
         def_ratio = max(def_ratio, extra_defense)
 
-        # --- 构建仓位 ---
-        alloc = np.zeros(n_etfs)
-
+        # --- 构建仓位 (使用增强的 allocate()) ---
         # 动态hongli_ratio：使用共享函数 (engine_core.compute_dynamic_hongli)
         if def_idx and len(def_idx) >= 2:
             hl_vol = vol_values[i, def_idx[0]]
@@ -450,47 +439,40 @@ def run_backtest(
         else:
             eff_hl_ratio = config.hongli_ratio
 
-        # 防御层分配
-        if def_idx:
-            alloc[def_idx[0]] = def_ratio * eff_hl_ratio
-            n_rest = len(def_idx) - 1
-            if n_rest > 0:
-                rest_weight = def_ratio * (1 - eff_hl_ratio) / n_rest
-                for j in def_idx[1:]:
-                    alloc[j] = rest_weight
-
-        # D5: Softmax-Weighted Allocation
+        # D5: Softmax-Weighted Allocation (特殊路径, DISABLED in v3.0)
         if sm_weights is not None:
+            alloc = allocate(
+                [], def_ratio, config,
+                etf_names=etf_names, off_idx=off_idx, def_idx=def_idx,
+                eff_hl_ratio=eff_hl_ratio,
+            )
             for j in selected_off:
                 etf_name = etf_names[j]
                 alloc[j] = (1 - def_ratio) * sm_weights.get(etf_name, 0.0)
-        elif config.inv_vol_enabled and selected_off:
-            # D6: Inv-Vol Weighted Allocation (v3.0 Layer 2)
-            # 使用共享函数 (engine_core.compute_inv_vol_weights)
-            inv_weights = compute_inv_vol_weights(
-                w_rets, selected_off, i, config.inv_vol_window
-            )
-            for k, j in enumerate(selected_off):
-                alloc[j] = (1 - def_ratio) * inv_weights[k]
-        elif selected_off:
-            for j in selected_off:
-                alloc[j] = (1 - def_ratio) / len(selected_off)
         else:
-            # 极端情况：无进攻层 ETF 可选 → 全额防御
-            if def_idx:
-                alloc[def_idx[0]] = config.hongli_ratio
-                n_rest = len(def_idx) - 1
-                if n_rest > 0:
-                    rest_weight = (1 - config.hongli_ratio) / n_rest
-                    for j in def_idx[1:]:
-                        alloc[j] = rest_weight
+            # 常规路径: inv-vol or equal-weight, 使用增强 allocate()
+            off_weights = None
+            if config.inv_vol_enabled and selected_off:
+                off_weights = compute_inv_vol_weights(
+                    w_rets, selected_off, i, config.inv_vol_window
+                )
 
-        # --- 权重上限（D2B）---
-        if config.max_single_alloc < 1.0:
+            selected_names = [etf_names[j] for j in selected_off] if selected_off else []
+            use_static_cap = config.max_single_alloc < 1.0 and not config.dynamic_weight_cap
+            alloc = allocate(
+                selected_names, def_ratio, config,
+                etf_names=etf_names, off_idx=off_idx, def_idx=def_idx,
+                eff_hl_ratio=eff_hl_ratio,
+                off_weights=off_weights,
+                apply_cap=use_static_cap,
+            )
+
+        # --- 权重上限（D2B）— 仅 dynamic_cap 路径需要单独处理 ---
+        if config.max_single_alloc < 1.0 and config.dynamic_weight_cap:
             alloc = apply_max_alloc_cap(
                 alloc, config.max_single_alloc, off_idx,
                 overflow_to_defense_only=config.overflow_to_defense_only,
-                dynamic_cap=config.dynamic_weight_cap,
+                dynamic_cap=True,
                 market_state=market_state if config.stateful_stop_loss else None,
                 config=config,
                 def_idx=def_idx
@@ -630,125 +612,3 @@ def compute_metrics(
         'rebalance_count': rebalance_count,
         'final_nav': final_nav,
     }
-
-
-def _run_single_grid(params: tuple, base_config: StrategyConfig) -> dict | None:
-    """单组参数回测（供多进程使用）"""
-    param_dict, = params
-    # 复制配置并覆盖参数
-    cfg = StrategyConfig(
-        name=base_config.name,
-        version=base_config.version,
-        mom_w=param_dict.get('mom_w', base_config.mom_w),
-        vol_w=param_dict.get('vol_w', base_config.vol_w),
-        top_n=param_dict.get('top_n', base_config.top_n),
-        mom_window=base_config.mom_window,
-        vol_window=base_config.vol_window,
-        pe_window_years=base_config.pe_window_years,
-        def_alloc=param_dict.get('def_alloc', base_config.def_alloc),
-        step_low=param_dict.get('step_low', base_config.step_low),
-        step_high=param_dict.get('step_high', base_config.step_high),
-        max_def=param_dict.get('max_def', base_config.max_def),
-        hongli_ratio=base_config.hongli_ratio,
-        rebalance_threshold=param_dict.get('rebalance_threshold', base_config.rebalance_threshold),
-        fee_rate=base_config.fee_rate,
-        anchor=base_config.anchor,
-        stop_loss=base_config.stop_loss,
-        recovery_weeks=base_config.recovery_weeks,
-        tiered_stop_loss=base_config.tiered_stop_loss,
-        l1_drawdown=base_config.l1_drawdown,
-        l1_defense=base_config.l1_defense,
-        l2_drawdown=base_config.l2_drawdown,
-        l2_defense=base_config.l2_defense,
-        l3_weekly_drop=base_config.l3_weekly_drop,
-        l3_down_weeks=base_config.l3_down_weeks,
-        l3_window=base_config.l3_window,
-        l2_recovery_weeks=base_config.l2_recovery_weeks,
-        l3_recovery_weeks=base_config.l3_recovery_weeks,
-        max_single_alloc=base_config.max_single_alloc,
-        stateful_stop_loss=base_config.stateful_stop_loss,
-        # D4: 单ETF动量过滤器
-        d4_enabled=base_config.d4_enabled,
-        d4_momentum_window=base_config.d4_momentum_window,
-        d4_momentum_threshold=base_config.d4_momentum_threshold,
-        d4_action=base_config.d4_action,
-        d4_min_candidates=base_config.d4_min_candidates,
-        # D5: Softmax-Weighted Allocation
-        softmax_enabled=base_config.softmax_enabled,
-        softmax_temperature=base_config.softmax_temperature,
-        softmax_hard_top_n_fallback=base_config.softmax_hard_top_n_fallback,
-        softmax_min_candidates=base_config.softmax_min_candidates,
-        # D6: Inv-Vol Weighted Allocation
-        inv_vol_enabled=base_config.inv_vol_enabled,
-        inv_vol_window=base_config.inv_vol_window,
-        # D2B: 权重上限
-        overflow_to_defense_only=base_config.overflow_to_defense_only,
-        dynamic_weight_cap=base_config.dynamic_weight_cap,
-        dc_bull_cap=base_config.dc_bull_cap,
-        dc_normal_cap=base_config.dc_normal_cap,
-        dc_correction_cap=base_config.dc_correction_cap,
-        dc_crisis_cap=base_config.dc_crisis_cap,
-        # score margin
-        score_margin=base_config.score_margin,
-        dynamic_margin_sensitivity=base_config.dynamic_margin_sensitivity,
-        dynamic_margin_window=base_config.dynamic_margin_window,
-        trend_confirm_weeks=base_config.trend_confirm_weeks,
-        # Layer 3.5
-        crisis_corr_window=base_config.crisis_corr_window,
-        crisis_corr_threshold=base_config.crisis_corr_threshold,
-        crisis_corr_slope=base_config.crisis_corr_slope,
-        crisis_corr_max_boost=base_config.crisis_corr_max_boost,
-        # Hongli formula
-        hongli_intercept=base_config.hongli_intercept,
-        hongli_vol_coeff=base_config.hongli_vol_coeff,
-        # Data
-        nav_path=base_config.nav_path,
-        pe_path=base_config.pe_path,
-        start_date=base_config.start_date,
-        end_date=base_config.end_date,
-        risk_free_rate=base_config.risk_free_rate,
-    )
-
-    try:
-        result = run_backtest(cfg)
-        return {
-            **param_dict,
-            **result.metrics,
-        }
-    except Exception as e:
-        return None
-
-
-def run_grid_search(
-    base_config: StrategyConfig,
-    param_grid: dict[str, list],
-    n_workers: int = 4,
-) -> pd.DataFrame:
-    """
-    多进程参数网格搜索。
-
-    Args:
-        base_config: 基础策略配置
-        param_grid: 参数网格 {"vol_w": [0.8, 1.0, 1.2], ...}
-        n_workers: 进程数
-
-    Returns:
-        DataFrame, 每组参数一行, 含所有绩效指标
-    """
-    keys = list(param_grid.keys())
-    values = list(param_grid.values())
-    combos = list(itertools.product(*values))
-
-    tasks = []
-    for combo in combos:
-        param_dict = dict(zip(keys, combo))
-        tasks.append((param_dict,))
-
-    with multiprocessing.Pool(n_workers) as pool:
-        results = pool.starmap(
-            _run_single_grid,
-            [(t, base_config) for t in tasks]
-        )
-
-    results = [r for r in results if r is not None]
-    return pd.DataFrame(results)

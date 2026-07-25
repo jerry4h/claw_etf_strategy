@@ -153,16 +153,16 @@ def compute_all_factors(
 
     Returns:
         {
-            "momentum":     DataFrame (已 shift),
-            "volatility":   DataFrame (已 shift),
-            "pe_percentile": DataFrame (已 shift, 可选)
+            "momentum":     DataFrame (未 shift — 滚动窗口仅含历史收益, 无前视偏差),
+            "volatility":   DataFrame (未 shift — 同上),
+            "pe_percentile": DataFrame (已 shift(1), 可选 — PE为市场指标需额外延迟一周)
         }
     """
     if config is None:
         config = {}
 
-    mom_window = config.get('factors', {}).get('mom_window', 4)
-    vol_window = config.get('factors', {}).get('vol_window', 20)
+    mom_window = config.get('factors', {}).get('mom_window', 6)
+    vol_window = config.get('factors', {}).get('vol_window', 11)
     pe_window_years = config.get('factors', {}).get('pe_window_years', 5)
 
     momentum = calculate_momentum(weekly_nav, window=mom_window)

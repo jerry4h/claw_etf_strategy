@@ -25,6 +25,7 @@ CSV格式: 日期,纳指ETF,红利低波ETF,中证500ETF,黄金ETF,国债ETF
 from __future__ import annotations
 import argparse, json, math, sys
 from pathlib import Path
+from typing import NamedTuple
 import numpy as np, pandas as pd
 
 PROJECT = Path(__file__).resolve().parent.parent
@@ -32,7 +33,7 @@ sys.path.insert(0, str(PROJECT))
 from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data
 from src.utils import compute_sharpe, annualize_return
 from src.factors import calculate_momentum, calculate_volatility
-from src.strategy import load_config, calculate_defense_ratio
+from src.strategy import load_config, calculate_defense_ratio, check_stop_loss
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
     compute_inv_vol_weights, compute_score_margin,
@@ -120,6 +121,20 @@ def compute_defense_with_crisis(v_nasdaq, wr_np, i):
 
     return dr
 
+
+class ComputeResult(NamedTuple):
+    """Named return type for compute() — self-documenting tuple access."""
+    alloc: dict            # ETF -> weight allocation
+    scores: dict           # ETF -> offensive score
+    weekly_rets: pd.DataFrame  # weekly returns DataFrame
+    momentum: pd.DataFrame  # momentum factor
+    volatility: pd.DataFrame  # volatility factor
+    selected: list         # selected offensive ETF names
+    pending: frozenset | None  # trend confirmation pending set
+    pending_count: int     # pending weeks counter
+    gap_history: list      # dynamic margin gap history
+
+
 def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_history=None):
     wr_df, wr_np, m4, v20 = engine_factors(nav)
     sc = {e: s for e in OFFENSIVE if (s := score_etf(e, m4, v20, i)) is not None}
@@ -197,7 +212,7 @@ def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_
             excess = 1.0 - tot
             for e in DEFENSIVE:
                 alloc[e] += excess * alloc[e] / df_total
-    return alloc, sc, wr_df, m4, v20, sel, pending, pending_cnt, gap_history
+    return ComputeResult(alloc, sc, wr_df, m4, v20, sel, pending, pending_cnt, gap_history)
 
 def should_rebalance(curr, prev):
     if not prev:
@@ -258,11 +273,35 @@ def main():
         eng = r.metrics
         df = load(PROJECT / a.csv)
         n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0
-        prev_al = {}; prev_sel = None; wrets = []; prev_pending = None; prev_pending_count = 0; gap_hist = []
+        prev_al = {}; prev_sel = None; wrets = []
+        prev_pending = None; prev_pending_count = 0; gap_hist = []
+        # Stop-loss state (mirrors backtest engine)
+        in_stop_loss = False; stop_loss_weeks = 0; stop_loss_count = 0
         for i in range(max(MOM_WINDOW, VOL_WINDOW), n - 1):
-            al, sc, _, _, _, sel_actual, prev_pending, prev_pending_count, gap_hist = compute(df, i, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=prev_pending_count, gap_history=gap_hist)
+            result = compute(df, i, prev_sel=prev_sel, prev_pending=prev_pending,
+                             prev_pending_count=prev_pending_count, gap_history=gap_hist)
+            al = result.alloc
             if not al:
                 continue
+            # --- Stop-loss check (P1-4: mirrors engine logic) ---
+            if not in_stop_loss and check_stop_loss(nav, peak, cfg.stop_loss):
+                in_stop_loss = True
+                stop_loss_weeks = 0
+                stop_loss_count += 1
+            if in_stop_loss:
+                # Force 95% defense during stop-loss period
+                hl_ratio = compute_dynamic_hongli(
+                    result.volatility['红利低波ETF'].iloc[i] if '红利低波ETF' in result.volatility else float('nan'),
+                    cfg
+                )
+                al = {}
+                if len(DEFENSIVE) >= 1:
+                    al[DEFENSIVE[0]] = 0.95 * hl_ratio
+                if len(DEFENSIVE) >= 2:
+                    al[DEFENSIVE[1]] = 0.95 * (1 - hl_ratio)
+                stop_loss_weeks += 1
+                if stop_loss_weeks >= cfg.recovery_weeks:
+                    in_stop_loss = False
             do, mc = should_rebalance(al, prev_al)
             if not do:
                 al = prev_al
@@ -275,17 +314,21 @@ def main():
             dd_max = max(dd_max, dd)
             wrets.append(wr)
             prev_al = al
-            prev_sel = sel_actual
+            prev_sel = result.selected
+            prev_pending = result.pending
+            prev_pending_count = result.pending_count
+            gap_hist = result.gap_history
         scr_s = compute_sharpe(pd.Series(wrets), RISK_FREE)
         scr_r = annualize_return(nav - 1, len(wrets))
         scr_d = dd_max
         print(f"\n{'='*60}")
         print(" 验证: 实时脚本 vs 引擎回测")
         print(f"{'='*60}")
-        print(f" 指标     引擎         脚本         差异")
-        print(f" Sharpe   {eng['sharpe_ratio']:.4f}       {scr_s:.4f}       {abs(eng['sharpe_ratio']-scr_s):.4f}")
-        print(f" 年化     {eng['annual_return']*100:.2f}%      {scr_r*100:.2f}%       {abs(eng['annual_return']-scr_r)*100:.2f}pp")
-        print(f" DD       {eng['max_drawdown']*100:.2f}%      {scr_d*100:.2f}%       {abs(eng['max_drawdown']-scr_d)*100:.2f}pp")
+        print(f" 指标       引擎         脚本         差异")
+        print(f" Sharpe     {eng['sharpe_ratio']:.4f}       {scr_s:.4f}       {abs(eng['sharpe_ratio']-scr_s):.4f}")
+        print(f" 年化       {eng['annual_return']*100:.2f}%      {scr_r*100:.2f}%       {abs(eng['annual_return']-scr_r)*100:.2f}pp")
+        print(f" DD         {eng['max_drawdown']*100:.2f}%      {scr_d*100:.2f}%       {abs(eng['max_drawdown']-scr_d)*100:.2f}pp")
+        print(f" 止损触发   -            {stop_loss_count}次")
         ok = abs(eng['sharpe_ratio'] - scr_s) < 0.02
         print(f"\n {'✅ 通过' if ok else '⚠️ 偏差较大, 需排查'}")
         return
@@ -312,17 +355,25 @@ def main():
         _prev_pending_count = 0
         gap_hist_replay = []
         for _ri in range(replay_from, idx):
-            _, _, _, _, _, _sel, _prev_pending, _prev_pending_count, gap_hist_replay = compute(
+            _result = compute(
                 df, _ri, prev_sel=_prev_sel, prev_pending=_prev_pending, prev_pending_count=_prev_pending_count, gap_history=gap_hist_replay
             )
+            _sel = _result.selected
+            _prev_pending = _result.pending
+            _prev_pending_count = _result.pending_count
+            gap_hist_replay = _result.gap_history
             _prev_sel = _sel
         prev_sel = _sel
         prev_pending = _prev_pending
         prev_pending_count = _prev_pending_count
         prev_gap_hist = gap_hist_replay
 
-    alloc, sc, wr, m4, v20, actual_sel, _, _, _ = compute(
+    _main_result = compute(
         df, idx, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=prev_pending_count, gap_history=prev_gap_hist
+    )
+    alloc, sc, wr, m4, v20, actual_sel = (
+        _main_result.alloc, _main_result.scores, _main_result.weekly_rets,
+        _main_result.momentum, _main_result.volatility, _main_result.selected
     )
     if not alloc:
         print("[ERROR] 无法计算")
@@ -342,7 +393,8 @@ def main():
         prev_al = last_state
         ref_label = "上次实仓"
     elif idx > max(MOM_WINDOW, VOL_WINDOW):
-        prev_al, _, _, _, _, _, _, _, _ = compute(df, idx - 1, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=max(0, prev_pending_count - 1))
+        _prev_result = compute(df, idx - 1, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=max(0, prev_pending_count - 1))
+        prev_al = _prev_result.alloc
         ref_label = "上周理论"
     else:
         prev_al = {}

@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import math
 import multiprocessing
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dc_replace
 from pathlib import Path
 
 import numpy as np
@@ -393,132 +393,35 @@ TOP_N_LEVELS = [1, 2, 3]
 
 
 def _mc_single_worker(args: tuple) -> dict | None:
-    """Single MC run worker (module-level for multiprocessing)."""
+    """Single MC run worker (module-level for multiprocessing).
+
+    Uses dataclasses.replace() for forward-compatible config copying —
+    new StrategyConfig fields are automatically included.
+    """
     params, base_cfg = args
     try:
-        cfg = StrategyConfig(
-            name=base_cfg.name,
-            version=base_cfg.version,
-            mom_w=min(max(params.get('mom_w', base_cfg.mom_w), 0.05), 1.50),
-            vol_w=min(max(params.get('vol_w', base_cfg.vol_w), 0.05), 1.50),
-            top_n=base_cfg.top_n,
-            mom_window=base_cfg.mom_window,
-            vol_window=base_cfg.vol_window,
-            pe_window_years=base_cfg.pe_window_years,
-            def_alloc=params.get('def_alloc', base_cfg.def_alloc),
-            step_low=params.get('step_low', base_cfg.step_low),
-            step_high=params.get('step_high', base_cfg.step_high),
-            max_def=base_cfg.max_def,
-            hongli_ratio=base_cfg.hongli_ratio,
-            rebalance_threshold=base_cfg.rebalance_threshold,
-            fee_rate=base_cfg.fee_rate,
-            anchor=base_cfg.anchor,
-            stop_loss=base_cfg.stop_loss,
-            recovery_weeks=base_cfg.recovery_weeks,
-            tiered_stop_loss=base_cfg.tiered_stop_loss,
-            l1_drawdown=base_cfg.l1_drawdown,
-            l1_defense=base_cfg.l1_defense,
-            l2_drawdown=base_cfg.l2_drawdown,
-            l2_defense=base_cfg.l2_defense,
-            l3_weekly_drop=base_cfg.l3_weekly_drop,
-            l3_down_weeks=base_cfg.l3_down_weeks,
-            l3_window=base_cfg.l3_window,
-            l2_recovery_weeks=base_cfg.l2_recovery_weeks,
-            l3_recovery_weeks=base_cfg.l3_recovery_weeks,
-            # Phase A-2: position-based tiered stop loss
-            ptiered_stop_loss=base_cfg.ptiered_stop_loss,
-            p_recovery_weeks=base_cfg.p_recovery_weeks,
-            p_l1_dd_low=base_cfg.p_l1_dd_low,
-            p_l1_dd_high=base_cfg.p_l1_dd_high,
-            p_l1_position=base_cfg.p_l1_position,
-            p_l2_dd_low=base_cfg.p_l2_dd_low,
-            p_l2_dd_high=base_cfg.p_l2_dd_high,
-            p_l2_position=base_cfg.p_l2_position,
-            p_l3_dd_threshold=base_cfg.p_l3_dd_threshold,
-            p_l3_position=base_cfg.p_l3_position,
-            max_single_alloc=base_cfg.max_single_alloc,
-            stateful_stop_loss=base_cfg.stateful_stop_loss,
-            score_margin=base_cfg.score_margin,
-            d4_enabled=base_cfg.d4_enabled,
-            # Phase A-1: hard-clamp D4 params
-            d4_momentum_window=min(params.get('momentum_window', base_cfg.d4_momentum_window), 8),
-            d4_momentum_threshold=min(max(params.get('momentum_threshold', base_cfg.d4_momentum_threshold), -0.07), 0.05),
-            d4_action=base_cfg.d4_action,
-            d4_min_candidates=base_cfg.d4_min_candidates,
-            d1_enabled=base_cfg.d1_enabled,
-            d1_lookback=base_cfg.d1_lookback,
-            d1_tq_low=base_cfg.d1_tq_low,
-            d1_tq_high=base_cfg.d1_tq_high,
-            d1_mom_w_low=base_cfg.d1_mom_w_low,
-            d1_mom_w_high=base_cfg.d1_mom_w_high,
-            d1_vol_w_low=base_cfg.d1_vol_w_low,
-            d1_vol_w_high=base_cfg.d1_vol_w_high,
-            d1_weight_sum=base_cfg.d1_weight_sum,
-            nav_path=base_cfg.nav_path,
-            pe_path=base_cfg.pe_path,
-            start_date=base_cfg.start_date,
-            end_date=base_cfg.end_date,
-            risk_free_rate=base_cfg.risk_free_rate,
-            # P1 Fix #2: 权重上限修复
-            overflow_to_defense_only=base_cfg.overflow_to_defense_only,
-            dynamic_weight_cap=base_cfg.dynamic_weight_cap,
-            dc_bull_cap=base_cfg.dc_bull_cap,
-            dc_normal_cap=base_cfg.dc_normal_cap,
-            dc_correction_cap=base_cfg.dc_correction_cap,
-            dc_crisis_cap=base_cfg.dc_crisis_cap,
-            # Market state fields
-            ms_bull_mom=base_cfg.ms_bull_mom,
-            ms_correction_mom=base_cfg.ms_correction_mom,
-            ms_crisis_mom=base_cfg.ms_crisis_mom,
-            ms_low_vol_pct=base_cfg.ms_low_vol_pct,
-            ms_mid_vol_pct=base_cfg.ms_mid_vol_pct,
-            ms_high_vol_pct=base_cfg.ms_high_vol_pct,
-            ms_shallow_dd=base_cfg.ms_shallow_dd,
-            ms_moderate_dd=base_cfg.ms_moderate_dd,
-            ms_deep_dd=base_cfg.ms_deep_dd,
-            ss_bull_l1=base_cfg.ss_bull_l1,
-            ss_bull_l1_def=base_cfg.ss_bull_l1_def,
-            ss_bull_l2=base_cfg.ss_bull_l2,
-            ss_bull_l2_def=base_cfg.ss_bull_l2_def,
-            ss_bull_recovery=base_cfg.ss_bull_recovery,
-            ss_normal_l1=base_cfg.ss_normal_l1,
-            ss_normal_l1_def=base_cfg.ss_normal_l1_def,
-            ss_normal_l2=base_cfg.ss_normal_l2,
-            ss_normal_l2_def=base_cfg.ss_normal_l2_def,
-            ss_normal_recovery=base_cfg.ss_normal_recovery,
-            ss_correction_l1=base_cfg.ss_correction_l1,
-            ss_correction_l1_def=base_cfg.ss_correction_l1_def,
-            ss_correction_l2=base_cfg.ss_correction_l2,
-            ss_correction_l2_def=base_cfg.ss_correction_l2_def,
-            ss_correction_recovery=base_cfg.ss_correction_recovery,
-            ss_crisis_l1=base_cfg.ss_crisis_l1,
-            ss_crisis_l1_def=base_cfg.ss_crisis_l1_def,
-            ss_crisis_l2=base_cfg.ss_crisis_l2,
-            ss_crisis_l2_def=base_cfg.ss_crisis_l2_def,
-            ss_crisis_recovery=base_cfg.ss_crisis_recovery,
-            # D5: Softmax-Weighted Allocation
-            softmax_enabled=base_cfg.softmax_enabled,
-            softmax_temperature=base_cfg.softmax_temperature,
-            softmax_min_candidates=base_cfg.softmax_min_candidates,
-            softmax_hard_top_n_fallback=base_cfg.softmax_hard_top_n_fallback,
-            # D6: Inv-Vol8 Weighted Allocation
-            inv_vol_enabled=base_cfg.inv_vol_enabled,
-            inv_vol_window=base_cfg.inv_vol_window,
-            # Regime-conditional softmax
-            softmax_regime_enabled=base_cfg.softmax_regime_enabled,
-            softmax_regime_temperature=base_cfg.softmax_regime_temperature,
-            # Regime classifier
-            regime_enabled=base_cfg.regime_enabled,
-            regime_data_path=base_cfg.regime_data_path,
-            regime_overrides=base_cfg.regime_overrides,
-            regime_3state=base_cfg.regime_3state,
-            # Constituent signals
-            constituent_signals_enabled=base_cfg.constituent_signals_enabled,
-            constituent_signals_path=base_cfg.constituent_signals_path,
-            cwm_weight=base_cfg.cwm_weight,
-            conc_weight=base_cfg.conc_weight,
-            cwm_window=base_cfg.cwm_window,
-        )
+        # Build override dict from params with appropriate clamping
+        overrides = {}
+        if 'mom_w' in params:
+            overrides['mom_w'] = min(max(params['mom_w'], 0.05), 1.50)
+        if 'vol_w' in params:
+            overrides['vol_w'] = min(max(params['vol_w'], 0.05), 1.50)
+        if 'def_alloc' in params:
+            overrides['def_alloc'] = params['def_alloc']
+        if 'step_low' in params:
+            overrides['step_low'] = params['step_low']
+        if 'step_high' in params:
+            overrides['step_high'] = params['step_high']
+        if 'momentum_window' in params:
+            # Phase A-1 hard-clamp: max 8
+            overrides['d4_momentum_window'] = min(params['momentum_window'], 8)
+        if 'momentum_threshold' in params:
+            # Phase A-1 clamp: [-0.07, 0.05]
+            overrides['d4_momentum_threshold'] = min(
+                max(params['momentum_threshold'], -0.07), 0.05
+            )
+
+        cfg = dc_replace(base_cfg, **overrides)
         result = run_backtest(cfg)
         if result.nav_series.empty:
             return None
@@ -730,124 +633,10 @@ def _apply_grid_overrides(
 ) -> StrategyConfig:
     """Apply parameter overrides to create a modified StrategyConfig.
 
-    Uses base_cfg defaults for all fields, overriding only the keys in overrides.
+    Uses dataclasses.replace() for forward-compatible config copying —
+    new StrategyConfig fields are automatically included.
     """
-    return StrategyConfig(
-        name=base_cfg.name,
-        version=base_cfg.version,
-        mom_w=overrides.get('mom_w', base_cfg.mom_w),
-        vol_w=overrides.get('vol_w', base_cfg.vol_w),
-        top_n=overrides.get('top_n', base_cfg.top_n),
-        score_margin=base_cfg.score_margin,
-        mom_window=base_cfg.mom_window,
-        vol_window=base_cfg.vol_window,
-        pe_window_years=base_cfg.pe_window_years,
-        def_alloc=overrides.get('def_alloc', base_cfg.def_alloc),
-        step_low=overrides.get('step_low', base_cfg.step_low),
-        step_high=overrides.get('step_high', base_cfg.step_high),
-        max_def=overrides.get('max_def', base_cfg.max_def),
-        hongli_ratio=base_cfg.hongli_ratio,
-        rebalance_threshold=overrides.get('rebalance_threshold', base_cfg.rebalance_threshold),
-        fee_rate=base_cfg.fee_rate,
-        anchor=base_cfg.anchor,
-        stop_loss=overrides.get('stop_loss', base_cfg.stop_loss),
-        recovery_weeks=base_cfg.recovery_weeks,
-        tiered_stop_loss=base_cfg.tiered_stop_loss,
-        l1_drawdown=base_cfg.l1_drawdown,
-        l1_defense=base_cfg.l1_defense,
-        l2_drawdown=base_cfg.l2_drawdown,
-        l2_defense=base_cfg.l2_defense,
-        l3_weekly_drop=base_cfg.l3_weekly_drop,
-        l3_down_weeks=base_cfg.l3_down_weeks,
-        l3_window=base_cfg.l3_window,
-        l2_recovery_weeks=base_cfg.l2_recovery_weeks,
-        l3_recovery_weeks=base_cfg.l3_recovery_weeks,
-        # Phase A-2: position-based tiered stop loss
-        ptiered_stop_loss=base_cfg.ptiered_stop_loss,
-        p_recovery_weeks=base_cfg.p_recovery_weeks,
-        p_l1_dd_low=base_cfg.p_l1_dd_low,
-        p_l1_dd_high=base_cfg.p_l1_dd_high,
-        p_l1_position=base_cfg.p_l1_position,
-        p_l2_dd_low=base_cfg.p_l2_dd_low,
-        p_l2_dd_high=base_cfg.p_l2_dd_high,
-        p_l2_position=base_cfg.p_l2_position,
-        p_l3_dd_threshold=base_cfg.p_l3_dd_threshold,
-        p_l3_position=base_cfg.p_l3_position,
-        max_single_alloc=base_cfg.max_single_alloc,
-        stateful_stop_loss=base_cfg.stateful_stop_loss,
-        d4_enabled=base_cfg.d4_enabled,
-        d4_momentum_window=overrides.get('momentum_window', base_cfg.d4_momentum_window),
-        d4_momentum_threshold=overrides.get('momentum_threshold', base_cfg.d4_momentum_threshold),
-        d4_action=base_cfg.d4_action,
-        d4_min_candidates=base_cfg.d4_min_candidates,
-        d1_enabled=base_cfg.d1_enabled,
-        d1_lookback=base_cfg.d1_lookback,
-        d1_tq_low=base_cfg.d1_tq_low,
-        d1_tq_high=base_cfg.d1_tq_high,
-        d1_mom_w_low=base_cfg.d1_mom_w_low,
-        d1_mom_w_high=base_cfg.d1_mom_w_high,
-        d1_vol_w_low=base_cfg.d1_vol_w_low,
-        d1_vol_w_high=base_cfg.d1_vol_w_high,
-        d1_weight_sum=base_cfg.d1_weight_sum,
-        nav_path=base_cfg.nav_path,
-        pe_path=base_cfg.pe_path,
-        start_date=base_cfg.start_date,
-        end_date=base_cfg.end_date,
-        risk_free_rate=base_cfg.risk_free_rate,
-        overflow_to_defense_only=base_cfg.overflow_to_defense_only,
-        dynamic_weight_cap=base_cfg.dynamic_weight_cap,
-        dc_bull_cap=base_cfg.dc_bull_cap,
-        dc_normal_cap=base_cfg.dc_normal_cap,
-        dc_correction_cap=base_cfg.dc_correction_cap,
-        dc_crisis_cap=base_cfg.dc_crisis_cap,
-        ms_bull_mom=base_cfg.ms_bull_mom,
-        ms_correction_mom=base_cfg.ms_correction_mom,
-        ms_crisis_mom=base_cfg.ms_crisis_mom,
-        ms_low_vol_pct=base_cfg.ms_low_vol_pct,
-        ms_mid_vol_pct=base_cfg.ms_mid_vol_pct,
-        ms_high_vol_pct=base_cfg.ms_high_vol_pct,
-        ms_shallow_dd=base_cfg.ms_shallow_dd,
-        ms_moderate_dd=base_cfg.ms_moderate_dd,
-        ms_deep_dd=base_cfg.ms_deep_dd,
-        ss_bull_l1=base_cfg.ss_bull_l1,
-        ss_bull_l1_def=base_cfg.ss_bull_l1_def,
-        ss_bull_l2=base_cfg.ss_bull_l2,
-        ss_bull_l2_def=base_cfg.ss_bull_l2_def,
-        ss_bull_recovery=base_cfg.ss_bull_recovery,
-        ss_normal_l1=base_cfg.ss_normal_l1,
-        ss_normal_l1_def=base_cfg.ss_normal_l1_def,
-        ss_normal_l2=base_cfg.ss_normal_l2,
-        ss_normal_l2_def=base_cfg.ss_normal_l2_def,
-        ss_normal_recovery=base_cfg.ss_normal_recovery,
-        ss_correction_l1=base_cfg.ss_correction_l1,
-        ss_correction_l1_def=base_cfg.ss_correction_l1_def,
-        ss_correction_l2=base_cfg.ss_correction_l2,
-        ss_correction_l2_def=base_cfg.ss_correction_l2_def,
-        ss_correction_recovery=base_cfg.ss_correction_recovery,
-        ss_crisis_l1=base_cfg.ss_crisis_l1,
-        ss_crisis_l1_def=base_cfg.ss_crisis_l1_def,
-        ss_crisis_l2=base_cfg.ss_crisis_l2,
-        ss_crisis_l2_def=base_cfg.ss_crisis_l2_def,
-        ss_crisis_recovery=base_cfg.ss_crisis_recovery,
-        softmax_enabled=base_cfg.softmax_enabled,
-        softmax_temperature=base_cfg.softmax_temperature,
-        softmax_min_candidates=base_cfg.softmax_min_candidates,
-        softmax_hard_top_n_fallback=base_cfg.softmax_hard_top_n_fallback,
-        softmax_regime_enabled=base_cfg.softmax_regime_enabled,
-        softmax_regime_temperature=base_cfg.softmax_regime_temperature,
-        regime_enabled=base_cfg.regime_enabled,
-        regime_data_path=base_cfg.regime_data_path,
-        regime_overrides=base_cfg.regime_overrides,
-        regime_3state=base_cfg.regime_3state,
-        constituent_signals_enabled=base_cfg.constituent_signals_enabled,
-        constituent_signals_path=base_cfg.constituent_signals_path,
-        cwm_weight=base_cfg.cwm_weight,
-        conc_weight=base_cfg.conc_weight,
-        cwm_window=base_cfg.cwm_window,
-        # D6: Inv-Vol8 Weighted Allocation
-        inv_vol_enabled=base_cfg.inv_vol_enabled,
-        inv_vol_window=base_cfg.inv_vol_window,
-    )
+    return dc_replace(base_cfg, **overrides)
 
 
 def build_full_grid(config_path: str) -> list[GridPointConfig]:
