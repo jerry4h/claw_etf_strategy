@@ -50,8 +50,9 @@ def run_ablation(cfg, weekly=None, disable_layer3=False, disable_layer4=False):
     kw = {}
     if disable_layer3:
         kw['crisis_corr_max_boost'] = 0.0
-        kw['step_low'] = 0.0
-        kw['step_high'] = 0.0
+        # 正确关闭 L3：step_low=+∞ 使 nasdaq_vol < step_low 永远成立 -> 防御恒等于 base。
+        # （旧写法 step_low=step_high=0 会把防御钉死在 max_def，并非“关闭”）
+        kw['step_low'] = float('inf')
     if disable_layer4:
         kw['def_alloc'] = 0.0
         kw['max_def'] = 0.0

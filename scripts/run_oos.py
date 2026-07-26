@@ -1,7 +1,7 @@
 """真样本外(OOS)验证 — 冻结训练窗选参，测试窗不重拟合。
 
 方法：
-  - 训练窗 2013-05-17 ~ 2023-12-31：在活跃自由参数网格上选最优（最高 Sharpe，DD<15% 约束）
+  - 训练窗 2013-05-17 ~ 2023-12-31：在活跃自由参数网格上选最优（最高 DSR，按网格 N 试次矫正以去选择偏差；DD<15% 约束）
   - 测试窗 2024-01-01 ~ 2026-07-25：直接用训练窗选出的最优参数跑，绝不重拟合
   - 同时报告 FULL(全期, 最优参数) 与 BASELINE(生产参数, 全期) 作参照
 
@@ -17,6 +17,7 @@ sys.path.insert(0, str(PROJECT))
 
 from src.strategy import load_config
 from src.backtest import run_backtest
+from src.robustness import compute_dsr
 
 cfg = load_config(PROJECT / 'config' / 'strategy_v3_1.yaml')
 
@@ -46,8 +47,10 @@ for vals in combos:
     m = res.metrics
     if m['max_drawdown'] >= 0.15:
         continue
-    if best is None or m['sharpe_ratio'] > best['sharpe']:
-        best = {'kw': kw, 'sharpe': m['sharpe_ratio'],
+    # 选参去偏：用网格 N 试次对 Sharpe 做 DSR 矫正，消除 243 选 1 的多重检验选择偏差
+    dsr = compute_dsr(m['sharpe_ratio'], n_trials=len(combos), n_obs=len(res.nav_series))
+    if best is None or dsr > best['dsr']:
+        best = {'kw': kw, 'sharpe': m['sharpe_ratio'], 'dsr': dsr,
                 'ann': m['annual_return'], 'dd': m['max_drawdown'],
                 'n': len(res.nav_series)}
 
@@ -60,8 +63,9 @@ if best is None:
         if res.nav_series.empty:
             continue
         m = res.metrics
-        if best is None or m['sharpe_ratio'] > best['sharpe']:
-            best = {'kw': kw, 'sharpe': m['sharpe_ratio'],
+        dsr = compute_dsr(m['sharpe_ratio'], n_trials=len(combos), n_obs=len(res.nav_series))
+        if best is None or dsr > best['dsr']:
+            best = {'kw': kw, 'sharpe': m['sharpe_ratio'], 'dsr': dsr,
                     'ann': m['annual_return'], 'dd': m['max_drawdown'],
                     'n': len(res.nav_series)}
 

@@ -301,7 +301,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     # 杜绝静默回退到错误默认值（如 max_single_alloc=1.0 关掉风控）。
     _critical = {
         'scoring': ['mom_w', 'vol_w'],
-        'selection': ['top_n', 'score_margin'],
+        'selection': ['top_n', 'score_margin', 'dynamic_margin_sensitivity'],
         'rebalance': ['threshold'],
         'defense': ['def_alloc', 'step_low', 'step_high'],
         'allocation': ['max_single_alloc'],
@@ -323,7 +323,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         top_n=selection.get('top_n', 2),
         score_margin=selection.get('score_margin', 0.0),
         trend_confirm_weeks=selection.get('trend_confirm_weeks', 0),
-        dynamic_margin_sensitivity=selection.get('dynamic_margin_sensitivity', 0.0),
+        dynamic_margin_sensitivity=selection.get('dynamic_margin_sensitivity', 1.0),
         dynamic_margin_window=selection.get('dynamic_margin_window', 4),
         mom_window=factors_cfg.get('mom_window', 6),
         vol_window=factors_cfg.get('vol_window', 11),
@@ -554,6 +554,11 @@ def calculate_defense_ratio(
 
     if pd.isna(nasdaq_vol):
         return base
+
+    # 退化保护：step_high == step_low 时 (nasdaq_vol - step_low)/(step_high - step_low)
+    # 分母为零得到 NaN；按是否越过阈值返回 0/1 的 frac，避免防御比率变 NaN 传播。
+    if config.step_high == config.step_low:
+        return config.max_def if nasdaq_vol >= config.step_low else base
 
     if nasdaq_vol < config.step_low:
         return base

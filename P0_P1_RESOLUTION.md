@@ -63,9 +63,9 @@ README 中 DSR 行已从「🟢 >95% 真实 alpha」更正为「🟡 已修正�
 
 **问题**：旧 `run_mc_survival_test` 把 **D4 已禁用的 no-op 参数**也纳入扰动，虚增了「鲁棒性维度」，生存率被高估。
 
-**修正**（`src/robustness.py`）：只扰动 7 个**真正生效**的活跃参数（`mom_w, vol_w, def_alloc, step_low, step_high, mom_window, vol_window`），剔除 D4 no-op；生存标准收紧为 `Sharpe≥1.0 且 DD<10%`；日志打印 `effective_dims=7`。
+**修正**（`src/robustness.py`）：只扰动**真正生效**的活跃参数（7 个原核心 `mom_w, vol_w, def_alloc, step_low, step_high, mom_window, vol_window` + 4 个补全的 `score_margin, rebalance_threshold, max_single_alloc, dynamic_margin_sensitivity`，共 **11 维**），剔除 D4 no-op；生存标准收紧为 `Sharpe≥1.0 且 DD<10%`；日志打印 `effective_dims=11`。
 
-README 中 MC 行已从「🟢 100%」更正为「🟡 见鲁棒性报告：仅扰动 7 个生效参数，剔除 D4 no-op」。
+README 中 MC 行已从「🟢 100%」更正为「🟡 见鲁棒性报告：仅扰动 11 个生效参数，剔除 D4 no-op」。
 
 ---
 
@@ -73,8 +73,8 @@ README 中 MC 行已从「🟢 100%」更正为「🟡 见鲁棒性报告：仅�
 
 ### #5 kimi 审计脚本引擎复用（R5）
 `scripts/kimi_audit_verification.py` **重写**：删除重复实现的回测逻辑，改为直接委托真实 `run_backtest`，并补上缺失的 `sys.path.insert`。结果现在与引擎一致：
-- **汇率对冲成本敏感性**：5 档（0~3%）Sharpe 全为 1.610 —— 诚实结论：**对冲成本是 no-op**（纳指 ETF 实际仓位 ≈ 0，扣费无从扣）。旧版本报的 1.553 是错的。
-- **防御层消融**：禁用 L3 → 1.015，禁用 L4 → 1.337，全禁 → 1.310；Layer 3 独立贡献 **+0.595 Sharpe / DD 压缩 1.39pp**，Layer 4 贡献 **+0.272 / 4.04pp**。
+- **汇率对冲成本敏感性**：字段已真正接线（此前是只声明不消费的死字段）。`hedge_cost_weekly=0.002` 时年化收益由 17.05% 降至 14.46%（−2.59%），说明对冲成本**真实生效**；生产默认 `0` 故实盘仍不扣费，但参数已可用。旧版本报的 1.553 是错的。
+- **防御层消融**（修正后语义）：禁用 L3（正确写法 `step_low=+∞`，防御恒等于 base）→ 1.469，禁用 L4 → 1.337，全禁 → 1.310；Layer 3 独立贡献 **+0.140 Sharpe / DD 压缩 0.38pp**，Layer 4 贡献 **+0.272 / 4.04pp**。⚠️ 早期报告写的「L3 +0.595」是把防御钉死在 `max_def` 的错误基线，已更正。
 
 ### #6 依赖锁定
 新增 `requirements.lock.txt`（131 行，`pip freeze` 固定版本），杜绝环境漂移。
@@ -83,7 +83,7 @@ README 中 MC 行已从「🟢 100%」更正为「🟡 见鲁棒性报告：仅�
 `src/strategy.py`：
 - dataclass 默认值对齐生产 YAML（`mom_w=1.0, vol_w=1.10, rebalance_threshold=0.025, score_margin=0.02, dynamic_margin_sensitivity=1.0, step_low=0.15, max_single_alloc=0.40`），新增 `vol_ddof`、`hedge_cost_weekly` 字段。
 - `load_config` 改为**严格模式**：缺失关键键（`scoring.mom_w/vol_w`、`selection.top_n/score_margin`、`rebalance.threshold`、`defense.def_alloc/step_low/step_high`、`allocation.max_single_alloc`）直接抛 `ValueError`。
-- `backtest.py` 两处 vol 改用 `config.vol_ddof`，并在分红前注入 `hedge_cost_weekly`（支撑 #5 的对冲成本测试）。
+- `vol_ddof` 现已沿**完整因子链**接线：`backtest.py` 的 stateful 路径 + `factors.py calculate_volatility` + `engine_core.compute_inv_vol_weights` 均改用 `config.vol_ddof`（实测 ddof=0 vs 1 改变 Sharpe +0.006，确认为活字段）；并在周收益前注入 `config.hedge_cost_weekly`（支撑 #5 的对冲成本测试）。
 
 ### #8 死代码清理（legacy）
 `src/legacy/*`（9 个文件）整体迁移至 `experiments/legacy_disabled/`，`src/legacy` 目录已删除；内部 `src.legacy` 引用已重定向。138 测试全绿，无残留 import 断裂。
@@ -92,9 +92,9 @@ README 中 MC 行已从「🟢 100%」更正为「🟡 见鲁棒性报告：仅�
 
 ## 5. 可选改进项（需你确认，未自动应用）
 
-训练窗选出参数 `def_alloc=0.30 / step_low=0.10 / step_high=0.30`：
-- 全期 Sharpe 1.670（vs 生产 1.610），但年化 15.93%（vs 17.05%）；
-- OOS 不重拟合 Sharpe 1.714，验证有效；
+训练窗（DSR 去偏选参）选出参数 `mom_w=0.8 / vol_w=0.9 / def_alloc=0.20 / step_low=0.10 / step_high=0.30`：
+- 训练窗 Sharpe 1.513（DSR 最大化，已对 243 试次多重检验矫正）；
+- OOS 不重拟合 Sharpe 1.796，验证有效（无过拟合）；
 - 风险点：`step_low=0.10` 低于既往「`>=0.12` 安全」注释边界。
 
 **建议（三选一）：**

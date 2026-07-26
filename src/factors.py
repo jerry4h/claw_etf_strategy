@@ -37,7 +37,8 @@ def calculate_momentum(
 
 def calculate_volatility(
     weekly_nav: pd.DataFrame,
-    window: int = 20
+    window: int = 20,
+    ddof: int = 0
 ) -> pd.DataFrame:
     """
     20 周年化波动率。
@@ -60,7 +61,7 @@ def calculate_volatility(
 
     volatility = np.full((n_weeks, n_etfs), np.nan)
     for i in range(window, n_weeks):
-        volatility[i] = np.std(w_rets[i - window:i], axis=0, ddof=0) * np.sqrt(52)
+        volatility[i] = np.std(w_rets[i - window:i], axis=0, ddof=ddof) * np.sqrt(52)
 
     return pd.DataFrame(volatility, index=weekly_nav.index, columns=weekly_nav.columns)
 
@@ -163,10 +164,11 @@ def compute_all_factors(
 
     mom_window = config.get('factors', {}).get('mom_window', 6)
     vol_window = config.get('factors', {}).get('vol_window', 11)
+    vol_ddof = config.get('factors', {}).get('vol_ddof', 0)
     pe_window_years = config.get('factors', {}).get('pe_window_years', 5)
 
     momentum = calculate_momentum(weekly_nav, window=mom_window)
-    volatility = calculate_volatility(weekly_nav, window=vol_window)
+    volatility = calculate_volatility(weekly_nav, window=vol_window, ddof=vol_ddof)
 
     result = {
         'momentum': momentum,

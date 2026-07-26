@@ -94,6 +94,7 @@ def compute_inv_vol_weights(
     indices: list[int],
     i: int,
     window: int,
+    vol_ddof: int = 0,
 ) -> list[float]:
     """
     Inverse-volatility weights for selected ETFs.
@@ -124,7 +125,7 @@ def compute_inv_vol_weights(
         if len(rets) < 3:
             inv_vols.append(1.0 / 0.20)  # default vol = 20%
         else:
-            vol = float(np.std(rets, ddof=0) * math.sqrt(52))
+            vol = float(np.std(rets, ddof=vol_ddof) * math.sqrt(52))
             inv_vols.append(1.0 / max(vol, 0.05))
 
     total_inv = sum(inv_vols)

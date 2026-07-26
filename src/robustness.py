@@ -154,8 +154,7 @@ def compute_dsr(
     说明：样本量大时 SR 估计标准误极小，DSR≈1.0 反映的是*真实*统计显著，
     而非公式钳制——这与旧实现（E[max] 算出负数→z 爆炸→DSR 钳 1.0）不同。
     """
-    euler = 0.5772156649
-    n = max(int(n_obs) - 1, 1)
+    n = max(int(n_obs), 1)
     # Sharpe 估计量的方差 (Mertens 2002)；保持非负
     variance = 1.0 + 0.5 * sharpe**2 - skew * sharpe + (kurtosis - 3.0) / 4.0 * sharpe**2
     if variance <= 0:
@@ -386,7 +385,8 @@ def _mc_single_worker(args: tuple) -> dict | None:
     try:
         overrides = {}
         for key in ('mom_w', 'vol_w', 'def_alloc', 'step_low', 'step_high',
-                    'mom_window', 'vol_window'):
+                    'mom_window', 'vol_window', 'score_margin', 'rebalance_threshold',
+                    'max_single_alloc', 'dynamic_margin_sensitivity'):
             if key in params:
                 overrides[key] = params[key]
         cfg = dc_replace(base_cfg, **overrides)
@@ -428,6 +428,11 @@ def run_mc_survival_test(
         'step_high': (float(base_cfg.step_high), 0.05, 0.60),
         'mom_window': (float(base_cfg.mom_window), 1, 12),
         'vol_window': (float(base_cfg.vol_window), 1, 26),
+        # L2: 补全其余活跃自由参数（之前缺漏，导致敏感度被低估）
+        'score_margin': (float(base_cfg.score_margin), 0.0, 0.10),
+        'rebalance_threshold': (float(base_cfg.rebalance_threshold), 0.005, 0.10),
+        'max_single_alloc': (float(base_cfg.max_single_alloc), 0.10, 0.60),
+        'dynamic_margin_sensitivity': (float(base_cfg.dynamic_margin_sensitivity), 0.0, 2.0),
     }
 
     if mode == 'oat':

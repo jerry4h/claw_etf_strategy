@@ -126,6 +126,7 @@ def run_backtest(
         'factors': {
             'mom_window': config.mom_window,
             'vol_window': config.vol_window,
+            'vol_ddof': config.vol_ddof,
             'pe_window_years': config.pe_window_years,
         }
     }
@@ -360,8 +361,8 @@ def run_backtest(
 
             # nasdaq_vol_pct: 纳指20w波动率在2年(104周)窗口内的百分位
             if i >= 20:
-                current_vol = np.std(w_rets[i-20:i, NASDAQ_IDX], ddof=0) * np.sqrt(52)
-                vol_history = [np.std(w_rets[max(0, j-20):j, NASDAQ_IDX], ddof=0) * np.sqrt(52)
+                current_vol = np.std(w_rets[i-20:i, NASDAQ_IDX], ddof=config.vol_ddof) * np.sqrt(52)
+                vol_history = [np.std(w_rets[max(0, j-20):j, NASDAQ_IDX], ddof=config.vol_ddof) * np.sqrt(52)
                                for j in range(max(20, i-104), i+1)]
                 nasdaq_vol_pct = sum(1 for v in vol_history if v < current_vol) / len(vol_history)
             else:
@@ -454,7 +455,7 @@ def run_backtest(
             off_weights = None
             if config.inv_vol_enabled and selected_off:
                 off_weights = compute_inv_vol_weights(
-                    w_rets, selected_off, i, config.inv_vol_window
+                    w_rets, selected_off, i, config.inv_vol_window, config.vol_ddof
                 )
 
             selected_names = [etf_names[j] for j in selected_off] if selected_off else []
@@ -494,6 +495,9 @@ def run_backtest(
             for j in range(n_etfs)
             if not np.isnan(w_rets[i, j])
         )
+        # 汇率对冲成本（仅当配置启用）：按纳指仓位比例计提周度成本
+        if config.hedge_cost_weekly > 0:
+            wret -= alloc[NASDAQ_IDX] * config.hedge_cost_weekly
         nav *= (1 + wret - fee_cost)
         peak = max(peak, nav)
 
