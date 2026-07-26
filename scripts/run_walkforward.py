@@ -232,7 +232,7 @@ def main():
     p.add_argument('--json', action='store_true', help='JSON 输出')
     args = p.parse_args()
 
-    cfg = load_config(PROJECT / 'config/strategy_v3_0_final.yaml')
+    cfg = load_config(PROJECT / 'config/strategy_v3_1.yaml')
 
     if args.rolling:
         result = rolling_wf(cfg, n_windows=args.windows)

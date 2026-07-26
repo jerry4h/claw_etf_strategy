@@ -29,7 +29,7 @@ from src.data_loader import ETFS, load_nav_data, resample_weekly
 
 
 def compute_navs():
-    cfg = load_config(PROJECT / 'config/strategy_v3_0_final.yaml')
+    cfg = load_config(PROJECT / 'config/strategy_v3_1.yaml')
 
     # 策略净值（官方引擎）
     r = run_backtest(cfg)

@@ -1,6 +1,6 @@
 """Strategy logic -- scoring, selection, defense ratio, allocation, rebalance/stop-loss checks.
 
-v3.0 Final (C1 optimal parameters):
+v3.1 (C1 optimal + dynamic margin):
   - ENABLED:  inv_vol_allocation (D6), max_single_alloc cap (D2B), overflow_to_defense_only
   - DISABLED: tiered stop loss (D1), ptiered stop loss (Phase A-2), stateful stop loss,
               individual momentum filter (D4), softmax allocation (D5),
@@ -23,8 +23,8 @@ class StrategyConfig:
     """Strategy parameters loaded from YAML."""
 
     # 策略标识
-    name: str = "虾池ETF轮动 v3.0"
-    version: str = "3.0"
+    name: str = "虾池ETF轮动 v3.1"
+    version: str = "3.1"
 
     # 评分权重
     mom_w: float = 0.35       # 4周动量权重

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-虾池ETF轮动 v3.0 — 实时调仓计算
+虾池ETF轮动 v3.1 — 实时调仓计算
 =================================
 用法:
   python scripts/rebalance_live.py                     # 最新数据 → 下周一调仓
@@ -40,7 +40,7 @@ from src.engine_core import (
     apply_trend_confirmation,
 )
 
-cfg = load_config(PROJECT / 'config/strategy_v3_0_final.yaml')
+cfg = load_config(PROJECT / 'config/strategy_v3_1.yaml')
 MOM_W = cfg.mom_w
 VOL_W = cfg.vol_w
 TOP_N = cfg.top_n
@@ -259,7 +259,7 @@ def print_rebalance(prev_al, curr_al):
             print(f"  {e:<10s} {pw:>6.1f}% {'0.0':>6}% {-pw:>+6.1f}% {'卖出':>8s}")
 
 def main():
-    p = argparse.ArgumentParser(description='虾池ETF轮动 v3.0 实时调仓')
+    p = argparse.ArgumentParser(description='虾池ETF轮动 v3.1 实时调仓')
     p.add_argument('csv', nargs='?', default=cfg.nav_path, help='CSV路径')
     p.add_argument('--verify', action='store_true', help='全量回测 vs 引擎验证')
     p.add_argument('--week', type=str, default=None, help='指定日期 YYYY-MM-DD')
@@ -380,7 +380,7 @@ def main():
         return
 
     print("=" * 70)
-    print(f" 虾池ETF轮动 v3.0  实时调仓")
+    print(f" 虾池ETF轮动 v3.1  实时调仓")
     print("=" * 70)
     print(f" 数据: {a.csv} | 基准: {df.index[idx].date()} | 调仓: 下周一")
     print(f" 范围: {df.index[0].date()} ~ {df.index[-1].date()} ({len(df)}周)")

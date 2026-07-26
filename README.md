@@ -1,4 +1,4 @@
-# 虾池ETF轮动策略 v3.0 — 中证500ETF版
+# 虾池ETF轮动策略 v3.1 — 中证500ETF版
 
 基于 **5只ETF** 的周频动量轮动策略，全连续/零门控/四层架构（含 DefAlloc）。
 **Sharpe 1.610 / 年化 17.05% / 最大回撤 6.97%**（2013-08 ~ 2026-07，665周）。
@@ -90,7 +90,7 @@ T 是领域选择，非超参数：
 claw_etf_strategy/
 ├── README.md
 ├── config/
-│   └── strategy_v3_0_final.yaml         # 最终版配置（唯一）
+│   └── strategy_v3_1.yaml               # 当前配置
 ├── src/
 │   ├── backtest.py                      # 回测引擎
 │   ├── strategy.py                      # 策略逻辑 + 配置加载

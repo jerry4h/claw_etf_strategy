@@ -36,7 +36,7 @@ STRESS_WINDOWS = [
 
 
 def main():
-    cfg = load_config(PROJECT / "config" / "strategy_v3_0_final.yaml")
+    cfg = load_config(PROJECT / "config" / "strategy_v3_1.yaml")
     result = run_backtest(cfg)
     nav_series = result.nav_series
 

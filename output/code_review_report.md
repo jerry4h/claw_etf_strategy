@@ -1,4 +1,4 @@
-# 虾池ETF轮动策略 v3.0 — 整体审视报告（终版）
+# 虾池ETF轮动策略 v3.1 — 整体审视报告
 
 **审查日期**: 2026-07-22（更新: 2026-07-25 指标刷新 + WF 修正）
 **审查范围**: /home/ubuntu/claw_etf_strategy 全量代码、配置、数据、文档
@@ -152,10 +152,10 @@
 | 文档 | 状态 | 说明 |
 |------|------|------|
 | README.md | ✅ 已更新 | 665周、DSR n_trials=30、WF=55.6%（可复现值）、目录结构含 tests/ |
-| output/report_v3_0.md | ⚠️ 待更新 | 旧指标（664周、342防御周、Sharpe 1.522）需刷新 |
+| output/report_v3_1.md | ✅ 已更新 | 665周、Sharpe 1.610，含年度分解和净值曲线 |
 | output/code_review_report.md | ✅ 已更新 | 指标更新至 2026-07-25（Sharpe 1.610, 665周） |
 | docs/etf_data_build.md | ✅ 已更新 | 添加注释说明 generate 脚本已不存在 |
-| config/strategy_v3_0_final.yaml | ✅ 一致 | 参数与代码/README 一致 |
+| config/strategy_v3_1.yaml | ✅ 一致 | 参数与代码/README 一致 |
 | .hermes/ | ℹ️ 历史记录 | 开发过程决策记录，无需更新 |
 
 ---

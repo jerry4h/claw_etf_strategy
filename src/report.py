@@ -113,7 +113,7 @@ def chart_nav_curve(result: BacktestResult) -> str:
     ax.plot(df.index, df['nav'], color='#2196F3', linewidth=1.2, label='Strategy NAV')
     ax.fill_between(df.index, 1.0, df['nav'], alpha=0.1, color='#2196F3')
     ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=0.8, alpha=0.5)
-    ax.set_title('虾池ETF轮动策略 v3.0 — 净值曲线', fontsize=14)
+    ax.set_title('虾池ETF轮动策略 v3.1 — 净值曲线', fontsize=14)
     ax.set_ylabel('Net Asset Value')
     ax.legend(loc='upper left')
     ax.grid(True, alpha=0.3)

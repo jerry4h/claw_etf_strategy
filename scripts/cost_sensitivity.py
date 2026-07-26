@@ -25,7 +25,7 @@ def main():
         help='逗号分隔的费率列表（单边，默认: 0.5bp~20bp）'
     )
     parser.add_argument(
-        '--config', type=str, default='config/strategy_v3_0_final.yaml',
+        '--config', type=str, default='config/strategy_v3_1.yaml',
         help='策略配置文件路径'
     )
     args = parser.parse_args()
