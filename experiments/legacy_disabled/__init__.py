@@ -2,21 +2,21 @@
 backward compatibility, testing, and potential future re-enablement.
 
 All public symbols are re-exported here for convenient access:
-    from src.legacy import MarketState, check_stop_loss_tiered, ...
+    from experiments.legacy_disabled import MarketState, check_stop_loss_tiered, ...
 """
 
-from src.legacy.tiered_stop import check_stop_loss_tiered
-from src.legacy.ptiered_stop import check_stop_loss_ptiered
-from src.legacy.market_state import (
+from experiments.legacy_disabled.tiered_stop import check_stop_loss_tiered
+from experiments.legacy_disabled.ptiered_stop import check_stop_loss_ptiered
+from experiments.legacy_disabled.market_state import (
     MarketState,
     detect_market_state,
     check_stop_loss_stateful,
 )
-from src.legacy.d4_filter import apply_individual_momentum_filter
-from src.legacy.softmax import compute_softmax_allocation
-from src.legacy.inv_vol import apply_inv_vol_allocation
-from src.legacy.dynamic_weights import compute_dynamic_weights
-from src.legacy.constituent_signals import (
+from experiments.legacy_disabled.d4_filter import apply_individual_momentum_filter
+from experiments.legacy_disabled.softmax import compute_softmax_allocation
+from experiments.legacy_disabled.inv_vol import apply_inv_vol_allocation
+from experiments.legacy_disabled.dynamic_weights import compute_dynamic_weights
+from experiments.legacy_disabled.constituent_signals import (
     load_constituent_signals,
     build_constituent_lookup,
     apply_constituent_bonus,

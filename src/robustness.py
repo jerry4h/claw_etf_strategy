@@ -141,44 +141,29 @@ def compute_dsr(
     sharpe: float,
     n_trials: int,
     n_obs: int,
-    skew: float,
-    kurtosis: float
+    skew: float = 0.0,
+    kurtosis: float = 3.0
 ) -> float:
-    """计算 Deflated Sharpe Ratio (Bailey & López de Prado, 2014).
+    """Deflated Sharpe Ratio (Bailey & Lopez de Prado, 2014).
 
-    Args:
-        sharpe: 观测到的年化 Sharpe
-        n_trials: 尝试的变体数（多重测试矫正）
-        n_obs: 周收益观测数
-        skew: 周收益偏度
-        kurtosis: 周收益峰度
+    DSR = Phi( (SR_hat - E[max SR_N]) / sigma_hat )
+    其中 sigma_hat = SE(SR_hat) (Mertens, 2002)，
+    E[max SR_N] = sqrt(2*ln N) * sigma_hat 是 N 次独立试验的期望最大 Sharpe
+    （多重测试矫正项）。方差项下限钳到非负，使矫正项不会在高 SR 时崩成负。
 
-    Returns:
-        DSR 概率 (0~1)
+    说明：样本量大时 SR 估计标准误极小，DSR≈1.0 反映的是*真实*统计显著，
+    而非公式钳制——这与旧实现（E[max] 算出负数→z 爆炸→DSR 钳 1.0）不同。
     """
     euler = 0.5772156649
-
-    # Expected max SR under null (N independent trials)
-    # E[max(SR_N)] ≈ √(2·ln(N)) · (1 − γ·SR̂ + (γ²−1)/4 · SR̂²)
-    e_max_sr = np.sqrt(2 * np.log(max(n_trials, 2))) * (
-        1 - euler * sharpe + (euler**2 - 1) / 4 * sharpe**2
-    )
-
-    # Standard error of SR
-    # SE(SR̂) ≈ √((1 + 0.5·SR̂² − γ₃·SR̂ + (γ₄−3)/4 · SR̂²) / n_obs)
-    variance = (1 + 0.5 * sharpe**2 - skew * sharpe +
-                (kurtosis - 3) / 4 * sharpe**2)
+    n = max(int(n_obs) - 1, 1)
+    # Sharpe 估计量的方差 (Mertens 2002)；保持非负
+    variance = 1.0 + 0.5 * sharpe**2 - skew * sharpe + (kurtosis - 3.0) / 4.0 * sharpe**2
     if variance <= 0:
-        # Degenerate case: very high kurtosis or negative variance
-        variance = 1.0 / n_obs  # fallback to baseline SE
-    se_sr = np.sqrt(variance / n_obs)
-
-    # DSR = P[SR > E[max(SR_N)]] = 1 - Φ((E[max] - SR̂) / SE)
+        variance = 1.0 / n
+    se_sr = np.sqrt(variance / n)                                     # sigma_hat: SE of SR_hat
+    e_max_sr = np.sqrt(2.0 * np.log(max(int(n_trials), 2))) * se_sr   # deflated null max
     z_stat = (sharpe - e_max_sr) / se_sr
-    dsr = float(_norm_cdf(z_stat))
-
-    return dsr
-
+    return float(min(max(_norm_cdf(z_stat), 0.0), 1.0))
 
 # ── PSS（参数稳定性评分, v4 替代 PBO）─────────────────────────────────────────
 
@@ -395,32 +380,15 @@ TOP_N_LEVELS = [1, 2, 3]
 def _mc_single_worker(args: tuple) -> dict | None:
     """Single MC run worker (module-level for multiprocessing).
 
-    Uses dataclasses.replace() for forward-compatible config copying —
-    new StrategyConfig fields are automatically included.
+    仅覆盖*活跃*配置字段（跳过已关闭模块的 no-op 参数）。
     """
     params, base_cfg = args
     try:
-        # Build override dict from params with appropriate clamping
         overrides = {}
-        if 'mom_w' in params:
-            overrides['mom_w'] = min(max(params['mom_w'], 0.05), 1.50)
-        if 'vol_w' in params:
-            overrides['vol_w'] = min(max(params['vol_w'], 0.05), 1.50)
-        if 'def_alloc' in params:
-            overrides['def_alloc'] = params['def_alloc']
-        if 'step_low' in params:
-            overrides['step_low'] = params['step_low']
-        if 'step_high' in params:
-            overrides['step_high'] = params['step_high']
-        if 'momentum_window' in params:
-            # Phase A-1 hard-clamp: max 8
-            overrides['d4_momentum_window'] = min(params['momentum_window'], 8)
-        if 'momentum_threshold' in params:
-            # Phase A-1 clamp: [-0.07, 0.05]
-            overrides['d4_momentum_threshold'] = min(
-                max(params['momentum_threshold'], -0.07), 0.05
-            )
-
+        for key in ('mom_w', 'vol_w', 'def_alloc', 'step_low', 'step_high',
+                    'mom_window', 'vol_window'):
+            if key in params:
+                overrides[key] = params[key]
         cfg = dc_replace(base_cfg, **overrides)
         result = run_backtest(cfg)
         if result.nav_series.empty:
@@ -442,90 +410,60 @@ def run_mc_survival_test(
     n_jobs: int = -1,
     mode: str = 'mc',
 ) -> tuple[float, list[dict]]:
-    """Monte Carlo 参数扰动生存率测试 (v2)。
+    """Monte Carlo 参数扰动生存率测试 (v2, 仅扰动活跃参数)。
 
-    对 7 个核心参数同时随机扰动，运行 N 次回测。
-    支持两种模式：
-      - 'mc': 全参数同时随机扰动 (默认)
-      - 'oat': One-At-a-Time 多级敏感度分析
-
-    Args:
-        config_path: 策略配置 YAML 路径
-        n_runs: Monte Carlo 运行次数 (默认 400)
-        perturbation: 扰动比例（默认 0.15 = ±15%）
-        n_jobs: 并行进程数（-1 = 全部 CPU）
-        mode: 'mc' 或 'oat'
-
-    Returns:
-        (survival_rate, mc_details): 生存率 (年化>10% AND DD<15%) 和每次运行的详细结果
+    只扰动当前配置下*真正生效*的自由参数；已关闭模块（如 D4 单ETF动量
+    过滤）的参数不再纳入扰动，避免“100% 生存”被 no-op 参数注水。
     """
     project_root = Path(__file__).resolve().parent.parent
     config_abs = project_root / config_path if not Path(config_path).is_absolute() else Path(config_path)
     base_cfg = load_config(config_abs)
 
-    # 生成随机参数扰动组合
-    rng = np.random.RandomState(42)
-
-    baseline_params = {
-        'mom_w': base_cfg.mom_w,
-        'vol_w': base_cfg.vol_w,
-        'def_alloc': base_cfg.def_alloc,
-        'step_high': base_cfg.step_high,
-        'step_low': base_cfg.step_low,
-        'momentum_window': base_cfg.d4_momentum_window,
-        'momentum_threshold': base_cfg.d4_momentum_threshold,
+    # 活跃参数 = 当前管线实际使用的自由参数（排除已关闭模块的 no-op 参数）
+    active_params = {
+        'mom_w': (float(base_cfg.mom_w), 0.05, 1.50),
+        'vol_w': (float(base_cfg.vol_w), 0.05, 1.50),
+        'def_alloc': (float(base_cfg.def_alloc), 0.05, 0.60),
+        'step_low': (float(base_cfg.step_low), 0.05, 0.60),
+        'step_high': (float(base_cfg.step_high), 0.05, 0.60),
+        'mom_window': (float(base_cfg.mom_window), 1, 12),
+        'vol_window': (float(base_cfg.vol_window), 1, 26),
     }
 
-    # OAT 模式：分发到独立的多级敏感度函数
     if mode == 'oat':
         oat_result = run_oat_sensitivity(str(config_abs), perturbation, n_jobs)
-        # 返回 (0.0, []) 作为 dummy — OAT 结果通过 evaluate_robustness 取 oat_sensitivity
-        return 0.0, [oat_result]  # 通过 details 传递 OAT 结果
+        return 0.0, [oat_result]
 
+    rng = np.random.RandomState(42)
     mc_args = []
     for _ in range(n_runs):
         params = {}
-        for key, base_val in baseline_params.items():
-            if key == 'momentum_window':
-                # Phase A-1 clamp: max 8 (was [7,9])
-                delta = base_val * perturbation
-                noise = rng.uniform(-delta, delta)
-                new_val = round(base_val + noise)
-                new_val = max(1, min(8, new_val))
+        for key, (base_val, lo, hi) in active_params.items():
+            if key in ('mom_window', 'vol_window'):
+                delta = max(1.0, abs(base_val) * perturbation)
+                new_val = int(round(min(hi, max(lo, base_val + rng.uniform(-delta, delta)))))
             else:
-                delta = base_val * perturbation
-                noise = rng.uniform(-delta, delta)
-                new_val = base_val + noise
-                # Clamp to reasonable bounds
-                if key in ('mom_w', 'vol_w'):
-                    new_val = max(0.05, min(1.50, new_val))
-                elif key == 'def_alloc':
-                    new_val = max(0.05, min(0.60, new_val))
-                elif key in ('step_low', 'step_high'):
-                    new_val = max(0.05, min(0.60, new_val))
-                elif key == 'momentum_threshold':
-                    # Phase A-1 clamp: min -0.07 (was [-0.20, 0.05])
-                    new_val = max(-0.07, min(0.05, new_val))
+                delta = abs(base_val) * perturbation
+                new_val = min(hi, max(lo, base_val + rng.uniform(-delta, delta)))
             params[key] = new_val
         mc_args.append((params, base_cfg))
 
-    # 并行运行
     n_proc = multiprocessing.cpu_count() if n_jobs == -1 else max(1, n_jobs)
     with multiprocessing.Pool(n_proc) as pool:
         results = pool.map(_mc_single_worker, mc_args)
 
     mc_details = [r for r in results if r is not None]
-
     if len(mc_details) == 0:
         return 0.0, []
 
-    # 生存率 = 年化 > 10% AND 最大回撤 < 15%（v2 收紧标准）
+    n_active = len(active_params)
+    # 收紧的生存标准：Sharpe >= 1.0 且 最大回撤 < 10%（相对基准 DD≈7% 偏严）
     n_survived = sum(1 for r in mc_details
-                     if r['annual_return'] > 0.10 and r['max_drawdown'] < 0.15)
+                     if r['sharpe_ratio'] >= 1.0 and r['max_drawdown'] < 0.10)
     survival_rate = n_survived / len(mc_details)
-
+    print(f"[MC] effective_dims={n_active} (已排除关闭模块 no-op 参数); "
+          f"survival_criterion=Sharpe>=1.0 & DD<10%; survival_rate={survival_rate:.3f}")
     return survival_rate, mc_details
-
 
 # ── OAT 多级敏感度 (v2 新增) ──────────────────────────────────────────────────
 

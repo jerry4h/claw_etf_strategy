@@ -1,258 +1,62 @@
-#!/usr/bin/env python3
 """Kimi 报告建议验证 — ddof敏感性 / 汇率对冲成本 / 防御层消融实验。
 
-用法:
-    python scripts/kimi_audit_verification.py
+v(fix): 所有回测均委托给真实引擎 run_backtest（不再重写回测逻辑），
+确保 ddof / 对冲 / 消融结论基于 v3.1 真实代码路径（修复 R5 根因）。
 """
+from __future__ import annotations
+
 import sys
 from pathlib import Path
+
+import dataclasses
+import pandas as pd
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
 
-import numpy as np
-import pandas as pd
-from src.strategy import load_config, StrategyConfig
+from src.strategy import load_config
+from src.data_loader import load_nav_data, resample_weekly
 from src.backtest import run_backtest
-from src.data_loader import load_nav_data, resample_weekly, ETFS, classify_etfs
-from src.factors import calculate_momentum, calculate_volatility
-from src.utils import compute_sharpe
+
+PROJECT = Path(__file__).resolve().parent.parent
 
 
-def run_with_ddof(cfg, weekly_nav, ddof_val, hedge_cost_weekly=0.0, nasdaq_idx_override=None):
-    """Run backtest logic with a specific ddof value for volatility.
+def _engine(cfg) -> dict:
+    """用真实引擎跑一次回测，返回 {sharpe, annual_return, max_dd}。"""
+    res = run_backtest(cfg)
+    m = res.metrics
+    return {
+        'sharpe': m['sharpe_ratio'],
+        'annual_return': m['annual_return'],
+        'max_dd': m['max_drawdown'],
+    }
 
-    Args:
-        cfg: StrategyConfig
-        weekly_nav: Weekly NAV DataFrame
-        ddof_val: Degrees of freedom for volatility std
-        hedge_cost_weekly: Weekly hedge cost to deduct from Nasdaq ETF returns.
-            Applied as: wret -= alloc[nasdaq_idx] * hedge_cost_weekly
-        nasdaq_idx_override: Optional override for Nasdaq ETF column index
+
+def run_with_ddof(cfg, weekly=None, ddof_val=0, hedge_cost_weekly=0.0, nasdaq_idx_override=None):
+    """ddof / 对冲成本敏感性（委托真实引擎）。
+
+    weekly / nasdaq_idx_override 为兼容旧签名保留，已不再使用。
     """
-    prices = weekly_nav.values
-    n_weeks, n_etfs = prices.shape
-    w_rets = np.diff(prices, axis=0) / prices[:-1]
-
-    # Momentum (unchanged)
-    mom = calculate_momentum(weekly_nav, window=cfg.mom_window).values
-
-    # Volatility with custom ddof
-    vol = np.full((n_weeks, n_etfs), np.nan)
-    for i in range(cfg.vol_window, n_weeks):
-        vol[i] = np.std(w_rets[i - cfg.vol_window:i], axis=0, ddof=ddof_val) * np.sqrt(52)
-
-    etf_names = list(weekly_nav.columns)
-    off_idx, def_idx, nasdaq_idx = classify_etfs(etf_names)
-    if nasdaq_idx_override is not None:
-        nasdaq_idx = nasdaq_idx_override
-
-    nav = 1.0
-    peak = 1.0
-    last_alloc = np.zeros(n_etfs)
-    weekly_rets = []
-    start_idx = cfg.vol_window
-
-    for i in range(start_idx, n_weeks - 1):
-        # Scoring
-        scores_vec = np.full(n_etfs, -np.inf)
-        for j in off_idx:
-            mv = mom[i, j]
-            vv = vol[i, j]
-            if not np.isnan(mv) and not np.isnan(vv):
-                scores_vec[j] = cfg.mom_w * mv - cfg.vol_w * vv
-
-        off_scores = [(scores_vec[j], j) for j in off_idx if not np.isnan(scores_vec[j])]
-        off_scores.sort(key=lambda x: x[0], reverse=True)
-        selected_off = [j for _, j in off_scores[:cfg.top_n]]
-
-        # Defense ratio
-        nasdaq_vol = vol[i, nasdaq_idx]
-        if np.isnan(nasdaq_vol):
-            def_ratio = cfg.def_alloc
-        elif nasdaq_vol < cfg.step_low:
-            def_ratio = cfg.def_alloc
-        elif nasdaq_vol > cfg.step_high:
-            def_ratio = cfg.max_def
-        else:
-            slope = (nasdaq_vol - cfg.step_low) / (cfg.step_high - cfg.step_low)
-            def_ratio = cfg.def_alloc + (cfg.max_def - cfg.def_alloc) * slope
-
-        # Allocation
-        alloc = np.zeros(n_etfs)
-        if def_idx:
-            hl_vol_val = vol[i, def_idx[0]]
-            if not np.isnan(hl_vol_val):
-                hl_ratio = np.clip(0.80 - 2.67 * hl_vol_val, 0, 0.80)
-            else:
-                hl_ratio = cfg.hongli_ratio
-            alloc[def_idx[0]] = def_ratio * hl_ratio
-            if len(def_idx) > 1:
-                alloc[def_idx[1]] = def_ratio * (1 - hl_ratio)
-
-        if selected_off and i >= cfg.inv_vol_window:
-            inv_vols = []
-            for j in selected_off:
-                rets = w_rets[i - cfg.inv_vol_window:i, j]
-                rets = rets[~np.isnan(rets)]
-                v = np.std(rets, ddof=ddof_val) * np.sqrt(52) if len(rets) >= 3 else 0.20
-                inv_vols.append(1.0 / max(v, 0.05))
-            total = sum(inv_vols)
-            for k, j in enumerate(selected_off):
-                alloc[j] = (1 - def_ratio) * (inv_vols[k] / total)
-        elif selected_off:
-            for j in selected_off:
-                alloc[j] = (1 - def_ratio) / len(selected_off)
-
-        # Cap
-        if cfg.max_single_alloc < 1.0:
-            overflow = 0.0
-            for j in off_idx:
-                if alloc[j] > cfg.max_single_alloc:
-                    overflow += alloc[j] - cfg.max_single_alloc
-                    alloc[j] = cfg.max_single_alloc
-            if overflow > 0 and def_idx:
-                def_total = sum(alloc[j] for j in def_idx)
-                if def_total > 0:
-                    for j in def_idx:
-                        alloc[j] += overflow * alloc[j] / def_total
-
-        # Rebalance threshold
-        if i > start_idx:
-            max_change = np.max(np.abs(alloc - last_alloc))
-            if max_change < cfg.rebalance_threshold:
-                alloc = last_alloc.copy()
-
-        turnover = np.sum(np.abs(alloc - last_alloc))
-        fee = turnover * cfg.fee_rate
-        wret = sum(alloc[j] * w_rets[i, j] for j in range(n_etfs) if not np.isnan(w_rets[i, j]))
-
-        # FX hedge cost: deduct from strategy return proportional to Nasdaq allocation
-        if hedge_cost_weekly > 0:
-            wret -= alloc[nasdaq_idx] * hedge_cost_weekly
-
-        nav *= (1 + wret - fee)
-        peak = max(peak, nav)
-        weekly_rets.append(wret - fee)
-        last_alloc = alloc.copy()
-
-    sharpe = compute_sharpe(pd.Series(weekly_rets), cfg.risk_free_rate)
-    total_ret = nav - 1
-    n = len(weekly_rets)
-    annual_ret = (1 + total_ret) ** (52 / n) - 1
-    nav_arr = np.cumprod(1 + np.array(weekly_rets))
-    peak_arr = np.maximum.accumulate(nav_arr)
-    max_dd = np.max((peak_arr - nav_arr) / peak_arr)
-    return {'sharpe': sharpe, 'annual_return': annual_ret, 'max_dd': max_dd}
+    c = dataclasses.replace(cfg, vol_ddof=int(ddof_val), hedge_cost_weekly=float(hedge_cost_weekly))
+    return _engine(c)
 
 
-def run_ablation(cfg, weekly_nav, disable_layer3=False, disable_layer4=False):
-    """Run backtest with Layer 3 and/or Layer 4 disabled."""
-    prices = weekly_nav.values
-    n_weeks, n_etfs = prices.shape
-    w_rets = np.diff(prices, axis=0) / prices[:-1]
+def run_ablation(cfg, weekly=None, disable_layer3=False, disable_layer4=False):
+    """防御层消融（委托真实引擎，通过 config 开关实现）。
 
-    mom = calculate_momentum(weekly_nav, window=cfg.mom_window).values
-    vol = calculate_volatility(weekly_nav, window=cfg.vol_window).values
-
-    etf_names = list(weekly_nav.columns)
-    off_idx, def_idx, nasdaq_idx = classify_etfs(etf_names)
-
-    nav = 1.0
-    peak = 1.0
-    last_alloc = np.zeros(n_etfs)
-    weekly_rets = []
-    start_idx = cfg.vol_window
-
-    for i in range(start_idx, n_weeks - 1):
-        scores_vec = np.full(n_etfs, -np.inf)
-        for j in off_idx:
-            mv = mom[i, j]
-            vv = vol[i, j]
-            if not np.isnan(mv) and not np.isnan(vv):
-                scores_vec[j] = cfg.mom_w * mv - cfg.vol_w * vv
-
-        off_scores = [(scores_vec[j], j) for j in off_idx if not np.isnan(scores_vec[j])]
-        off_scores.sort(key=lambda x: x[0], reverse=True)
-        selected_off = [j for _, j in off_scores[:cfg.top_n]]
-
-        # Layer 3: defense ratio
-        if disable_layer3:
-            def_ratio = cfg.def_alloc  # fixed at baseline, no vol response
-        else:
-            nasdaq_vol = vol[i, nasdaq_idx]
-            if np.isnan(nasdaq_vol):
-                def_ratio = cfg.def_alloc
-            elif nasdaq_vol < cfg.step_low:
-                def_ratio = cfg.def_alloc
-            elif nasdaq_vol > cfg.step_high:
-                def_ratio = cfg.max_def
-            else:
-                slope = (nasdaq_vol - cfg.step_low) / (cfg.step_high - cfg.step_low)
-                def_ratio = cfg.def_alloc + (cfg.max_def - cfg.def_alloc) * slope
-
-        # Allocation
-        alloc = np.zeros(n_etfs)
-        if def_idx:
-            if disable_layer4:
-                hl_ratio = cfg.hongli_ratio  # fixed 50/50
-            else:
-                hl_vol_val = vol[i, def_idx[0]]
-                if not np.isnan(hl_vol_val):
-                    hl_ratio = np.clip(0.80 - 2.67 * hl_vol_val, 0, 0.80)
-                else:
-                    hl_ratio = cfg.hongli_ratio
-            alloc[def_idx[0]] = def_ratio * hl_ratio
-            if len(def_idx) > 1:
-                alloc[def_idx[1]] = def_ratio * (1 - hl_ratio)
-
-        if selected_off and i >= cfg.inv_vol_window:
-            inv_vols = []
-            for j in selected_off:
-                rets = w_rets[i - cfg.inv_vol_window:i, j]
-                rets = rets[~np.isnan(rets)]
-                v = np.std(rets, ddof=0) * np.sqrt(52) if len(rets) >= 3 else 0.20
-                inv_vols.append(1.0 / max(v, 0.05))
-            total = sum(inv_vols)
-            for k, j in enumerate(selected_off):
-                alloc[j] = (1 - def_ratio) * (inv_vols[k] / total)
-        elif selected_off:
-            for j in selected_off:
-                alloc[j] = (1 - def_ratio) / len(selected_off)
-
-        if cfg.max_single_alloc < 1.0:
-            overflow = 0.0
-            for j in off_idx:
-                if alloc[j] > cfg.max_single_alloc:
-                    overflow += alloc[j] - cfg.max_single_alloc
-                    alloc[j] = cfg.max_single_alloc
-            if overflow > 0 and def_idx:
-                def_total = sum(alloc[j] for j in def_idx)
-                if def_total > 0:
-                    for j in def_idx:
-                        alloc[j] += overflow * alloc[j] / def_total
-
-        if i > start_idx:
-            max_change = np.max(np.abs(alloc - last_alloc))
-            if max_change < cfg.rebalance_threshold:
-                alloc = last_alloc.copy()
-
-        turnover = np.sum(np.abs(alloc - last_alloc))
-        fee = turnover * cfg.fee_rate
-        wret = sum(alloc[j] * w_rets[i, j] for j in range(n_etfs) if not np.isnan(w_rets[i, j]))
-        nav *= (1 + wret - fee)
-        peak = max(peak, nav)
-        weekly_rets.append(wret - fee)
-        last_alloc = alloc.copy()
-
-    sharpe = compute_sharpe(pd.Series(weekly_rets), cfg.risk_free_rate)
-    total_ret = nav - 1
-    n = len(weekly_rets)
-    annual_ret = (1 + total_ret) ** (52 / n) - 1
-    nav_arr = np.cumprod(1 + np.array(weekly_rets))
-    peak_arr = np.maximum.accumulate(nav_arr)
-    max_dd = np.max((peak_arr - nav_arr) / peak_arr)
-    return {'sharpe': sharpe, 'annual_return': annual_ret, 'max_dd': max_dd}
+    - Layer 3: vol/crisis 防御调整（step_low/step_high/crisis_corr_max_boost）
+    - Layer 4: 基础防御比例 DefAlloc（def_alloc / max_def）
+    """
+    kw = {}
+    if disable_layer3:
+        kw['crisis_corr_max_boost'] = 0.0
+        kw['step_low'] = 0.0
+        kw['step_high'] = 0.0
+    if disable_layer4:
+        kw['def_alloc'] = 0.0
+        kw['max_def'] = 0.0
+    c = dataclasses.replace(cfg, **kw) if kw else cfg
+    return _engine(c)
 
 
 def main():
@@ -264,7 +68,7 @@ def main():
         weekly = weekly[weekly.index >= pd.to_datetime(cfg.start_date)]
 
     print("=" * 75)
-    print(" Kimi 审计报告建议验证")
+    print(" Kimi 审计报告建议验证 (v(fix): 委托真实引擎 run_backtest)")
     print("=" * 75)
 
     # === 1. ddof sensitivity ===
@@ -291,9 +95,9 @@ def main():
     print()
     print(" 结论: ddof=1 使 Sharpe 变化 {:+.3f}".format(delta_sharpe))
     if abs(delta_sharpe) < 0.05:
-        print("   → 影响极小（<0.05），ddof=0 的选择对策略无实质影响")
+        print("   -> 影响极小（<0.05），ddof=0 的选择对策略无实质影响")
     else:
-        print("   → 影响显著，需考虑是否切换")
+        print("   -> 影响显著，需考虑是否切换")
 
     # === 2. FX hedge cost ===
     print("\n" + "=" * 75)
@@ -336,11 +140,11 @@ def main():
     print(" {:<28s} {:>10.3f} {:>11.2f}% {:>9.2f}%".format(
         "完整策略 (L3+L4)", r_full['sharpe'], r_full['annual_return']*100, r_full['max_dd']*100))
     print(" {:<28s} {:>10.3f} {:>11.2f}% {:>9.2f}%".format(
-        "禁用 L3 (固定25%防御)", r_no_l3['sharpe'], r_no_l3['annual_return']*100, r_no_l3['max_dd']*100))
+        "禁用 L3 (固定def_alloc防御)", r_no_l3['sharpe'], r_no_l3['annual_return']*100, r_no_l3['max_dd']*100))
     print(" {:<28s} {:>10.3f} {:>11.2f}% {:>9.2f}%".format(
-        "禁用 L4 (固定50/50防御)", r_no_l4['sharpe'], r_no_l4['annual_return']*100, r_no_l4['max_dd']*100))
+        "禁用 L4 (无防御层)", r_no_l4['sharpe'], r_no_l4['annual_return']*100, r_no_l4['max_dd']*100))
     print(" {:<28s} {:>10.3f} {:>11.2f}% {:>9.2f}%".format(
-        "禁用 L3+L4 (纯进攻+固定防御)", r_no_both['sharpe'], r_no_both['annual_return']*100, r_no_both['max_dd']*100))
+        "禁用 L3+L4 (纯进攻)", r_no_both['sharpe'], r_no_both['annual_return']*100, r_no_both['max_dd']*100))
 
     print()
     l3_sharpe_contrib = r_full['sharpe'] - r_no_l3['sharpe']

@@ -27,14 +27,14 @@ class StrategyConfig:
     version: str = "3.1"
 
     # 评分权重
-    mom_w: float = 0.35       # 4周动量权重
-    vol_w: float = 0.30       # 20周波动率权重
+    mom_w: float = 1.0       # 4周动量权重
+    vol_w: float = 1.10       # 20周波动率权重
 
     # 选股
     top_n: int = 2            # 选几只进攻 ETF
-    score_margin: float = 0.0     # TOP_N 分数差距门槛（防噪声换仓）
+    score_margin: float = 0.02     # TOP_N 分数差距门槛（防噪声换仓）
     trend_confirm_weeks: int = 0  # 趋势确认：候选对连续N周一致才切换（0=关闭）
-    dynamic_margin_sensitivity: float = 0.0  # 动态margin灵敏度（0=关闭）
+    dynamic_margin_sensitivity: float = 1.0  # 动态margin灵敏度（0=关闭）
     dynamic_margin_window: int = 4           # 动态margin回看窗口（周）
 
     # 因子窗口
@@ -44,7 +44,7 @@ class StrategyConfig:
 
     # 防御参数
     def_alloc: float = 0.25   # 基准防御比例
-    step_low: float = 0.20    # vol 三段式下限
+    step_low: float = 0.15    # vol 三段式下限
     step_high: float = 0.35   # vol 三段式上限
     max_def: float = 0.95     # 极限防御比例
     hongli_ratio: float = 0.50  # 防御层中红利低波占比
@@ -60,7 +60,7 @@ class StrategyConfig:
     hongli_vol_coeff: float = 2.67   # 波动率系数
 
     # 调仓
-    rebalance_threshold: float = 0.07   # 调仓阈值
+    rebalance_threshold: float = 0.025   # 调仓阈值
     fee_rate: float = 0.00005           # 单边费率
     anchor: str = 'W-MON'
 
@@ -94,7 +94,7 @@ class StrategyConfig:
     p_l3_position: float = 0.20
 
     # === 权重上限（D2B）=== ENABLED in v3.0 final (max_single_alloc=0.40)
-    max_single_alloc: float = 1.0
+    max_single_alloc: float = 0.40
 
     # === P1 Fix #1: 市场状态感知止损 === DISABLED in v3.0 final
     stateful_stop_loss: bool = False
@@ -190,6 +190,8 @@ class StrategyConfig:
 
     # 报告
     risk_free_rate: float = 0.025
+    vol_ddof: int = 0                       # 波动率 std 自由度 (0=当前; 1=金融学惯例)
+    hedge_cost_weekly: float = 0.0          # 对冲成本(周), 按比例从纳指ETF分配中扣除
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +296,24 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     regime_cfg = raw.get('regime_classifier', {})
     data_cfg = raw.get('data', {})
     reporting = raw.get('reporting', {})
+
+    # 严格模式：关键字段若缺失（YAML 未提供），直接报错，
+    # 杜绝静默回退到错误默认值（如 max_single_alloc=1.0 关掉风控）。
+    _critical = {
+        'scoring': ['mom_w', 'vol_w'],
+        'selection': ['top_n', 'score_margin'],
+        'rebalance': ['threshold'],
+        'defense': ['def_alloc', 'step_low', 'step_high'],
+        'allocation': ['max_single_alloc'],
+    }
+    _missing = []
+    for _sec, _keys in _critical.items():
+        _d = raw.get(_sec, {}) or {}
+        for _k in _keys:
+            if _k not in _d:
+                _missing.append(_sec + '.' + _k)
+    if _missing:
+        raise ValueError('load_config: 缺失关键配置字段 -> ' + ', '.join(_missing))
 
     return StrategyConfig(
         name=strategy.get('name', '虾池ETF轮动'),
@@ -705,7 +725,7 @@ def apply_max_alloc_cap(
     # Dynamic cap
     effective_max = max_single
     if dynamic_cap and market_state is not None and config is not None:
-        from src.legacy.market_state import MarketState
+        from experiments.legacy_disabled.market_state import MarketState
         dynamic_caps = {
             MarketState.BULL:       config.dc_bull_cap,
             MarketState.NORMAL:     config.dc_normal_cap,
@@ -775,13 +795,13 @@ def apply_max_alloc_cap(
 # backward compatibility with backtest.py and tests.
 # ---------------------------------------------------------------------------
 
-from src.legacy.tiered_stop import check_stop_loss_tiered  # noqa: E402  # DISABLED in v3.0
-from src.legacy.ptiered_stop import check_stop_loss_ptiered  # noqa: E402  # DISABLED in v3.0
-from src.legacy.market_state import (  # noqa: E402  # DISABLED in v3.0
+from experiments.legacy_disabled.tiered_stop import check_stop_loss_tiered  # noqa: E402  # DISABLED in v3.0
+from experiments.legacy_disabled.ptiered_stop import check_stop_loss_ptiered  # noqa: E402  # DISABLED in v3.0
+from experiments.legacy_disabled.market_state import (  # noqa: E402  # DISABLED in v3.0
     MarketState,
     detect_market_state,
     check_stop_loss_stateful,
 )
-from src.legacy.d4_filter import apply_individual_momentum_filter  # noqa: E402  # DISABLED in v3.0
-from src.legacy.softmax import compute_softmax_allocation  # noqa: E402  # DISABLED in v3.0
-from src.legacy.dynamic_weights import compute_dynamic_weights  # noqa: E402  # DISABLED in v3.0
+from experiments.legacy_disabled.d4_filter import apply_individual_momentum_filter  # noqa: E402  # DISABLED in v3.0
+from experiments.legacy_disabled.softmax import compute_softmax_allocation  # noqa: E402  # DISABLED in v3.0
+from experiments.legacy_disabled.dynamic_weights import compute_dynamic_weights  # noqa: E402  # DISABLED in v3.0

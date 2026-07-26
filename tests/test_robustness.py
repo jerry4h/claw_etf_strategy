@@ -79,11 +79,11 @@ class TestComputeDsr:
         assert dsr <= 1.0, f"DSR 应 <= 1.0，实际: {dsr:.4f}"
 
     def test_low_sharpe_many_trials(self):
-        """Sharpe=0.3, n_trials=100 → DSR 应较低。"""
+        """低 Sharpe 小样本多试验 → DSR 应较低（正确公式下 SR 不显著）。"""
         dsr = compute_dsr(
-            sharpe=0.3,
+            sharpe=0.2,
             n_trials=100,
-            n_obs=200,
+            n_obs=80,
             skew=0.0,
             kurtosis=3.0
         )
@@ -99,11 +99,14 @@ class TestComputeDsr:
                 )
 
     def test_more_trials_lower_dsr(self):
-        """相同 Sharpe 下，试验次数越多，DSR 应越低（多重测试惩罚）。"""
-        dsr_10 = compute_dsr(1.0, 10, 500, 0.0, 3.0)
-        dsr_100 = compute_dsr(1.0, 100, 500, 0.0, 3.0)
-        assert dsr_10 > dsr_100, (
-            f"更多试验应降低 DSR: dsr(n=10)={dsr_10:.4f}, dsr(n=100)={dsr_100:.4f}"
+        """相同 Sharpe 下，试验次数越多，DSR 应越低（多重测试惩罚）。
+
+        用小样本(n_obs=80)使 DSR 落在 (0,1) 区间，单调性可见。
+        """
+        dsr_3 = compute_dsr(0.4, 3, 80, 0.0, 3.0)
+        dsr_30 = compute_dsr(0.4, 30, 80, 0.0, 3.0)
+        assert 0.0 < dsr_30 < dsr_3 < 1.0, (
+            f"更多试验应降低 DSR: dsr(n=3)={dsr_3:.4f}, dsr(n=30)={dsr_30:.4f}"
         )
 
     def test_higher_sharpe_higher_dsr(self):

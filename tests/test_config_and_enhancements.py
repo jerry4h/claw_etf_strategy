@@ -199,6 +199,10 @@ class TestFieldCompleteness:
             'hongli_ratio',  # kept at default 0.50 (dynamic formula supersedes)
             'stop_loss', 'recovery_weeks',
             'overflow_to_defense_only',
+            'vol_ddof', 'hedge_cost_weekly',
+            # 已对齐到生产 YAML 值：YAML==default，属模糊情况（在 test_yaml_populates_all_known_fields 验证）
+            'mom_w', 'vol_w', 'score_margin', 'dynamic_margin_sensitivity',
+            'rebalance_threshold', 'max_single_alloc',
         }
 
         mismatches = []
