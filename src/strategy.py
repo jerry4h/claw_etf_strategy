@@ -54,6 +54,16 @@ class StrategyConfig:
     crisis_corr_threshold: float = 0.60  # 相关性触发阈值
     crisis_corr_slope: float = 1.875     # 线性斜率
     crisis_corr_max_boost: float = 0.15  # 最大防御加成(pp)
+    ashare_vol_boost_enabled: bool = False   # M3: 中证500 vol 危机加成(默认关)
+    ashare_vol_crisis_threshold: float = 0.90  # 中证500 vol 过去2年百分位触发阈值
+    ashare_vol_max_boost: float = 0.15         # 最大防御加成
+    ashare_vol_slope: float = 1.5              # 线性斜率 (max_boost/(1-threshold))
+    ashare_vol_pct_window: int = 104           # 百分位回看窗口(周, ~2年)
+    ivix_vol_boost_enabled: bool = False       # M3(可选): iVIX 危机加成(数据待接入)
+    ivix_vol_crisis_threshold: float = 0.90
+    ivix_vol_max_boost: float = 0.15
+    ivix_vol_slope: float = 1.5
+    ivix_vol_pct_window: int = 104
 
     # 动态红利低波公式参数
     hongli_intercept: float = 0.80   # 截距(也是clip上限)

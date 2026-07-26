@@ -2,7 +2,7 @@
 
 > **状态：探索性设计，非确认方案。** 需多轮人工审核与谨慎评估后，方可决定是否作为 v4.0 基石。
 > 作者：WorkBuddy（AI 协助），日期：2026-07-26
-> 关联代码：`data_manifold.py`（原型，已隔离运行，不改 v3.1 生产代码）
+> 关联代码：`scripts/data_manifold.py`（原型，已隔离运行，不改 v3.1 生产代码）
 > 关联产物：`output/manifold/data_manifold_report.html`
 
 ---
@@ -164,7 +164,7 @@ D1（非参数）+ 流形（参数化）一致，只证明结论在**"近现实�
 
 ## 7. 代码与隔离保证
 
-- **`data_manifold.py`**（仓库根）：原型 harness。零新依赖（numpy/scipy/pandas/matplotlib 均已在 venv）。只读使用 `run_backtest`/`load_config`/`load_nav_data`；写仅在 `output/manifold/`（合成 CSV + JSON 缓存 + HTML 报告）。**不修改 `src/`、`config/`、生产数据。**
+- **`scripts/data_manifold.py`**：原型 harness。零新依赖（numpy/scipy/pandas/matplotlib 均已在 venv）。只读使用 `run_backtest`/`load_config`/`load_nav_data`；写仅在 `output/manifold/`（合成 CSV + JSON 缓存 + HTML 报告）。**不修改 `src/`、`config/`、生产数据。**
 - **隔离验证**：`run_backtest(config/strategy_v3_1.yaml, start_date='2013-05-17')` 复现 Sharpe 1.6096/MDD 0.0697，与 v3.1 一致。
 - **断点续跑**：各 part 结果缓存为 JSON（sanity/d1/d3/slice2d/lhs/sweep1d/surface/coords），重跑自动跳过已完成部分。
 - **未提交项**：M3 的 src 改动（backtest/engine_core/strategy/tests）留在工作树未暂存，属独立待决项，**不在本次提交范围**。
@@ -175,7 +175,7 @@ D1（非参数）+ 流形（参数化）一致，只证明结论在**"近现实�
 
 1. 读本文 §2 方法论，判断 DGP 选型与 4 轴定义是否合理（§6.1）。
 2. 读 §4 局限性，逐条判断是否可接受、是否需在采信结论前补测。
-3. 复跑 `data_manifold.py`（服务器 `~/claw_etf_strategy/`，约 1.6 分钟）核验数字。
+3. 复跑 `scripts/data_manifold.py`（服务器 `~/claw_etf_strategy/`，约 1.6 分钟）核验数字。
 4. 重点质询 §4.4（σ 轴）与 §4.7（认识论边界）——这两条决定"判定能否外推"。
 5. 若决定推进，先做 §5.1 的 D4 跨 universe 验证（成本最低、信息量最大），再决定 §5.2 策略改造。
 6. v4.0 是否立项，取决于 §6.4 的目标定位结论。
@@ -187,7 +187,7 @@ D1（非参数）+ 流形（参数化）一致，只证明结论在**"近现实�
 ```bash
 ssh qcloud
 cd ~/claw_etf_strategy
-.venv/bin/python data_manifold.py          # 全量（缓存续跑）
+.venv/bin/python scripts/data_manifold.py          # 全量（缓存续跑）
 .venv/bin/python -m pytest -q              # 确认 138 测试仍绿
 # 查看报告
 ls output/manifold/data_manifold_report.html

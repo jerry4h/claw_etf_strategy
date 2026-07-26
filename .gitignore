@@ -31,3 +31,6 @@ data/*.csv
 !data/300etf_pe_percentile_weekly.csv
 
 .env
+
+# Manifold analysis caches (regenerable)
+output/manifold/*.json

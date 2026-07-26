@@ -16,6 +16,7 @@ from src.data_loader import (
 from src.factors import compute_all_factors
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
+    compute_ashare_vol_boost, compute_ivix_vol_boost,
     compute_inv_vol_weights, compute_score_margin,
     apply_trend_confirmation,
 )
@@ -165,6 +166,7 @@ def run_backtest(
     etf_names = list(weekly_nav.columns)
     n_etfs = len(etf_names)
     off_idx, def_idx, NASDAQ_IDX = classify_etfs(etf_names)
+    CSI500_IDX = etf_names.index('中证500ETF') if '中证500ETF' in etf_names else -1
 
     # === T32: 构建成分股信号前向填充查找表（必须在此处，w_index 已定义）===
     constituent_signal_lookup = {}  # week_date_str -> {etf_name -> {'cwm': float, 'conc': float}}
@@ -349,6 +351,11 @@ def run_backtest(
         crisis_boost = compute_crisis_boost(w_rets, i, off_idx, config)
         if crisis_boost > 0:
             def_ratio = min(def_ratio + crisis_boost, 1.0)
+
+        # --- M3: 中证500 vol 危机加成 ---
+        ashare_boost = compute_ashare_vol_boost(vol_values, i, CSI500_IDX, config)
+        if ashare_boost > 0:
+            def_ratio = min(def_ratio + ashare_boost, 1.0)
 
         # --- 市场状态感知止损（P1 Fix #1, 替代三层止损）---
         if config.stateful_stop_loss:

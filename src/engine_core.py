@@ -67,6 +67,86 @@ def compute_crisis_boost(
     return 0.0
 
 
+
+
+def compute_ashare_vol_boost(
+    vol_values: np.ndarray,
+    i: int,
+    ashare_idx: int,
+    config: "StrategyConfig",
+) -> float:
+    """M3: A-share broad-market (中证500 ETF) volatility crisis boost.
+
+    Additive defense boost mirroring compute_crisis_boost. Converts the
+    中证500 ETF annualized vol to a trailing percentile (ex-ante, over
+    ashare_vol_pct_window weeks) and boosts defense when the percentile
+    exceeds ashare_vol_crisis_threshold. vol_values[i, ashare_idx] is causal
+    (rolling std over past weeks, no look-ahead).
+
+    Goal: catch A-share-native crashes (e.g. 2015) that the Nasdaq-only
+    trigger misses.
+
+    Returns:
+        Defense ratio boost (0 to ashare_vol_max_boost).
+    """
+    if not getattr(config, "ashare_vol_boost_enabled", False):
+        return 0.0
+    if ashare_idx < 0 or i < 20:
+        return 0.0
+    threshold = config.ashare_vol_crisis_threshold
+    slope = config.ashare_vol_slope
+    max_boost = config.ashare_vol_max_boost
+    window = config.ashare_vol_pct_window
+
+    current_vol = vol_values[i, ashare_idx]
+    if pd.isna(current_vol):
+        return 0.0
+    lo = max(20, i - window)
+    hist = [vol_values[j, ashare_idx] for j in range(lo, i)
+            if not pd.isna(vol_values[j, ashare_idx])]
+    if len(hist) < 10:
+        return 0.0
+    pct = sum(1 for v in hist if v < current_vol) / len(hist)
+    if pct > threshold:
+        return min((pct - threshold) * slope, max_boost)
+    return 0.0
+
+
+def compute_ivix_vol_boost(
+    ivix_vol_values: np.ndarray,
+    i: int,
+    ivix_idx: int,
+    config: "StrategyConfig",
+) -> float:
+    """M3 (optional): China VIX (iVIX) volatility crisis boost.
+
+    Same structure as compute_ashare_vol_boost but driven by the iVIX series
+    (上证50ETF 波动率指数). Requires an externally-sourced iVIX weekly series
+    aligned to the backtest weekly index; if not loaded, ivix_idx < 0 keeps
+    this a no-op. Data sourcing is a separate step (not in current pipeline).
+    """
+    if not getattr(config, "ivix_vol_boost_enabled", False):
+        return 0.0
+    if ivix_idx < 0 or i < 20:
+        return 0.0
+    threshold = config.ivix_vol_crisis_threshold
+    slope = config.ivix_vol_slope
+    max_boost = config.ivix_vol_max_boost
+    window = config.ivix_vol_pct_window
+
+    current_vol = ivix_vol_values[i, ivix_idx]
+    if pd.isna(current_vol):
+        return 0.0
+    lo = max(20, i - window)
+    hist = [ivix_vol_values[j, ivix_idx] for j in range(lo, i)
+            if not pd.isna(ivix_vol_values[j, ivix_idx])]
+    if len(hist) < 10:
+        return 0.0
+    pct = sum(1 for v in hist if v < current_vol) / len(hist)
+    if pct > threshold:
+        return min((pct - threshold) * slope, max_boost)
+    return 0.0
+
 def compute_dynamic_hongli(hl_vol: float, config: StrategyConfig) -> float:
     """
     Dynamic hongli_ratio based on hongli ETF's own volatility.
