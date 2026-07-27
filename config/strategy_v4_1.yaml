@@ -24,7 +24,7 @@ factors:
   mom_window: 6
   vol_window: 11
   pe_window_years: 5
-  ewma_factors_enabled: true
+  ewma_factors_enabled: false  # v4.0 实验性,真正生效后 Sharpe 1.50<rolling 1.61,暂不启用
   ewma_mom_halflife: 16
   ewma_vol_halflife: 6
 

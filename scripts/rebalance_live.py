@@ -63,6 +63,12 @@ HONGLI_RATIO = cfg.hongli_ratio
 
 STATE_FILE = PROJECT / 'data' / '.last_alloc.json'
 
+# 回测/replay 起始（EWMA 需要更多预热）
+if cfg.ewma_factors_enabled:
+    _START_IDX = max(cfg.ewma_mom_halflife * 2, cfg.ewma_vol_halflife * 2, MOM_WINDOW, VOL_WINDOW)
+else:
+    _START_IDX = max(MOM_WINDOW, VOL_WINDOW)
+
 def load_state() -> dict | None:
     if STATE_FILE.exists():
         try:
@@ -247,7 +253,7 @@ def replay_stop_loss_state(df, upto_idx):
 
     返回: {'should_stop', 'in_recovery', 'nav', 'peak', 'drawdown', 'triggers'}
     """
-    start = max(MOM_WINDOW, VOL_WINDOW)
+    start = _START_IDX
     nav, peak = 1.0, 1.0
     prev_al = {}
     prev_sel = None
@@ -350,7 +356,7 @@ def main():
         prev_pending = None; prev_pending_count = 0; gap_hist = []
         # Stop-loss state (mirrors backtest engine)
         in_stop_loss = False; stop_loss_weeks = 0; stop_loss_count = 0
-        for i in range(max(MOM_WINDOW, VOL_WINDOW), n - 1):
+        for i in range(_START_IDX, n - 1):
             result = compute(df, i, prev_sel=prev_sel, prev_pending=prev_pending,
                              prev_pending_count=prev_pending_count, gap_history=gap_hist)
             al = result.alloc
@@ -403,7 +409,7 @@ def main():
     df = load(PROJECT / a.csv)
     idx = (len(df) - 1 if not a.week
            else df.index.get_indexer([pd.to_datetime(a.week)])[0])
-    if idx < max(MOM_WINDOW, VOL_WINDOW):
+    if idx < _START_IDX:
         print(f"[ERROR] 数据不足. 最早: {df.index[max(MOM_WINDOW, VOL_WINDOW)].date()}")
         return
 
@@ -412,7 +418,7 @@ def main():
     prev_gap_hist = []
     prev_pending = None
     prev_pending_count = 0
-    if idx > max(MOM_WINDOW, VOL_WINDOW):
+    if idx > _START_IDX:
         # Build pending state by replaying recent weeks
         lookback = max(TREND_CONFIRM + 2, 3)
         start_replay = max(MOM_WINDOW, VOL_WINDOW)
@@ -468,7 +474,7 @@ def main():
     if last_state is not None:
         prev_al = last_state
         ref_label = "上次实仓"
-    elif idx > max(MOM_WINDOW, VOL_WINDOW):
+    elif idx > _START_IDX:
         _prev_result = compute(df, idx - 1, prev_sel=prev_sel, prev_pending=prev_pending, prev_pending_count=max(0, prev_pending_count - 1))
         prev_al = _prev_result.alloc
         ref_label = "上周理论"

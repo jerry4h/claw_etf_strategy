@@ -67,15 +67,23 @@ def calculate_volatility(
 
 
 def calculate_momentum_ewma(weekly_nav: pd.DataFrame, halflife: int = 8) -> pd.DataFrame:
-    """EWMA 动量因子——指数加权平均周收益。无硬截断窗口,消除边界跳变。
+    """EWMA 平滑版动量因子——先算 rolling 累积动量,再做 EWMA 平滑消除窗口截断跳变。
 
-    ewma_mom[t] = alpha*ret[t] + (1-alpha)*ewma_mom[t-1], alpha=1-exp(-ln2/halflife)
-    等价于对历史收益做指数加权求和,近期权重大、远期指数衰减到零(无突然"掉出")。
+    思路: rolling momentum(window=6) 每周有"一期数据进出窗口"的阶跃跳变;
+    对其做 EWMA 平滑(halflife 周)消除跳变,但保留动量的累积量级和信号方向。
+    这样因子值的量级与 rolling momentum 一致(~1-2%),不会被 vol 项淹没。
     """
     w_rets = weekly_nav.pct_change()
-    alpha = 1.0 - np.exp(-np.log(2.0) / max(halflife, 1))
-    # pandas ewm 支持 halflife 参数
-    mom = w_rets.ewm(halflife=halflife, adjust=False).mean()
+    n_weeks, n_etfs = w_rets.shape[0], w_rets.shape[1]
+    # Step 1: 计算短窗口 rolling 累积动量(window=6, 和 v3.1 一致)
+    window = 6
+    raw_mom = np.full((n_weeks, n_etfs), np.nan)
+    w_arr = w_rets.values
+    for i in range(window, n_weeks):
+        raw_mom[i] = np.prod(1 + w_arr[i - window:i], axis=0) - 1
+    raw_df = pd.DataFrame(raw_mom, index=weekly_nav.index, columns=weekly_nav.columns)
+    # Step 2: 对 rolling momentum 序列做 EWMA 平滑(消除"进一出一"跳变)
+    mom = raw_df.ewm(halflife=halflife, adjust=False).mean()
     return mom
 
 
@@ -193,10 +201,10 @@ def compute_all_factors(
     pe_window_years = config.get('factors', {}).get('pe_window_years', 5)
 
     # v4.0: EWMA 因子(开关控制)
-    ewma_on = config.get('ewma_factors_enabled', False)
+    ewma_on = config.get('factors', {}).get('ewma_factors_enabled', False)
     if ewma_on:
-        ewma_mom_hl = config.get('ewma_mom_halflife', 8)
-        ewma_vol_hl = config.get('ewma_vol_halflife', 11)
+        ewma_mom_hl = config.get('factors', {}).get('ewma_mom_halflife', 8)
+        ewma_vol_hl = config.get('factors', {}).get('ewma_vol_halflife', 11)
         momentum = calculate_momentum_ewma(weekly_nav, halflife=ewma_mom_hl)
         volatility = calculate_volatility_ewma(weekly_nav, halflife=ewma_vol_hl, annualize=np.sqrt(52))
     else:
