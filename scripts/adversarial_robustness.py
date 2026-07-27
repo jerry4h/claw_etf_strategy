@@ -53,6 +53,16 @@ AX_LABEL = {
     "muoff_mult": "进攻漂移(×realized)",
 }
 REALIZED = {a: 1.0 for a in AXES}
+
+# 固定压力情景集(纳入常规评估的对抗稳定性指标; 每个含明确金融含义)
+STRESS_SCENARIOS = {
+    "baseline":          {},                                      # realized 参照
+    "vol_stress":        {"sig_mult": 1.2},                       # 波动放大20%(2018/2022级)
+    "offense_cooldown":  {"muoff_mult": 0.8},                     # 进攻收益降20%(牛市降温)
+    "bond_bear":         {"mudef_mult": 0.5},                     # 防御漂移减半(债牛结束)
+    "decorrelation":     {"c_mult": 0.77},                        # 相关降低(分散噪声化)
+    "stagflation":       {"sig_mult": 1.2, "muoff_mult": 0.8},    # 滞胀式组合冲击
+}
 # 搜索范围(合理边界)
 BOUNDS = {
     "rho_mult": (0.0, 3.0),
@@ -185,13 +195,120 @@ def bisect_axis(axis, direction, mu, A, R, nu, gp, T, real_dates, first_nav, cfg
     return critical, eval_sharpe(mu, A, R, nu, gp, dict(REALIZED, **{axis: critical}), T, real_dates, first_nav, cfg)
 
 
+def _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds=(11, 22, 33)):
+    """返回 (策略 Sharpe 中位数, 等权每周再平衡 Sharpe 中位数)——同一合成数据。"""
+    from src.backtest import run_backtest, compute_metrics
+    from src.data_loader import ETFS
+    import io, contextlib, os
+    s_list, e_list = [], []
+    for seed in seeds:
+        r = gen_garch(mu, A, R, nu, gp, params, T, seed)
+        nav_df = build_nav_df_local(r, real_dates, first_nav)
+        tmp = OUT / f"_score_{seed}.csv"
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        nav_df.to_csv(tmp, encoding="utf-8")
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                res = run_backtest(cfg, start_date=dm.START_DATE, data_path=str(tmp))
+            if res.nav_series.empty:
+                continue
+            s_list.append(res.metrics["sharpe_ratio"])
+            start, end = res.nav_series.index[0], res.nav_series.index[-1]
+            cols = [c for c in nav_df.columns if c in ETFS]
+            pr = nav_df.loc[start:end, cols].astype(float)
+            idx = pr.index
+            valid = ~np.isnan(pr.iloc[0].values)
+            er = pr.ffill().pct_change().fillna(0.0).values
+            rb = np.ones(len(idx))
+            for i in range(1, len(idx)):
+                rb[i] = rb[i-1] * (1 + float(np.mean(er[i, valid])))
+            wr = np.zeros(len(rb)); wr[1:] = rb[1:] / rb[:-1] - 1
+            peak = np.maximum.accumulate(rb); dd = (peak - rb) / peak
+            import pandas as pd
+            df_rb = pd.DataFrame({"nav": rb, "weekly_return": wr, "drawdown": dd,
+                                  "def_ratio": 0.0, "turnover": 0.0}, index=idx)
+            e_list.append(compute_metrics(df_rb, cfg.risk_free_rate)["sharpe_ratio"])
+        finally:
+            if tmp.exists():
+                os.remove(tmp)
+    return (float(np.median(s_list)) if s_list else float("nan"),
+            float(np.median(e_list)) if e_list else float("nan"))
+
+
+def build_nav_df_local(r, real_dates, first_nav):
+    return dm.build_nav_df(r, real_dates, first_nav)
+
+
+def robustness_score(cfg, seeds=(11, 22, 33)):
+    """对抗稳定性指标——固定压力情景集下策略 vs 等权。可复现、快(~15s)、可比较。
+
+    返回 dict: {pass_rate, worst_sharpe, worst_scenario, baseline_retention, scenarios{...}}
+    - pass_rate: 压力情景(不含baseline)中策略跑赢等权的比例(核心门禁指标)
+    - worst_sharpe/scenario: 最脆弱情景及其策略 Sharpe
+    - baseline_retention: 压力情景平均策略 Sharpe / baseline Sharpe
+    """
+    nav, wk, w_rets = dm.load_real()
+    mu, A, Sigma, nu, resid, coords = dm.fit_var_t(w_rets)
+    gp, R = fit_garch(resid)
+    real_dates = wk.index
+    first_nav = wk.iloc[0].values
+    T = len(w_rets)
+
+    results = {}
+    for name, overrides in STRESS_SCENARIOS.items():
+        params = dict(REALIZED, **overrides)
+        s_sh, e_sh = _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds)
+        results[name] = {"strategy": s_sh, "ew_rebal": e_sh, "beats_ew": bool(s_sh > e_sh)}
+
+    baseline_sh = results["baseline"]["strategy"]
+    stress = {k: v for k, v in results.items() if k != "baseline"}
+    n_pass = sum(1 for v in stress.values() if v["beats_ew"])
+    worst_name = min(stress, key=lambda k: stress[k]["strategy"])
+    avg_stress = float(np.mean([v["strategy"] for v in stress.values()]))
+    return {
+        "pass_rate": n_pass / len(stress),
+        "n_pass": n_pass,
+        "n_stress": len(stress),
+        "worst_sharpe": stress[worst_name]["strategy"],
+        "worst_scenario": worst_name,
+        "baseline_sharpe": baseline_sh,
+        "baseline_retention": avg_stress / baseline_sh if baseline_sh else float("nan"),
+        "scenarios": results,
+    }
+
+
 def main():
     import argparse
     p = argparse.ArgumentParser(description="v4.0 对抗性鲁棒性评估")
     p.add_argument("--threshold", type=float, default=0.0, help="失效阈值(Sharpe, default=0)")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--score", action="store_true", help="快速对抗稳定性指标(固定压力情景集)")
     args = p.parse_args()
     threshold = args.threshold
+
+    if args.score:
+        from src.strategy import load_config
+        cfg = load_config(PROJ / "config" / "strategy_v4_1.yaml")
+        sc = robustness_score(cfg)
+        if args.json:
+            print(json.dumps(sc, ensure_ascii=False, indent=2, default=str))
+        else:
+            print("=" * 60)
+            print(" 对抗稳定性指标 (固定压力情景集)")
+            print("=" * 60)
+            print(f" baseline Sharpe: {sc['baseline_sharpe']:.3f}")
+            print(f" {'情景':<18s} {'策略':>8s} {'等权':>8s} {'跑赢':>6s}")
+            print("-" * 46)
+            for name, v in sc["scenarios"].items():
+                mark = "Y" if v["beats_ew"] else "-"
+                tag = " (baseline)" if name == "baseline" else ""
+                print(f" {name:<18s} {v['strategy']:>8.3f} {v['ew_rebal']:>8.3f} {mark:>6s}{tag}")
+            print("-" * 46)
+            print(f" pass_rate: {sc['n_pass']}/{sc['n_stress']} ({sc['pass_rate']*100:.0f}%)  "
+                  f"最脆弱: {sc['worst_scenario']}({sc['worst_sharpe']:.3f})  "
+                  f"保留率: {sc['baseline_retention']*100:.0f}%")
+        return
+
 
     OUT.mkdir(parents=True, exist_ok=True)
     nav, wk, w_rets = dm.load_real()

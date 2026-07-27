@@ -135,3 +135,42 @@ SNR 骨架保留为 rolling 模式的 fallback 保护（不与 EWMA 同时开启
 3. **v5.0 全空间覆盖**：D4 跨 universe 验证（冻结规则换篮子看因子是否真）
 4. **EWMA 因子作为生产默认**：当前 ewma_factors_enabled 默认关(保守),
    验证充分后可推荐为 v4.1 生产默认
+
+
+---
+
+## 对抗稳定性指标 (纳入常规评估)
+
+把对抗评估从"一次性研究"变成"常规工程指标"——用固定压力情景集替代逐轴二分搜索,
+可复现、快(~15s)、可比较。
+
+```bash
+python scripts/adversarial_robustness.py --score          # 表格输出
+python scripts/adversarial_robustness.py --score --json   # JSON(供程序化/CI)
+```
+
+固定压力情景集(每个含明确金融含义):
+
+| 情景 | 参数 | 对应现实 |
+|---|---|---|
+| baseline | 全 1.0 | realized 参照 |
+| vol_stress | σ×1.2 | 波动放大20%(2018/2022级) |
+| offense_cooldown | μoff×0.8 | 进攻收益降20%(牛市降温) |
+| bond_bear | μdef×0.5 | 防御漂移减半(债牛结束) |
+| decorrelation | c×0.77 | 相关降低(分散噪声化) |
+| stagflation | σ×1.2 + μoff×0.8 | 滞胀式组合冲击 |
+
+输出标量指标:
+- **pass_rate**: 压力情景中策略跑赢等权的比例(核心门禁,建议阈值 ≥0.5)
+- **worst_scenario / worst_sharpe**: 最脆弱情景
+- **baseline_retention**: 压力下平均 Sharpe / baseline Sharpe
+
+实测对比(验证指标区分度):
+
+| 配置 | pass_rate | retention | 最脆弱 |
+|---|---|---|---|
+| rolling(11) 生产默认 | **1/5 (20%)** | 75% | stagflation(0.699) |
+| win14+taper5 鲁棒模式 | **5/5 (100%)** | 84% | stagflation(0.783) |
+
+用途: 每次策略改动后跑 `--score`,对比 pass_rate 变化,作为"对抗稳定性回归"门禁——
+与 Sharpe/DD/WF 并列,防止"提升了 in-sample Sharpe 却牺牲了抗压能力"的隐性退化。
