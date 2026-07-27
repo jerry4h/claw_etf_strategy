@@ -24,7 +24,7 @@ from src.strategy import load_config
 
 @pytest.fixture(scope="module")
 def full():
-    cfg = load_config(PROJECT / "config/strategy_v3_1.yaml")
+    cfg = load_config(PROJECT / "config/strategy_v4_1.yaml")
     return _bc.compute_benchmarks(cfg)
 
 
@@ -69,7 +69,7 @@ def test_benchmark_absolute_levels(full):
 
 @pytest.fixture(scope="module")
 def wf_result():
-    cfg = load_config(PROJECT / "config/strategy_v3_1.yaml")
+    cfg = load_config(PROJECT / "config/strategy_v4_1.yaml")
     import importlib.util as _iu
     _s = _iu.spec_from_file_location("wf", PROJECT / "scripts" / "run_walkforward.py")
     _m = _iu.module_from_spec(_s)

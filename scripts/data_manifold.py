@@ -28,7 +28,7 @@ from src.backtest import run_backtest
 from src.strategy import load_config
 from src.data_loader import load_nav_data, resample_weekly, ETFS
 
-CFG_PATH = str(PROJ / "config/strategy_v3_1.yaml")
+CFG_PATH = str(PROJ / "config/strategy_v4_1.yaml")
 REAL_CSV = PROJ / "data/all_etfs_nav_latest.csv"
 OUT = PROJ / "output/manifold"
 OUT.mkdir(parents=True, exist_ok=True)

@@ -1,9 +1,11 @@
-# 虾池ETF轮动策略 v3.1 — 中证500ETF版
+# 虾池ETF轮动策略 v4.1 — EWMA因子 + 中证500ETF版
 
 基于 **5只ETF** 的周频动量轮动策略，全连续/零门控/四层架构（含 DefAlloc）。
-**Sharpe 1.610 / 年化 17.05% / 最大回撤 6.97%**（2013-05-17 ~ 2026-07，665周）。
+**Sharpe 1.656 / 年化 17.56% / 最大回撤 6.97%**（2013-05-17 ~ 2026-07，665周）。
 
-2026-07 迁移：沪深300ETF → 中证500ETF。新标的相关性更低（0.245 vs 0.55）、年化收益更高（8.31% vs 6~8%），策略参数同步优化后 Sharpe +0.088, 年化 +1.63pp。
+2026-07 迁移：沪深300ETF → 中证500ETF。
+
+v4.1 升级（2026-07）：因子层从 rolling 窗口切换到 EWMA（指数加权移动平均），消除窗口截断导致的因子跳变。Sharpe 1.610→1.656，对抗性 σ 轴安全余量 +50%，WF OOS 4/5 无过拟合。超参数鲁棒：mom_hl 15-19 宽安全区，vol_hl 4-16 完全不影响。新标的相关性更低（0.245 vs 0.55）、年化收益更高（8.31% vs 6~8%），策略参数同步优化后 Sharpe +0.088, 年化 +1.63pp。
 
 ## 策略原理
 
@@ -102,7 +104,7 @@ T 是领域选择，非超参数：
 claw_etf_strategy/
 ├── README.md
 ├── config/
-│   └── strategy_v3_1.yaml               # 当前配置
+│   └── strategy_v4_1.yaml               # 当前配置
 ├── src/
 │   ├── backtest.py                      # 回测引擎
 │   ├── strategy.py                      # 策略逻辑 + 配置加载
@@ -173,7 +175,7 @@ python scripts/update_etf_data_tushare.py
 ## 注意事项
 
 - 数据列顺序：`日期,纳指ETF,红利低波ETF,中证500ETF,黄金ETF,国债ETF`
-- **所有因子计算强制使用 `src/factors.py`（ddof=0）**，禁止自行实现
+- **v4.1 默认使用 EWMA 因子（ewma_mom_halflife=16, ewma_vol_halflife=6）**，消除 rolling 窗口截断跳变；可通过 `ewma_factors_enabled: false` 回退到 rolling
 - 阈值基准使用状态文件 `data/.last_alloc.json`（上次实仓），首次无状态文件时降级到上周理论仓位
 - 确认调仓后请带 `--save-state` 参数保存仓位状态，下次阈值判断更准
 - 如有多日频分析需求，日频 DD 比周频高约 0.3~2pp

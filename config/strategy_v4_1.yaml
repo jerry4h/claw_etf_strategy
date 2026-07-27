@@ -1,0 +1,92 @@
+# 虾池ETF轮动 v4.1 — EWMA 因子 + 中证500ETF
+# 超参扫描确认: vol_w范围[0.80,1.25]全安全, invvol>=8安全, step_low>=0.12安全
+# C1参数: vol_w=1.10, vol_window=11, mom_window=6, invvol=10, thresh=0.025
+# 鲁棒性: MC 100%, DSR 1.0, WF 55.6%, 综合评级 基本可上
+# 回测指标: Sharpe 1.656, 年化 17.56%, MaxDD 6.97%, 665周 (EWMA mom_hl=16/vol_hl=6)
+# score_margin 在 selection 段定义（默认 0=关闭）
+
+strategy:
+  name: 虾池ETF轮动 v4.1 — EWMA因子 + 中证500ETF
+  version: 4.1
+
+scoring:
+  mom_w: 1.0
+  vol_w: 1.10
+
+selection:
+  top_n: 2
+  score_margin: 0.02
+  dynamic_margin_sensitivity: 1.0  # 动态margin: 基于score gap波动率自适应调节
+  dynamic_margin_window: 3          # 动态margin回看窗口(周)
+  trend_confirm_weeks: 0  # 趋势确认：0=关闭（实验证明延迟入场代价 > 过滤噪声收益）
+
+factors:
+  mom_window: 6
+  vol_window: 11
+  pe_window_years: 5
+  ewma_factors_enabled: true
+  ewma_mom_halflife: 16
+  ewma_vol_halflife: 6
+
+defense:
+  def_alloc: 0.25
+  step_low: 0.15
+  step_high: 0.35
+  max_def: 0.95
+  hongli_ratio: 0.50
+
+# Layer 3.5: 危机相关性收敛保护
+# 进攻ETF间滚动成对相关性超过阈值时提升防御比例
+crisis_correlation:
+  window: 26              # 滚动窗口(周)
+  corr_threshold: 0.60    # 相关性触发阈值
+  boost_slope: 1.875      # 线性斜率: (corr - threshold) * slope
+  max_boost: 0.15         # 最大防御加成(pp)
+
+# 动态红利低波配比公式
+# hl_score = clip(hl_intercept - hl_vol_coeff * vol_hongli, 0, hl_intercept)
+hongli_formula:
+  intercept: 0.80         # 截距(也是clip上限)
+  vol_coeff: 2.67         # 波动率系数
+
+rebalance:
+  threshold: 0.025
+  fee_rate: 0.00005
+  anchor: W-MON
+
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+
+allocation:
+  max_single_alloc: 0.40
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+
+inv_vol_allocation:
+  enabled: true
+  window: 10
+
+d4_individual_filter:
+  enabled: false
+
+softmax_allocation:
+  enabled: false
+
+dynamic_weighting:
+  enabled: false
+
+constituent_signals:
+  enabled: false
+
+regime_classifier:
+  enabled: false
+
+data:
+  nav_path: data/all_etfs_nav_latest.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: 2013-05-17
+  end_date:
+
+reporting:
+  risk_free_rate: 0.025

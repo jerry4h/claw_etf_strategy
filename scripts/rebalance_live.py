@@ -40,7 +40,7 @@ from src.engine_core import (
     apply_trend_confirmation, compute_ashare_vol_boost,
 )
 
-cfg = load_config(PROJECT / 'config/strategy_v3_1.yaml')
+cfg = load_config(PROJECT / 'config/strategy_v4_1.yaml')
 MOM_W = cfg.mom_w
 VOL_W = cfg.vol_w
 TOP_N = cfg.top_n

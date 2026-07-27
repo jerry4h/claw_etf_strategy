@@ -30,7 +30,7 @@ from src.strategy import load_config
 
 
 PROJECT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = PROJECT / 'config' / 'strategy_v3_1.yaml'
+CONFIG_PATH = PROJECT / 'config' / 'strategy_v4_1.yaml'
 
 
 @pytest.fixture(scope='module')

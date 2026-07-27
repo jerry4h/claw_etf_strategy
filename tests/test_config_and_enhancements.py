@@ -20,7 +20,7 @@ from src.strategy import (
 @pytest.fixture
 def yaml_config_path():
     """Path to the real YAML config file."""
-    return Path(__file__).resolve().parent.parent / 'config' / 'strategy_v3_1.yaml'
+    return Path(__file__).resolve().parent.parent / 'config' / 'strategy_v4_1.yaml'
 
 
 class TestLoadConfig:

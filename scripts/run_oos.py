@@ -19,7 +19,7 @@ from src.strategy import load_config
 from src.backtest import run_backtest
 from src.robustness import compute_dsr
 
-cfg = load_config(PROJECT / 'config' / 'strategy_v3_1.yaml')
+cfg = load_config(PROJECT / 'config' / 'strategy_v4_1.yaml')
 
 TRAIN_START, TRAIN_END = '2013-05-17', '2023-12-31'
 TEST_START, TEST_END = '2024-01-01', cfg.end_date or '2026-07-25'

@@ -39,7 +39,7 @@ SMALL_GRID = {
 
 @pytest.fixture(scope="module")
 def wf_res():
-    cfg = load_config(PROJECT / "config/strategy_v3_1.yaml")
+    cfg = load_config(PROJECT / "config/strategy_v4_1.yaml")
     return wf.reoptimize_wf(cfg, n_windows=4, grid=SMALL_GRID)
 
 
@@ -71,7 +71,7 @@ def test_reoptimize_best_params_in_grid(wf_res):
 
 def test_select_best_only_uses_train():
     """_select_best_on_train 只接受 train 区间边界，返回 train 段选优结果。"""
-    cfg = load_config(PROJECT / "config/strategy_v3_1.yaml")
+    cfg = load_config(PROJECT / "config/strategy_v4_1.yaml")
     best = wf._select_best_on_train(cfg, '2013-08-01', '2018-01-01', SMALL_GRID)
     assert best is not None
     assert 'kw' in best and 'train_sharpe' in best and 'dsr' in best
