@@ -211,6 +211,45 @@ def compute_score_margin(
     return eff_margin, gap_history
 
 
+def compute_snr_margin(
+    gap: float,
+    current_vol: float,
+    snr_state: dict,
+    config: "StrategyConfig",
+) -> tuple[float, float, dict]:
+    """v4.0 SNR 自适应 effective margin + threshold。
+
+    用 EWMA 平滑 score gap 计算信噪比(SNR)——EWMA 无硬截断窗口,
+    不受"一期数据进出 rolling 窗口"导致的因子跳变污染。
+    SNR 低时 margin 放大(减少噪声换仓),波动高于 baseline 时 threshold 放大(减少摩擦)。
+
+    Returns: (effective_margin, effective_threshold, updated_snr_state)
+    """
+    hl = max(config.snr_ewma_halflife, 1)
+    alpha = 1.0 - np.exp(-np.log(2.0) / hl)
+
+    # EWMA 更新 gap 均值和方差
+    eg = snr_state.get('ewma_gap', gap)
+    ev = snr_state.get('ewma_var', 0.0)
+    eg = alpha * gap + (1.0 - alpha) * eg
+    ev = alpha * (gap - eg) ** 2 + (1.0 - alpha) * ev
+
+    # SNR = |均值| / 标准差
+    snr = abs(eg) / (np.sqrt(ev) + 1e-8)
+
+    # margin 自适应: SNR < 1.5(经验"可信下限") 时放大 margin
+    margin_mult = max(1.0, 1.5 / (snr + 1e-8))
+    eff_margin = config.score_margin * margin_mult
+
+    # threshold 自适应: 当前波动 > baseline 时按比例放大
+    baseline = config.snr_vol_baseline if config.snr_vol_baseline > 0 else 0.18
+    vol_mult = max(1.0, current_vol / baseline) if current_vol > 0 else 1.0
+    eff_threshold = config.rebalance_threshold * vol_mult
+
+    new_state = {'ewma_gap': float(eg), 'ewma_var': float(ev)}
+    return eff_margin, eff_threshold, new_state
+
+
 def apply_trend_confirmation(
     candidate_sel: list[int],
     last_selected: list[int] | None,

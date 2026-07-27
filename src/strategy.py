@@ -37,6 +37,11 @@ class StrategyConfig:
     dynamic_margin_sensitivity: float = 1.0  # 动态margin灵敏度（0=关闭）
     dynamic_margin_window: int = 4           # 动态margin回看窗口（周）
 
+    # v4.0 SNR 自适应（信噪比检测器：高波动/低区分时自动减少活跃度）
+    snr_adaptive_enabled: bool = False  # 默认关，不改 v3.1 行为
+    snr_ewma_halflife: int = 8          # EWMA 半衰期(周)，越大越平滑
+    snr_vol_baseline: float = 0.18      # 基线年化波动率(纳指历史中位数~18%)
+
     # 因子窗口
     mom_window: int = 6       # P2 fix: was 4, matched to YAML default
     vol_window: int = 11      # P2 fix: was 20, matched to YAML default

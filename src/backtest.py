@@ -17,7 +17,7 @@ from src.factors import compute_all_factors
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
     compute_ashare_vol_boost,
-    compute_inv_vol_weights, compute_score_margin,
+    compute_inv_vol_weights, compute_score_margin, compute_snr_margin,
     apply_trend_confirmation,
 )
 from src.strategy import (
@@ -210,7 +210,9 @@ def run_backtest(
     last_selected = None  # 上一次选中的进攻 ETF（用于 score_margin 过滤）
     pending_selected = None  # 趋势确认：候选进攻对（indices frozenset）
     pending_count = 0        # 候选对连续保持的周数
-    gap_history = []         # 动态margin: score gap历史记录
+    gap_history = []
+    snr_state = {}  # v4.0 SNR 自适应持久状态
+    eff_rebal_threshold = config.rebalance_threshold  # 默认值,SNR 模式下逐周更新         # 动态margin: score gap历史记录
     max_dd = 0.0
 
     # 止损状态（原始 + 三层 + 状态感知）
@@ -302,13 +304,19 @@ def run_backtest(
             selected_off = [j for _, j in off_scores[:eff_top_n]]
 
         # --- Score Margin: 防噪声换仓（仅非 softmax 模式）---
-        # 使用共享函数 (engine_core.compute_score_margin)
         if not eff_softmax_enabled and last_selected is not None:
             if len(off_scores) > eff_top_n:
                 gap = off_scores[eff_top_n - 1][0] - off_scores[eff_top_n][0]
-                eff_margin, gap_history = compute_score_margin(gap, gap_history, config)
+                # v4.0 SNR 自适应 or v3.1 dynamic_margin
+                if config.snr_adaptive_enabled:
+                    nasdaq_vol_i = vol_values[i, 0] if vol_values[i, 0] > 0 else 0.18
+                    eff_margin, eff_rebal_threshold, snr_state = compute_snr_margin(
+                        gap, nasdaq_vol_i, snr_state, config)
+                else:
+                    eff_margin, gap_history = compute_score_margin(gap, gap_history, config)
+                    eff_rebal_threshold = config.rebalance_threshold
 
-                if config.score_margin > 0 or config.dynamic_margin_sensitivity > 0:
+                if config.score_margin > 0 or config.dynamic_margin_sensitivity > 0 or config.snr_adaptive_enabled:
                     if gap < eff_margin:
                         valid_last = [j for j in last_selected if j in off_idx and not np.isnan(scores_vec[j])]
                         if len(valid_last) == eff_top_n:
@@ -489,7 +497,8 @@ def run_backtest(
         # --- 调仓阈值检查 ---
         if i > start_idx:
             max_change = np.max(np.abs(alloc - last_alloc))
-            if max_change < config.rebalance_threshold:
+            _reb_thresh = eff_rebal_threshold if config.snr_adaptive_enabled else config.rebalance_threshold
+            if max_change < _reb_thresh:
                 alloc = last_alloc.copy()
 
         # --- 调仓手续费 ---
