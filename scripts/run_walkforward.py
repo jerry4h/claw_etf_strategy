@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
-"""Walk-Forward 验证脚本 — 自动评估策略的样本外泛化能力。
+"""Walk-Forward 验证脚本 — 评估策略的样本外泛化能力。
 
-将全量数据按时间切分为 train/test 两段（默认 60/40），
-分别在两段上跑回测，对比 Sharpe/年化/回撤的衰减幅度。
-支持自定义切分点和多窗口滚动 WF。
+四种模式，务必分清各自能证明什么：
+
+  --reoptimize  【真·防过拟合样本外验证】每个滚动窗口用 anchored train 段
+                (数据起点→窗口开始) 在参数网格上重新选参(DSR选优, DD<15%)，
+                再拿选出的超参到 test 窗验证，绝不重拟合。train/test 时间不重叠、
+                参数不含测试期信息。这是唯一能回答"参数是否过拟合"的模式。
+  --benchmark   【固定参数稳定性对比，非防过拟合】用同一套生产参数在各 test 窗
+                对比 策略 / 每周再平衡等权 / 真·买入持有。它衡量"固定策略相对
+                基准的优势在不同市况稳不稳"，但因参数是在含这些窗口的全历史上
+                调出的，不能证明参数未过拟合。
+  --rolling     固定参数在各窗口的 train/test Sharpe 衰减(同样是固定参数)。
+  (默认)         单次 train/test 切分(固定参数)。
 
 用法:
-  python scripts/run_walkforward.py                # 默认 60/40 切分
-  python scripts/run_walkforward.py --ratio 0.7    # 70/30 切分
-  python scripts/run_walkforward.py --rolling      # 滚动 WF (5个窗口)
-  python scripts/run_walkforward.py --json         # JSON 输出
+  python scripts/run_walkforward.py --reoptimize --windows 10   # 真 OOS，每窗重选参
+  python scripts/run_walkforward.py --benchmark --windows 10    # 固定参数 vs 基准
+  python scripts/run_walkforward.py --rolling                   # 固定参数滚动衰减
+  python scripts/run_walkforward.py --json                      # JSON 输出
 """
 
 import argparse
+import dataclasses
+import itertools
 import json
 import sys
 from pathlib import Path
@@ -26,7 +37,17 @@ sys.path.insert(0, str(PROJECT))
 from src.backtest import run_backtest
 from src.strategy import load_config, StrategyConfig
 from src.data_loader import load_nav_data, resample_weekly
+from src.robustness import compute_dsr
 from scripts.benchmark_compare import compute_benchmarks
+
+# 参数选优网格（与 run_oos.py 一致：5 参数 × 3 水平 = 243 组合，刻意小以限制选择偏差）
+DEFAULT_WF_GRID = {
+    'mom_w': [0.8, 1.0, 1.2],
+    'vol_w': [0.9, 1.1, 1.3],
+    'def_alloc': [0.20, 0.25, 0.30],
+    'step_low': [0.10, 0.15, 0.20],
+    'step_high': [0.30, 0.35, 0.40],
+}
 
 
 def _run_segment(cfg: StrategyConfig, start: str, end: str) -> dict | None:
@@ -171,6 +192,10 @@ def benchmark_wf(cfg: StrategyConfig, n_windows: int = 5) -> dict:
     把数据切为 n_windows 段；对每个 test 窗口（共 n_windows-1 个），
     用同一 [start, end] 跑策略 + 每周再平衡等权 + 真·买入持有，
     三方指标同口径（benchmark_compare.compute_benchmarks）。
+
+    注意：本模式用【固定生产参数】，衡量的是"固定策略相对基准的稳定性"，
+    不是防过拟合的样本外验证（参数在含这些窗口的全历史上调过）。
+    要做真 OOS 请用 reoptimize_wf / --reoptimize。
     """
     nav_path = cfg.nav_path if Path(cfg.nav_path).is_absolute() else str(PROJECT / cfg.nav_path)
     nav_df = load_nav_data(nav_path)
@@ -216,6 +241,110 @@ def benchmark_wf(cfg: StrategyConfig, n_windows: int = 5) -> dict:
         'wins_vs_ew_rebal': vs_ew,
         'wins_vs_buyhold': vs_bh,
         'avg_strategy_sharpe': float(np.mean([r['strategy_sharpe'] for r in results])),
+        'avg_ew_rebal_sharpe': float(np.mean([r['ew_rebal_sharpe'] for r in results])),
+        'avg_buyhold_sharpe': float(np.mean([r['buyhold_sharpe'] for r in results])),
+    }
+
+
+def _select_best_on_train(cfg: StrategyConfig, train_start: str, train_end: str,
+                          grid: dict, dd_cap: float = 0.15) -> dict | None:
+    """在 train 段网格搜索，用 DSR 选优（DD<dd_cap 约束），返回 best 参数。
+
+    严格无泄露：只在 [train_start, train_end] 上回测选参，从不接触测试期。
+    DSR(n_trials=网格大小) 对多重检验做矫正，抑制 243 选 1 的选择偏差。
+    兜底：若所有组合都被 DD 约束排除，则退化为无约束取最高 Sharpe。
+    """
+    keys = list(grid)
+    combos = list(itertools.product(*[grid[k] for k in keys]))
+    n_trials = len(combos)
+
+    def _eval(apply_dd_cap: bool):
+        best = None
+        for vals in combos:
+            kw = dict(zip(keys, vals))
+            c = dataclasses.replace(cfg, **kw)
+            res = run_backtest(c, start_date=train_start, end_date=train_end)
+            if res.nav_series.empty:
+                continue
+            m = res.metrics
+            if apply_dd_cap and m['max_drawdown'] >= dd_cap:
+                continue
+            dsr = compute_dsr(m['sharpe_ratio'], n_trials=n_trials, n_obs=len(res.nav_series))
+            cand = {'kw': kw, 'train_sharpe': m['sharpe_ratio'],
+                    'train_dd': m['max_drawdown'], 'dsr': dsr}
+            if best is None or dsr > best['dsr']:
+                best = cand
+        return best
+
+    return _eval(apply_dd_cap=True) or _eval(apply_dd_cap=False)
+
+
+def reoptimize_wf(cfg: StrategyConfig, n_windows: int = 10, grid: dict | None = None) -> dict:
+    """真·滚动 Walk-Forward（每窗重新选参）—— 唯一能回答"参数是否过拟合"的模式。
+
+    对每个 test 窗 i：
+      1. anchored train = [数据起点, test 窗开始]，在参数网格上 DSR 选优(DD<15%)选超参；
+      2. 用选出的超参在 test 窗 [窗口开始, 窗口结束] 跑，绝不重拟合；
+      3. test 窗同步对比每周再平衡等权 / 真·买入持有(与参数无关的两个基准)。
+    train 与 test 时间不重叠、选参不含测试期信息 → 真正的样本外。
+    """
+    grid = grid or DEFAULT_WF_GRID
+    nav_path = cfg.nav_path if Path(cfg.nav_path).is_absolute() else str(PROJECT / cfg.nav_path)
+    nav_df = load_nav_data(nav_path)
+    weekly = resample_weekly(nav_df, anchor=cfg.anchor)
+    if cfg.start_date:
+        weekly = weekly[weekly.index >= pd.to_datetime(cfg.start_date)]
+    dates = weekly.index
+    n = len(dates)
+    window_size = n // n_windows
+
+    results = []
+    for i in range(1, n_windows):
+        idx_end = window_size * i
+        train_start = str(dates[0].date())
+        train_end = str(dates[idx_end].date())
+        test_start = train_end
+        test_end = str(dates[min(idx_end + window_size, n - 1)].date())
+
+        best = _select_best_on_train(cfg, train_start, train_end, grid)
+        if best is None:
+            continue
+        bo = dataclasses.replace(cfg, **best['kw'])
+        b = compute_benchmarks(bo, start_date=test_start, end_date=test_end)
+        sm, rbm, bhm = b['strategy'], b['ew_rebalanced'], b['buy_hold']
+        results.append({
+            'window': i,
+            'train_end': train_end,
+            'test_start': test_start,
+            'test_end': test_end,
+            'weeks': b['window']['weeks'],
+            'best_params': best['kw'],
+            'train_sharpe': best['train_sharpe'],
+            'test_strategy_sharpe': sm['sharpe_ratio'],
+            'sharpe_degradation': best['train_sharpe'] - sm['sharpe_ratio'],
+            'ew_rebal_sharpe': rbm['sharpe_ratio'],
+            'buyhold_sharpe': bhm['sharpe_ratio'],
+            'strategy_annual': sm['annual_return'],
+            'ew_rebal_annual': rbm['annual_return'],
+            'buyhold_annual': bhm['annual_return'],
+            'strategy_dd': sm['max_drawdown'],
+            'vs_ew_rebal': sm['sharpe_ratio'] > rbm['sharpe_ratio'],
+            'vs_buyhold': sm['sharpe_ratio'] > bhm['sharpe_ratio'],
+        })
+
+    if not results:
+        return {'error': 'All windows failed', 'mode': 'reoptimize_wf'}
+    nw = len(results)
+    return {
+        'mode': 'reoptimize_wf',
+        'n_windows': n_windows,
+        'n_test_windows': nw,
+        'windows': results,
+        'wins_vs_ew_rebal': sum(r['vs_ew_rebal'] for r in results),
+        'wins_vs_buyhold': sum(r['vs_buyhold'] for r in results),
+        'avg_train_sharpe': float(np.mean([r['train_sharpe'] for r in results])),
+        'avg_test_strategy_sharpe': float(np.mean([r['test_strategy_sharpe'] for r in results])),
+        'avg_sharpe_degradation': float(np.mean([r['sharpe_degradation'] for r in results])),
         'avg_ew_rebal_sharpe': float(np.mean([r['ew_rebal_sharpe'] for r in results])),
         'avg_buyhold_sharpe': float(np.mean([r['buyhold_sharpe'] for r in results])),
     }
@@ -304,6 +433,35 @@ def fmt_report(result: dict) -> str:
                      f"({result['wins_vs_buyhold']/nw*100:.1f}%)    "
                      f"avg Sharpe: strat {result['avg_strategy_sharpe']:.3f} vs buyhold {result['avg_buyhold_sharpe']:.3f}")
 
+    elif result.get('mode') == 'reoptimize_wf':
+        lines.append(f" 真·滚动 WF（每窗 anchored 训练重新选参 → test 验证，不重拟合）")
+        lines.append(f" 滚动窗口数: {result['n_windows']} (test windows = {result['n_test_windows']})")
+        lines.append("")
+        lines.append(f" {'Win':<5s} {'TrainEnd':>11s} {'TestEnd':>11s} {'Wks':>4s} "
+                     f"{'TrainSh':>8s} {'TestSh':>7s} {'Degr':>6s} {'Rebal':>7s} {'BH':>7s}  {'BestParams'}")
+        lines.append(" " + "-" * 118)
+        for w in result['windows']:
+            win_e = 'Y' if w['vs_ew_rebal'] else '-'
+            win_b = 'Y' if w['vs_buyhold'] else '-'
+            bp = w['best_params']
+            bp_str = (f"mom={bp['mom_w']} vol={bp['vol_w']} def={bp['def_alloc']} "
+                      f"lo={bp['step_low']} hi={bp['step_high']}")
+            lines.append(
+                f" {win_e}/{win_b:<3s} {w['train_end']:>11s} {w['test_end']:>11s} {w['weeks']:>4d} "
+                f"{w['train_sharpe']:>8.3f} {w['test_strategy_sharpe']:>7.3f} "
+                f"{w['sharpe_degradation']:>+6.2f} {w['ew_rebal_sharpe']:>7.3f} {w['buyhold_sharpe']:>7.3f}  {bp_str}"
+            )
+        lines.append(" " + "-" * 118)
+        nw = result['n_test_windows']
+        lines.append(f" vs 每周再平衡 (rebal):   {result['wins_vs_ew_rebal']}/{nw} 胜 "
+                     f"({result['wins_vs_ew_rebal']/nw*100:.1f}%)    "
+                     f"avg TestSharpe: strat {result['avg_test_strategy_sharpe']:.3f} vs rebal {result['avg_ew_rebal_sharpe']:.3f}")
+        lines.append(f" vs 真·买入持有 (buyhold): {result['wins_vs_buyhold']}/{nw} 胜 "
+                     f"({result['wins_vs_buyhold']/nw*100:.1f}%)    "
+                     f"avg TestSharpe: strat {result['avg_test_strategy_sharpe']:.3f} vs buyhold {result['avg_buyhold_sharpe']:.3f}")
+        lines.append(f" 平均 IS→OOS Sharpe 退化: {result['avg_sharpe_degradation']:+.3f} "
+                     f"(train {result['avg_train_sharpe']:.3f} → test {result['avg_test_strategy_sharpe']:.3f})")
+
     lines.append("=" * 60)
     return '\n'.join(lines)
 
@@ -311,15 +469,18 @@ def fmt_report(result: dict) -> str:
 def main():
     p = argparse.ArgumentParser(description='Walk-Forward 验证')
     p.add_argument('--ratio', type=float, default=0.6, help='Train 比例 (default: 0.6)')
-    p.add_argument('--rolling', action='store_true', help='滚动 WF 模式')
-    p.add_argument('--benchmark', action='store_true', help='基准对比模式：每 test 窗口同步算策略/每周再平衡/真买入持有 Sharpe')
+    p.add_argument('--rolling', action='store_true', help='滚动 WF 模式(固定参数)')
+    p.add_argument('--benchmark', action='store_true', help='固定参数 vs 基准(每周再平衡/买入持有)对比，非防过拟合')
+    p.add_argument('--reoptimize', action='store_true', help='真·滚动WF：每窗重新选参再验证(唯一防过拟合样本外)')
     p.add_argument('--windows', type=int, default=5, help='滚动窗口数 (default: 5)')
     p.add_argument('--json', action='store_true', help='JSON 输出')
     args = p.parse_args()
 
     cfg = load_config(PROJECT / 'config/strategy_v3_1.yaml')
 
-    if args.benchmark:
+    if args.reoptimize:
+        result = reoptimize_wf(cfg, n_windows=args.windows)
+    elif args.benchmark:
         result = benchmark_wf(cfg, n_windows=args.windows)
     elif args.rolling:
         result = rolling_wf(cfg, n_windows=args.windows)

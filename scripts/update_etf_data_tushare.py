@@ -34,7 +34,11 @@ TUSHARE_TOKEN = os.environ.get('TUSHARE_TOKEN', '')
 if not TUSHARE_TOKEN:
     raise RuntimeError('请设置环境变量 TUSHARE_TOKEN（可在 ~/.bashrc 或 .env 中配置）')
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
-OLD_FILE = os.path.join(DATA_DIR, 'all_etfs_nav_2013_2026_h20269_scaled.csv')
+# 增量更新的基线文件：指向当前正确的最新全量数据（红利低波用反推法回填，总收益 +390%）。
+# 审计 H1：切勿指回 all_etfs_nav_2013_2026_h20269_scaled.csv —— docs/etf_data_build.md
+# 已明确标注其为弃用/错误锚点（红利低波仅 +276%），一旦用它做基线会静默污染全部历史。
+# 可用环境变量 ETF_BASE_FILE 覆盖默认基线。
+OLD_FILE = os.environ.get('ETF_BASE_FILE') or os.path.join(DATA_DIR, 'all_etfs_nav_latest.csv')
 
 # ETF 代码映射
 ETF_MAP = {
@@ -99,8 +103,10 @@ for name, code in ETF_MAP.items():
             ratios[name] = ratio
             print(f"  {name}: 原值={old_val:.4f}, tushare(最近{last_row['trade_date']})={raw_close}, ratio={ratio:.6f}")
         else:
-            ratios[name] = 1.0
-            print(f"  {name}: \u26a0\ufe0f 找不到原始数据，ratio=1.0")
+            raise RuntimeError(
+                f"{name}({code}) 在 {last_date_str} 及之前无法获取 tushare 收盘价，"
+                f"无法计算复权比例。为避免写入量级错误的脏数据（审计 M3），已中断更新。"
+                f"请检查 tushare 权限/该 ETF 是否长期停牌，或用 ETF_BASE_FILE 指定正确基线后重试。")
 
 # ---------- 3. 拉取增量日线数据 ----------
 print("\nStep 3: 拉取增量日线")

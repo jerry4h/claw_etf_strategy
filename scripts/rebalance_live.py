@@ -221,6 +221,66 @@ def should_rebalance(curr, prev):
                   for e in set(curr) | set(prev))
     return max_chg >= REBAL_THRESH, max_chg
 
+def replay_stop_loss_state(df, upto_idx):
+    """从数据起点 replay 策略净值 + 单层止损状态机到 upto_idx，判定该周是否应止损。
+
+    与回测引擎 (src/backtest.py 的 check_stop_loss + recovery_weeks 单层止损) 同口径，
+    也与 --verify 分支的止损镜像一致。用于让实盘主路径的"下周一持仓"在回撤触及
+    stop_loss 阈值时强制进入 max_def 防御，避免实盘推荐遗漏核心风控 (审计 H2)。
+
+    返回: {'should_stop', 'in_recovery', 'nav', 'peak', 'drawdown', 'triggers'}
+    """
+    start = max(MOM_WINDOW, VOL_WINDOW)
+    nav, peak = 1.0, 1.0
+    prev_al = {}
+    prev_sel = None
+    prev_pending = None
+    prev_pending_count = 0
+    gap_hist = []
+    in_sl = False
+    sl_weeks = 0
+    triggers = 0
+    for i in range(start, min(upto_idx, len(df) - 1)):
+        result = compute(df, i, prev_sel=prev_sel, prev_pending=prev_pending,
+                         prev_pending_count=prev_pending_count, gap_history=gap_hist)
+        al = result.alloc
+        if not al:
+            continue
+        if not in_sl and check_stop_loss(nav, peak, cfg.stop_loss):
+            in_sl = True
+            sl_weeks = 0
+            triggers += 1
+        if in_sl:
+            hl = compute_dynamic_hongli(
+                result.volatility['红利低波ETF'].iloc[i]
+                if '红利低波ETF' in result.volatility else float('nan'), cfg)
+            al = {}
+            if len(DEFENSIVE) >= 1:
+                al[DEFENSIVE[0]] = MAX_DEF * hl
+            if len(DEFENSIVE) >= 2:
+                al[DEFENSIVE[1]] = MAX_DEF * (1 - hl)
+            sl_weeks += 1
+            if sl_weeks >= cfg.recovery_weeks:
+                in_sl = False
+        do, _ = should_rebalance(al, prev_al)
+        if not do:
+            al = prev_al
+        nxt, cur = df.iloc[i + 1], df.iloc[i]
+        wr = sum(al.get(e, 0) * (nxt[e] / cur[e] - 1)
+                 for e in al if e in df.columns and pd.notna(cur[e]) and cur[e] > 0)
+        nav *= (1 + wr)
+        peak = max(peak, nav)
+        prev_al = al
+        prev_sel = result.selected
+        prev_pending = result.pending
+        prev_pending_count = result.pending_count
+        gap_hist = result.gap_history
+    dd = (peak - nav) / peak if peak > 0 else 0.0
+    # upto_idx 周(下周一持仓)的判定：仍在止损期 或 当前回撤触发阈值
+    should_stop = bool(in_sl or check_stop_loss(nav, peak, cfg.stop_loss))
+    return {'should_stop': should_stop, 'in_recovery': in_sl, 'nav': nav,
+            'peak': peak, 'drawdown': dd, 'triggers': triggers}
+
 def fmt_alloc(alloc, amount=500000):
     lines = []
     for e in ETFS:
@@ -296,9 +356,9 @@ def main():
                 )
                 al = {}
                 if len(DEFENSIVE) >= 1:
-                    al[DEFENSIVE[0]] = 0.95 * hl_ratio
+                    al[DEFENSIVE[0]] = MAX_DEF * hl_ratio
                 if len(DEFENSIVE) >= 2:
-                    al[DEFENSIVE[1]] = 0.95 * (1 - hl_ratio)
+                    al[DEFENSIVE[1]] = MAX_DEF * (1 - hl_ratio)
                 stop_loss_weeks += 1
                 if stop_loss_weeks >= cfg.recovery_weeks:
                     in_stop_loss = False
@@ -379,6 +439,18 @@ def main():
         print("[ERROR] 无法计算")
         return
 
+    # --- 单层止损检查（审计 H2：与回测引擎一致，防止实盘推荐遗漏核心风控）---
+    sl_state = replay_stop_loss_state(df, idx)
+    stop_loss_active = sl_state['should_stop']
+    if stop_loss_active:
+        _hl = compute_dynamic_hongli(
+            v20['红利低波ETF'].iloc[idx] if '红利低波ETF' in v20 else float('nan'), cfg)
+        alloc = {}
+        if len(DEFENSIVE) >= 1:
+            alloc[DEFENSIVE[0]] = MAX_DEF * _hl
+        if len(DEFENSIVE) >= 2:
+            alloc[DEFENSIVE[1]] = MAX_DEF * (1 - _hl)
+
     print("=" * 70)
     print(f" 虾池ETF轮动 v3.1  实时调仓")
     print("=" * 70)
@@ -415,6 +487,9 @@ def main():
           f"→ {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
 
     print(f"\nLayer 2 (买多少): inv-vol{INV_VOL_W} 权重")
+    if stop_loss_active:
+        print(f"\n  🛑 止损触发: 当前回撤 {sl_state['drawdown']*100:.1f}% ≥ 阈值 {cfg.stop_loss*100:.0f}% "
+              f"→ 持仓强制 {MAX_DEF*100:.0f}% 防御(红利低波+国债)，与回测引擎一致")
     print(f"\n-- 下周一持仓 --")
     print(fmt_alloc(alloc, a.amount))
 
