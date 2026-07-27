@@ -132,6 +132,9 @@ def run_backtest(
             'ewma_factors_enabled': config.ewma_factors_enabled,
             'ewma_mom_halflife': config.ewma_mom_halflife,
             'ewma_vol_halflife': config.ewma_vol_halflife,
+            'vol_taper_enabled': config.vol_taper_enabled,
+            'vol_taper_window': config.vol_taper_window,
+            'vol_taper_len': config.vol_taper_len,
         }
     }
     factors = compute_all_factors(weekly_nav, pe_df, config_dict)
@@ -209,6 +212,8 @@ def run_backtest(
     # EWMA 无硬预热窗口但前几期不稳定;保守取 max(原始窗口, halflife*2)
     if config.ewma_factors_enabled:
         start_idx = max(config.ewma_mom_halflife * 2, config.ewma_vol_halflife * 2, config.vol_window, config.mom_window)
+    elif config.vol_taper_enabled:
+        start_idx = max(config.vol_taper_window, config.mom_window)
     else:
         start_idx = max(config.vol_window, config.mom_window)
     nav = 1.0

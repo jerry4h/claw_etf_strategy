@@ -87,6 +87,24 @@ def calculate_momentum_ewma(weekly_nav: pd.DataFrame, halflife: int = 8) -> pd.D
     return mom
 
 
+def calculate_volatility_tapered(weekly_nav, window=14, taper=5):
+    """Tapered rolling vol: window with oldest `taper` weeks linearly down-weighted."""
+    import numpy as np
+    w_rets = weekly_nav.pct_change().values
+    n, k = w_rets.shape
+    weights = np.ones(window)
+    for t in range(taper):
+        weights[t] = (t + 1.0) / (taper + 1.0)
+    w_norm = weights / weights.sum()
+    vol = np.full((n, k), np.nan)
+    for i in range(window, n):
+        rets_w = w_rets[i - window:i]
+        wmean = np.average(rets_w, weights=w_norm, axis=0)
+        wvar = np.average((rets_w - wmean) ** 2, weights=w_norm, axis=0)
+        vol[i] = np.sqrt(wvar) * np.sqrt(52)
+    return pd.DataFrame(vol, index=weekly_nav.index, columns=weekly_nav.columns)
+
+
 def calculate_volatility_ewma(weekly_nav: pd.DataFrame, halflife: int = 11,
                               annualize: float = np.sqrt(52)) -> pd.DataFrame:
     """EWMA 波动率因子——指数加权标准差。无硬截断窗口,消除边界跳变。
@@ -210,7 +228,13 @@ def compute_all_factors(
     else:
         momentum = calculate_momentum(weekly_nav, window=mom_window)
     if not ewma_on:
-        volatility = calculate_volatility(weekly_nav, window=vol_window, ddof=vol_ddof)
+        vol_taper_on = config.get('factors', {}).get('vol_taper_enabled', False)
+        if vol_taper_on:
+            tw = config.get('factors', {}).get('vol_taper_window', 14)
+            tl = config.get('factors', {}).get('vol_taper_len', 5)
+            volatility = calculate_volatility_tapered(weekly_nav, window=tw, taper=tl)
+        else:
+            volatility = calculate_volatility(weekly_nav, window=vol_window, ddof=vol_ddof)
 
     result = {
         'momentum': momentum,

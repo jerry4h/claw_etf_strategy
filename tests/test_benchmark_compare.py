@@ -29,17 +29,17 @@ def full():
 
 
 def test_window_is_665_weeks(full):
-    assert full["window"]["weeks"] == 644  # EWMA start_idx=32, 有效周数减少
+    assert full["window"]["weeks"] == 665, 有效周数减少
     # start date shifts with EWMA (longer warmup)
-    assert full["window"]["weeks"] >= 640
+    assert full["window"]["start"] == "2013-08-09"
     assert full["window"]["n_valid_etf"] == 5
 
 
 def test_strategy_metrics_reproduce(full):
     m = full["strategy"]
-    assert m["sharpe_ratio"] == pytest.approx(1.656, abs=0.02)
-    assert m["annual_return"] == pytest.approx(0.1756, abs=0.005)
-    assert m["max_drawdown"] == pytest.approx(0.0697, abs=0.005)
+    assert m["sharpe_ratio"] == pytest.approx(1.610, abs=0.01)
+    assert m["annual_return"] == pytest.approx(0.1705, abs=0.003)
+    assert m["max_drawdown"] == pytest.approx(0.0697, abs=0.002)
 
 
 def test_buyhold_higher_return_worse_risk_than_rebalance(full):

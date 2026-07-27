@@ -37,6 +37,11 @@ class StrategyConfig:
     dynamic_margin_sensitivity: float = 1.0  # 动态margin灵敏度（0=关闭）
     dynamic_margin_window: int = 4           # 动态margin回看窗口（周）
 
+    # v4.0 Vol Taper: 扩大窗口+边界渐退(鲁棒模式,降低 sigma 轴脆弱性)
+    vol_taper_enabled: bool = False   # 默认关,保持 rolling(11)
+    vol_taper_window: int = 14        # 扩大后的波动率窗口(周)
+    vol_taper_len: int = 5            # 最老 N 周线性降权
+
     # v4.0 EWMA 因子（消除 rolling 窗口截断跳变，前端平滑）
     ewma_factors_enabled: bool = False  # 默认关，不改 v3.1 因子行为
     ewma_mom_halflife: int = 8          # EWMA 动量半衰期(周)
@@ -442,6 +447,9 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         inv_vol_window=inv_vol_cfg.get('window', 10),
         # 审计 H2: 引擎已消费但此前 load_config 未接线，导致只能锁默认值——现接入
         # v4.1: EWMA 因子参数从 YAML factors 段读取
+        vol_taper_enabled=factors_cfg.get('vol_taper_enabled', False),
+        vol_taper_window=factors_cfg.get('vol_taper_window', 14),
+        vol_taper_len=factors_cfg.get('vol_taper_len', 5),
         ewma_factors_enabled=factors_cfg.get('ewma_factors_enabled', False),
         ewma_mom_halflife=factors_cfg.get('ewma_mom_halflife', 16),
         ewma_vol_halflife=factors_cfg.get('ewma_vol_halflife', 6),

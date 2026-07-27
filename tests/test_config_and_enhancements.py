@@ -205,6 +205,7 @@ class TestFieldCompleteness:
             'rebalance_threshold', 'max_single_alloc',
             'snr_adaptive_enabled', 'snr_ewma_halflife', 'snr_vol_baseline',  # v4.0 SNR
             'ewma_factors_enabled', 'ewma_mom_halflife', 'ewma_vol_halflife',  # v4.0 EWMA
+            'vol_taper_enabled', 'vol_taper_window', 'vol_taper_len',  # v4.0 Vol Taper
             # M3: 中证500 vol crisis boost — 默认关；YAML 段 ashare_vol 可启用
             'ashare_vol_boost_enabled', 'ashare_vol_crisis_threshold', 'ashare_vol_max_boost',
             'ashare_vol_slope', 'ashare_vol_pct_window',
