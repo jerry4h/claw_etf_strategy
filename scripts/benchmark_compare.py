@@ -43,10 +43,14 @@ def _nav_frame(nav, idx):
                          'def_ratio': 0.0, 'turnover': 0.0}, index=idx)
 
 
-def compute_benchmarks(cfg, start_date=None):
-    """返回 {'window', 'strategy', 'ew_rebalanced', 'buy_hold'}，三方指标同口径。"""
+def compute_benchmarks(cfg, start_date=None, end_date=None):
+    """返回 {'window', 'strategy', 'ew_rebalanced', 'buy_hold'}，三方指标同口径。
+
+    start_date / end_date: 限定三方共同的 [start, end] 窗口；None 表示使用
+    策略引擎默认的有效区间。两个基准也会对齐到相同窗口，保证口径一致。
+    """
     rf = cfg.risk_free_rate
-    res = run_backtest(cfg, start_date=start_date)
+    res = run_backtest(cfg, start_date=start_date, end_date=end_date)
     strat = res.nav_series.copy()
     start, end = strat.index[0], strat.index[-1]
 

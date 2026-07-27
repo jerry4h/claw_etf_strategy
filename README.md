@@ -92,7 +92,7 @@ T 是领域选择，非超参数：
 | PSS 收益 P50 / P10 / P90 | 15.9% / 10.2% / 23.7% |
 | PSS DD P50 / P10 / P90 | 6.7% / 5.5% / 9.2% |
 | PSS Sharpe P50 / P10 / P90 | 1.520 / 1.102 / 1.793 |
-| WF 相对胜率（9个滚动窗口） | **55.6%** 🟡（5/9 窗口跑赢等权基准，失败窗口为低波+黄金选股拖累） |
+| WF 相对胜率（9个滚动窗口，生产参数固定） | **7/9 vs 每周再平衡（77.8%）**，**8/9 vs 真·买入持有（88.9%）**；唯一两败窗口为 2015-12~2017-04（低波慢牛、动量失效）；熊市窗口（2021-03~2022-07）基准皆负、策略仍正（防御层真实贡献） |
 | **综合评级** | **🟡 基本可上（WF 55.6%，train/test 无过拟合，策略在低风险环境中跑输等权）** |
 
 ## 目录结构
@@ -115,6 +115,7 @@ claw_etf_strategy/
 │   ├── run_backtest.py                  # 单次回测
 │   ├── calc_performance.py              # 绩效对比（当年/近1年/当前回撤）
 │   ├── benchmark_compare.py             # 基准对比（策略/每周再平衡/真买入持有，全期+OOS）
+│   ├── run_walkforward.py               # Walk-Forward 验证（含 --benchmark 基准对比模式）
 │   ├── cost_sensitivity.py              # 交易成本敏感性分析
 │   └── update_etf_data_tushare.py       # Tushare 数据更新
 ├── tests/
@@ -147,6 +148,13 @@ python scripts/benchmark_compare.py          # 全期(in-sample) + OOS(2024+) �
 python scripts/benchmark_compare.py --json   # JSON（供回归测试/程序化）
 ```
 三方净值同口径对齐对比；其中"真·买入持有"为一次买入后永不调仓（权重自然漂移），是最朴素的"什么都不做"基准。
+
+### Walk-Forward 基准对比（9 个滚动窗口）
+```bash
+python scripts/run_walkforward.py --rolling --windows 10 --benchmark   # 9 窗 vs rebal / buyhold
+python scripts/run_walkforward.py --json                               # JSON 输出
+```
+逐窗判定策略 Sharpe 是否跑赢两个基准，汇总胜率。默认生产参数固定（不重拟合）。
 
 ### 实时调仓计算
 ```bash

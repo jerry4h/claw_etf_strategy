@@ -26,6 +26,7 @@ sys.path.insert(0, str(PROJECT))
 from src.backtest import run_backtest
 from src.strategy import load_config, StrategyConfig
 from src.data_loader import load_nav_data, resample_weekly
+from scripts.benchmark_compare import compute_benchmarks
 
 
 def _run_segment(cfg: StrategyConfig, start: str, end: str) -> dict | None:
@@ -164,6 +165,63 @@ def rolling_wf(cfg: StrategyConfig, n_windows: int = 5) -> dict:
     }
 
 
+def benchmark_wf(cfg: StrategyConfig, n_windows: int = 5) -> dict:
+    """Walk-forward 逐窗口 vs 两个「什么都不做」基准。
+
+    把数据切为 n_windows 段；对每个 test 窗口（共 n_windows-1 个），
+    用同一 [start, end] 跑策略 + 每周再平衡等权 + 真·买入持有，
+    三方指标同口径（benchmark_compare.compute_benchmarks）。
+    """
+    nav_path = cfg.nav_path if Path(cfg.nav_path).is_absolute() else str(PROJECT / cfg.nav_path)
+    nav_df = load_nav_data(nav_path)
+    weekly = resample_weekly(nav_df, anchor=cfg.anchor)
+    if cfg.start_date:
+        weekly = weekly[weekly.index >= pd.to_datetime(cfg.start_date)]
+    dates = weekly.index
+    n = len(dates)
+    window_size = n // n_windows
+
+    results = []
+    for i in range(1, n_windows):
+        idx_end = window_size * i
+        test_start = str(dates[idx_end].date())
+        test_end = str(dates[min(idx_end + window_size, n - 1)].date())
+        b = compute_benchmarks(cfg, start_date=test_start, end_date=test_end)
+        sm = b['strategy']; rbm = b['ew_rebalanced']; bhm = b['buy_hold']
+        results.append({
+            'window': i,
+            'test_start': test_start,
+            'test_end': test_end,
+            'weeks': b['window']['weeks'],
+            'strategy_sharpe': sm['sharpe_ratio'],
+            'ew_rebal_sharpe': rbm['sharpe_ratio'],
+            'buyhold_sharpe': bhm['sharpe_ratio'],
+            'strategy_annual': sm['annual_return'],
+            'ew_rebal_annual': rbm['annual_return'],
+            'buyhold_annual': bhm['annual_return'],
+            'strategy_dd': sm['max_drawdown'],
+            'ew_rebal_dd': rbm['max_drawdown'],
+            'buyhold_dd': bhm['max_drawdown'],
+            'vs_ew_rebal': sm['sharpe_ratio'] > rbm['sharpe_ratio'],
+            'vs_buyhold': sm['sharpe_ratio'] > bhm['sharpe_ratio'],
+        })
+
+    vs_ew = sum(r['vs_ew_rebal'] for r in results)
+    vs_bh = sum(r['vs_buyhold'] for r in results)
+    return {
+        'mode': 'benchmark_wf',
+        'n_windows': n_windows,
+        'n_test_windows': len(results),
+        'windows': results,
+        'wins_vs_ew_rebal': vs_ew,
+        'wins_vs_buyhold': vs_bh,
+        'avg_strategy_sharpe': float(np.mean([r['strategy_sharpe'] for r in results])),
+        'avg_ew_rebal_sharpe': float(np.mean([r['ew_rebal_sharpe'] for r in results])),
+        'avg_buyhold_sharpe': float(np.mean([r['buyhold_sharpe'] for r in results])),
+    }
+
+
+
 def fmt_report(result: dict) -> str:
     """Format walk-forward result as human-readable report."""
     lines = []
@@ -220,6 +278,32 @@ def fmt_report(result: dict) -> str:
         else:
             lines.append(f" ✅ 所有窗口 Test Sharpe > 0")
 
+    elif result.get('mode') == 'benchmark_wf':
+        lines.append(f" 滚动窗口数: {result['n_windows']} (test windows = {result['n_test_windows']})")
+        lines.append(f" 基准：每周再平衡等权 (rebal) / 真·买入持有 (buyhold)")
+        lines.append("")
+        lines.append(f" {'Win':<5s} {'End':>12s} {'Wks':>5s} {'Strat':>7s} {'Rebal':>7s} {'BH':>7s} | {'Strat':>7s} {'Rebal':>7s} {'BH':>7s} | {'Strat':>6s} {'Rebal':>6s} {'BH':>6s}")
+        lines.append(f" {'':<5s} {'(test)':>12s} {'':>5s} {'Sharpe':>7s} {'Sharpe':>7s} {'Sharpe':>7s} | {'AnnRet':>7s} {'AnnRet':>7s} {'AnnRet':>7s} | {'MaxDD':>6s} {'MaxDD':>6s} {'MaxDD':>6s}")
+        lines.append(" " + "-" * 120)
+        for w in result['windows']:
+            win_e = 'Y' if w['vs_ew_rebal'] else '-'
+            win_b = 'Y' if w['vs_buyhold'] else '-'
+            win = f"{win_e}/{win_b}"
+            lines.append(
+                f" {win:<5s} {w['test_end']:>12s} {w['weeks']:>5d} "
+                f"{w['strategy_sharpe']:>7.3f} {w['ew_rebal_sharpe']:>7.3f} {w['buyhold_sharpe']:>7.3f} | "
+                f"{w['strategy_annual']*100:>+6.2f}% {w['ew_rebal_annual']*100:>+6.2f}% {w['buyhold_annual']*100:>+6.2f}% | "
+                f"{w['strategy_dd']*100:>5.2f}% {w['ew_rebal_dd']*100:>5.2f}% {w['buyhold_dd']*100:>5.2f}%"
+            )
+        lines.append(" " + "-" * 120)
+        nw = result['n_test_windows']
+        lines.append(f" vs 每周再平衡 (rebal):   {result['wins_vs_ew_rebal']}/{nw} 胜 "
+                     f"({result['wins_vs_ew_rebal']/nw*100:.1f}%)    "
+                     f"avg Sharpe: strat {result['avg_strategy_sharpe']:.3f} vs rebal {result['avg_ew_rebal_sharpe']:.3f}")
+        lines.append(f" vs 真·买入持有 (buyhold): {result['wins_vs_buyhold']}/{nw} 胜 "
+                     f"({result['wins_vs_buyhold']/nw*100:.1f}%)    "
+                     f"avg Sharpe: strat {result['avg_strategy_sharpe']:.3f} vs buyhold {result['avg_buyhold_sharpe']:.3f}")
+
     lines.append("=" * 60)
     return '\n'.join(lines)
 
@@ -228,13 +312,16 @@ def main():
     p = argparse.ArgumentParser(description='Walk-Forward 验证')
     p.add_argument('--ratio', type=float, default=0.6, help='Train 比例 (default: 0.6)')
     p.add_argument('--rolling', action='store_true', help='滚动 WF 模式')
+    p.add_argument('--benchmark', action='store_true', help='基准对比模式：每 test 窗口同步算策略/每周再平衡/真买入持有 Sharpe')
     p.add_argument('--windows', type=int, default=5, help='滚动窗口数 (default: 5)')
     p.add_argument('--json', action='store_true', help='JSON 输出')
     args = p.parse_args()
 
     cfg = load_config(PROJECT / 'config/strategy_v3_1.yaml')
 
-    if args.rolling:
+    if args.benchmark:
+        result = benchmark_wf(cfg, n_windows=args.windows)
+    elif args.rolling:
         result = rolling_wf(cfg, n_windows=args.windows)
     else:
         result = single_split_wf(cfg, train_ratio=args.ratio)

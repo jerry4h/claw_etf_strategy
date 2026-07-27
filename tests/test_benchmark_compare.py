@@ -63,3 +63,32 @@ def test_benchmark_absolute_levels(full):
     assert rb["max_drawdown"] == pytest.approx(0.202, abs=0.02)
     assert bh["sharpe_ratio"] == pytest.approx(0.818, abs=0.03)
     assert bh["max_drawdown"] == pytest.approx(0.301, abs=0.02)
+
+
+# --- WF 基准对比：策略 vs 9 个滚动窗口的 rebal / buyhold ---
+
+@pytest.fixture(scope="module")
+def wf_result():
+    cfg = load_config(PROJECT / "config/strategy_v3_1.yaml")
+    import importlib.util as _iu
+    _s = _iu.spec_from_file_location("wf", PROJECT / "scripts" / "run_walkforward.py")
+    _m = _iu.module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m.benchmark_wf(cfg, n_windows=10)
+
+
+def test_wf_vs_ew_rebal_wins(wf_result):
+    """对每周再平衡等权：9 窗至少 6 窗 Sharpe 胜出。"""
+    assert wf_result["wins_vs_ew_rebal"] >= 6
+    assert wf_result["n_test_windows"] == 9
+
+
+def test_wf_vs_buyhold_wins(wf_result):
+    """对真·买入持有：9 窗至少 7 窗 Sharpe 胜出（当前实测 8/9）。"""
+    assert wf_result["wins_vs_buyhold"] >= 7
+
+
+def test_wf_strategy_avg_sharpe_dominates(wf_result):
+    s = wf_result["avg_strategy_sharpe"]
+    assert s > wf_result["avg_ew_rebal_sharpe"]
+    assert s > wf_result["avg_buyhold_sharpe"]
