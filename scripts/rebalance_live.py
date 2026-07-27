@@ -32,7 +32,7 @@ PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
 from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data
 from src.utils import compute_sharpe, annualize_return
-from src.factors import calculate_momentum, calculate_volatility
+from src.factors import calculate_momentum, calculate_volatility, calculate_momentum_ewma, calculate_volatility_ewma
 from src.strategy import load_config, calculate_defense_ratio, check_stop_loss
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
@@ -89,8 +89,12 @@ def load(csv):
     return load_nav_data(csv)
 
 def engine_factors(nav):
-    m4 = calculate_momentum(nav, window=MOM_WINDOW)
-    v20 = calculate_volatility(nav, window=VOL_WINDOW)
+    if cfg.ewma_factors_enabled:
+        m4 = calculate_momentum_ewma(nav, halflife=cfg.ewma_mom_halflife)
+        v20 = calculate_volatility_ewma(nav, halflife=cfg.ewma_vol_halflife)
+    else:
+        m4 = calculate_momentum(nav, window=MOM_WINDOW)
+        v20 = calculate_volatility(nav, window=VOL_WINDOW)
     prices = nav[ETFS].values
     wr_df = pd.DataFrame(
         np.diff(prices, axis=0) / prices[:-1],
