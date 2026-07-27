@@ -37,7 +37,7 @@ from src.strategy import load_config, calculate_defense_ratio, check_stop_loss
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
     compute_inv_vol_weights, compute_score_margin,
-    apply_trend_confirmation,
+    apply_trend_confirmation, compute_ashare_vol_boost,
 )
 
 cfg = load_config(PROJECT / 'config/strategy_v3_1.yaml')
@@ -106,7 +106,7 @@ def score_etf(etf, m4, v20, i):
         return None
     return MOM_W * mv - VOL_W * vv
 
-def compute_defense_with_crisis(v_nasdaq, wr_np, i):
+def compute_defense_with_crisis(v_nasdaq, wr_np, i, v20=None):
     """Layer 3 + Layer 3.5 defense ratio using shared functions."""
     # Layer 3: vol-based defense ratio (uses shared strategy.calculate_defense_ratio)
     dr = calculate_defense_ratio(v_nasdaq, cfg)
@@ -118,6 +118,14 @@ def compute_defense_with_crisis(v_nasdaq, wr_np, i):
     boost = compute_crisis_boost(wr_np, i, off_idx, cfg)
     if boost > 0:
         dr = min(dr + boost, 1.0)
+
+    # M3: 中证500 vol 危机加成（与引擎 backtest.py:356 一致；默认关，审计 M-1）
+    if v20 is not None:
+        vol_values = v20[ETFS].values
+        ashare_idx = ETFS.index('中证500ETF')
+        ab = compute_ashare_vol_boost(vol_values, i, ashare_idx, cfg)
+        if ab > 0:
+            dr = min(dr + ab, 1.0)
 
     return dr
 
@@ -135,7 +143,8 @@ class ComputeResult(NamedTuple):
     gap_history: list      # dynamic margin gap history
 
 
-def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_history=None):
+def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_history=None,
+            force_def_floor=None):
     wr_df, wr_np, m4, v20 = engine_factors(nav)
     sc = {e: s for e in OFFENSIVE if (s := score_etf(e, m4, v20, i)) is not None}
     ranked = sorted(sc, key=lambda e: sc[e], reverse=True)
@@ -171,7 +180,11 @@ def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_
 
     # Layer 3 + 3.5: defense ratio with crisis correlation boost
     v_nasdaq = v20['纳指ETF'].iloc[i]
-    def_r = compute_defense_with_crisis(v_nasdaq, wr_np, i)
+    def_r = compute_defense_with_crisis(v_nasdaq, wr_np, i, v20)
+    # 止损期：把防御下限抬到 force_def_floor(=max_def)，仍走完整分配保留进攻端敞口，
+    # 与引擎 backtest.py:434 `def_ratio = max(def_ratio, max_def)` 完全一致（审计 M-2）
+    if force_def_floor is not None:
+        def_r = max(def_r, force_def_floor)
 
     # Layer 2: inv-vol weights (shared engine_core)
     off_indices = [ETFS.index(e) for e in sel]
@@ -251,14 +264,10 @@ def replay_stop_loss_state(df, upto_idx):
             sl_weeks = 0
             triggers += 1
         if in_sl:
-            hl = compute_dynamic_hongli(
-                result.volatility['红利低波ETF'].iloc[i]
-                if '红利低波ETF' in result.volatility else float('nan'), cfg)
-            al = {}
-            if len(DEFENSIVE) >= 1:
-                al[DEFENSIVE[0]] = MAX_DEF * hl
-            if len(DEFENSIVE) >= 2:
-                al[DEFENSIVE[1]] = MAX_DEF * (1 - hl)
+            # 止损期走完整分配(force_def_floor=max_def)，保留 1-max_def 进攻敞口，与引擎一致(审计 M-2)
+            al = compute(df, i, prev_sel=prev_sel, prev_pending=prev_pending,
+                         prev_pending_count=prev_pending_count, gap_history=gap_hist,
+                         force_def_floor=MAX_DEF).alloc
             sl_weeks += 1
             if sl_weeks >= cfg.recovery_weeks:
                 in_sl = False
@@ -349,16 +358,10 @@ def main():
                 stop_loss_weeks = 0
                 stop_loss_count += 1
             if in_stop_loss:
-                # Force 95% defense during stop-loss period
-                hl_ratio = compute_dynamic_hongli(
-                    result.volatility['红利低波ETF'].iloc[i] if '红利低波ETF' in result.volatility else float('nan'),
-                    cfg
-                )
-                al = {}
-                if len(DEFENSIVE) >= 1:
-                    al[DEFENSIVE[0]] = MAX_DEF * hl_ratio
-                if len(DEFENSIVE) >= 2:
-                    al[DEFENSIVE[1]] = MAX_DEF * (1 - hl_ratio)
+                # 止损期走完整分配(force_def_floor=max_def)，保留进攻敞口，与引擎/主路径一致(审计 M-2)
+                al = compute(df, i, prev_sel=prev_sel, prev_pending=prev_pending,
+                             prev_pending_count=prev_pending_count, gap_history=gap_hist,
+                             force_def_floor=MAX_DEF).alloc
                 stop_loss_weeks += 1
                 if stop_loss_weeks >= cfg.recovery_weeks:
                     in_stop_loss = False
@@ -443,13 +446,10 @@ def main():
     sl_state = replay_stop_loss_state(df, idx)
     stop_loss_active = sl_state['should_stop']
     if stop_loss_active:
-        _hl = compute_dynamic_hongli(
-            v20['红利低波ETF'].iloc[idx] if '红利低波ETF' in v20 else float('nan'), cfg)
-        alloc = {}
-        if len(DEFENSIVE) >= 1:
-            alloc[DEFENSIVE[0]] = MAX_DEF * _hl
-        if len(DEFENSIVE) >= 2:
-            alloc[DEFENSIVE[1]] = MAX_DEF * (1 - _hl)
+        # 止损期走完整分配(force_def_floor=max_def)，保留进攻敞口，与引擎一致(审计 M-2)
+        alloc = compute(df, idx, prev_sel=prev_sel, prev_pending=prev_pending,
+                        prev_pending_count=prev_pending_count, gap_history=prev_gap_hist,
+                        force_def_floor=MAX_DEF).alloc
 
     print("=" * 70)
     print(f" 虾池ETF轮动 v3.1  实时调仓")
@@ -482,7 +482,7 @@ def main():
     print_scores(sc, m4, v20, idx, actual_sel=actual_sel)
 
     vn = v20['纳指ETF'].iloc[idx]
-    dr = compute_defense_with_crisis(vn, wr.values if hasattr(wr, 'values') else wr, idx)
+    dr = compute_defense_with_crisis(vn, wr.values if hasattr(wr, 'values') else wr, idx, v20)
     print(f"\nLayer 3 (防多少): 纳指vol{VOL_WINDOW}={vn*100:5.1f}% "
           f"→ {'max_def' if vn > STEP_HIGH else '基准' if vn < STEP_LOW else f'线性: {dr*100:.0f}%'}")
 
