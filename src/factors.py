@@ -176,6 +176,8 @@ def compute_all_factors(
     }
 
     if pe_df is not None and not pe_df.empty:
+        # 注(审计)：pe_percentile 已正确 shift(1) 防前视，但 backtest.run_backtest 当前
+        # 只消费 momentum/volatility，本因子未接入任何决策——属预留(策略为纯价量，无估值)。
         pe_pct = calculate_pe_percentile(pe_df, window_years=pe_window_years)
         pe_pct = pe_pct.shift(1)
         result['pe_percentile'] = pe_pct

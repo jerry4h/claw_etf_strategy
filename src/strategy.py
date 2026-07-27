@@ -59,11 +59,7 @@ class StrategyConfig:
     ashare_vol_max_boost: float = 0.15         # 最大防御加成
     ashare_vol_slope: float = 1.5              # 线性斜率 (max_boost/(1-threshold))
     ashare_vol_pct_window: int = 104           # 百分位回看窗口(周, ~2年)
-    ivix_vol_boost_enabled: bool = False       # M3(可选): iVIX 危机加成(数据待接入)
-    ivix_vol_crisis_threshold: float = 0.90
-    ivix_vol_max_boost: float = 0.15
-    ivix_vol_slope: float = 1.5
-    ivix_vol_pct_window: int = 104
+    # 注：iVIX 危机加成(ivix_vol_*)已删除——无数据源、引擎无调用路径，属死代码(审计 H1)。
 
     # 动态红利低波公式参数
     hongli_intercept: float = 0.80   # 截距(也是clip上限)
@@ -301,6 +297,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     d4_cfg = raw.get('d4_individual_filter', {})
     softmax_cfg = raw.get('softmax_allocation', {})
     inv_vol_cfg = raw.get('inv_vol_allocation', {})
+    ashare_vol_cfg = raw.get('ashare_vol', {})
     d1_cfg = raw.get('dynamic_weighting', {})
     constituent_cfg = raw.get('constituent_signals', {})
     regime_cfg = raw.get('regime_classifier', {})
@@ -315,6 +312,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         'rebalance': ['threshold'],
         'defense': ['def_alloc', 'step_low', 'step_high'],
         'allocation': ['max_single_alloc'],
+        'inv_vol_allocation': ['enabled'],  # 审计 M2: 生产启用的核心分配开关，缺失应报错而非静默退等权
     }
     _missing = []
     for _sec, _keys in _critical.items():
@@ -328,10 +326,10 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     return StrategyConfig(
         name=strategy.get('name', '虾池ETF轮动'),
         version=strategy.get('version', '2.3'),
-        mom_w=scoring.get('mom_w', 0.35),
-        vol_w=scoring.get('vol_w', 0.30),
+        mom_w=scoring.get('mom_w', 1.0),
+        vol_w=scoring.get('vol_w', 1.10),
         top_n=selection.get('top_n', 2),
-        score_margin=selection.get('score_margin', 0.0),
+        score_margin=selection.get('score_margin', 0.02),
         trend_confirm_weeks=selection.get('trend_confirm_weeks', 0),
         dynamic_margin_sensitivity=selection.get('dynamic_margin_sensitivity', 1.0),
         dynamic_margin_window=selection.get('dynamic_margin_window', 4),
@@ -339,7 +337,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         vol_window=factors_cfg.get('vol_window', 11),
         pe_window_years=factors_cfg.get('pe_window_years', 5),
         def_alloc=defense.get('def_alloc', 0.25),
-        step_low=defense.get('step_low', 0.20),
+        step_low=defense.get('step_low', 0.15),
         step_high=defense.get('step_high', 0.35),
         max_def=defense.get('max_def', 0.95),
         hongli_ratio=defense.get('hongli_ratio', 0.50),
@@ -351,7 +349,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         # 动态红利低波公式
         hongli_intercept=hongli_formula.get('intercept', 0.80),
         hongli_vol_coeff=hongli_formula.get('vol_coeff', 2.67),
-        rebalance_threshold=rebalance.get('threshold', 0.07),
+        rebalance_threshold=rebalance.get('threshold', 0.025),
         fee_rate=rebalance.get('fee_rate', 0.00005),
         anchor=rebalance.get('anchor', 'W-MON'),
         stop_loss=risk.get('stop_loss', 0.08),
@@ -379,7 +377,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         p_l3_position=phase_a2_cfg.get('l3_position', 0.20),
         l3_recovery_weeks=stop_loss_cfg.get('l3_recovery_weeks', 2),
         # D2B: 权重上限
-        max_single_alloc=allocation_cfg.get('max_single_alloc', 1.0),
+        max_single_alloc=allocation_cfg.get('max_single_alloc', 0.40),
         # P1 Fix #1: 市场状态感知止损 (DISABLED)
         stateful_stop_loss=market_state_cfg.get('stateful_stop_loss', False),
         ms_bull_mom=market_state_cfg.get('ms_bull_mom', 0.10),
@@ -432,6 +430,15 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         # D6: Inv-Vol Weighted Allocation (ENABLED)
         inv_vol_enabled=inv_vol_cfg.get('enabled', False),
         inv_vol_window=inv_vol_cfg.get('window', 10),
+        # 审计 H2: 引擎已消费但此前 load_config 未接线，导致只能锁默认值——现接入
+        vol_ddof=factors_cfg.get('vol_ddof', 0),
+        hedge_cost_weekly=rebalance.get('hedge_cost_weekly', 0.0),
+        # 审计 M1: 中证500 vol 危机加成接入 YAML(ashare_vol 段)，默认关
+        ashare_vol_boost_enabled=ashare_vol_cfg.get('enabled', False),
+        ashare_vol_crisis_threshold=ashare_vol_cfg.get('crisis_threshold', 0.90),
+        ashare_vol_max_boost=ashare_vol_cfg.get('max_boost', 0.15),
+        ashare_vol_slope=ashare_vol_cfg.get('slope', 1.5),
+        ashare_vol_pct_window=ashare_vol_cfg.get('pct_window', 104),
         # D1: 动态权重 (DISABLED)
         d1_enabled=d1_cfg.get('enabled', False),
         d1_lookback=d1_cfg.get('lookback', 12),

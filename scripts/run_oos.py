@@ -48,7 +48,7 @@ for vals in combos:
     if m['max_drawdown'] >= 0.15:
         continue
     # 选参去偏：用网格 N 试次对 Sharpe 做 DSR 矫正，消除 243 选 1 的多重检验选择偏差
-    dsr = compute_dsr(m['sharpe_ratio'], n_trials=len(combos), n_obs=len(res.nav_series))
+    dsr = compute_dsr(m['sharpe_ratio'], n_trials=len(combos), n_obs=len(res.nav_series), periods_per_year=52)
     if best is None or dsr > best['dsr']:
         best = {'kw': kw, 'sharpe': m['sharpe_ratio'], 'dsr': dsr,
                 'ann': m['annual_return'], 'dd': m['max_drawdown'],
@@ -63,7 +63,7 @@ if best is None:
         if res.nav_series.empty:
             continue
         m = res.metrics
-        dsr = compute_dsr(m['sharpe_ratio'], n_trials=len(combos), n_obs=len(res.nav_series))
+        dsr = compute_dsr(m['sharpe_ratio'], n_trials=len(combos), n_obs=len(res.nav_series), periods_per_year=52)
         if best is None or dsr > best['dsr']:
             best = {'kw': kw, 'sharpe': m['sharpe_ratio'], 'dsr': dsr,
                     'ann': m['annual_return'], 'dd': m['max_drawdown'],

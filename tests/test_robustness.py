@@ -73,7 +73,7 @@ class TestComputeDsr:
             n_trials=30,
             n_obs=664,
             skew=0.0,
-            kurtosis=3.0
+            excess_kurtosis=0.0
         )
         assert dsr > 0.85, f"DSR 应接近 1.0，实际: {dsr:.4f}"
         assert dsr <= 1.0, f"DSR 应 <= 1.0，实际: {dsr:.4f}"
@@ -85,7 +85,7 @@ class TestComputeDsr:
             n_trials=100,
             n_obs=80,
             skew=0.0,
-            kurtosis=3.0
+            excess_kurtosis=0.0
         )
         assert dsr < 0.5, f"低 Sharpe 多试验 DSR 应较低，实际: {dsr:.4f}"
 
@@ -93,7 +93,7 @@ class TestComputeDsr:
         """DSR 结果应在 [0, 1] 区间。"""
         for sharpe in [0.0, 0.5, 1.0, 2.0]:
             for n_trials in [1, 10, 50, 200]:
-                dsr = compute_dsr(sharpe, n_trials, 500, 0.0, 3.0)
+                dsr = compute_dsr(sharpe, n_trials, 500, 0.0, 0.0)
                 assert 0.0 <= dsr <= 1.0, (
                     f"DSR 超出 [0,1]: sharpe={sharpe}, n_trials={n_trials}, dsr={dsr:.4f}"
                 )
@@ -103,24 +103,24 @@ class TestComputeDsr:
 
         用小样本(n_obs=80)使 DSR 落在 (0,1) 区间，单调性可见。
         """
-        dsr_3 = compute_dsr(0.4, 3, 80, 0.0, 3.0)
-        dsr_30 = compute_dsr(0.4, 30, 80, 0.0, 3.0)
+        dsr_3 = compute_dsr(0.4, 3, 80, 0.0, 0.0)
+        dsr_30 = compute_dsr(0.4, 30, 80, 0.0, 0.0)
         assert 0.0 < dsr_30 < dsr_3 < 1.0, (
             f"更多试验应降低 DSR: dsr(n=3)={dsr_3:.4f}, dsr(n=30)={dsr_30:.4f}"
         )
 
     def test_higher_sharpe_higher_dsr(self):
         """相同试验次数下，Sharpe 越高，DSR 应越高。"""
-        dsr_low = compute_dsr(0.5, 20, 500, 0.0, 3.0)
-        dsr_high = compute_dsr(2.0, 20, 500, 0.0, 3.0)
+        dsr_low = compute_dsr(0.5, 20, 500, 0.0, 0.0)
+        dsr_high = compute_dsr(2.0, 20, 500, 0.0, 0.0)
         assert dsr_high > dsr_low, (
             f"更高 Sharpe 应提高 DSR: dsr(SR=0.5)={dsr_low:.4f}, dsr(SR=2.0)={dsr_high:.4f}"
         )
 
     def test_skew_effect(self):
         """负偏度应降低 DSR（增加风险估计）。"""
-        dsr_no_skew = compute_dsr(1.0, 20, 500, skew=0.0, kurtosis=3.0)
-        dsr_neg_skew = compute_dsr(1.0, 20, 500, skew=-1.0, kurtosis=3.0)
+        dsr_no_skew = compute_dsr(1.0, 20, 500, skew=0.0, excess_kurtosis=0.0)
+        dsr_neg_skew = compute_dsr(1.0, 20, 500, skew=-1.0, excess_kurtosis=0.0)
         # 负偏度增大 SE → 降低 z_stat → 降低 DSR
         # 注意：公式中 skew*sharpe 项为负，使 variance 增大
         assert dsr_no_skew >= dsr_neg_skew, (
@@ -129,7 +129,7 @@ class TestComputeDsr:
 
     def test_single_trial(self):
         """n_trials=1 时（无多重测试），DSR 应较高。"""
-        dsr = compute_dsr(1.0, 1, 500, 0.0, 3.0)
+        dsr = compute_dsr(1.0, 1, 500, 0.0, 0.0)
         assert dsr > 0.8, f"单次试验 DSR 应较高，实际: {dsr:.4f}"
 
 

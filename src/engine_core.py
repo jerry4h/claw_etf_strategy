@@ -112,41 +112,6 @@ def compute_ashare_vol_boost(
     return 0.0
 
 
-def compute_ivix_vol_boost(
-    ivix_vol_values: np.ndarray,
-    i: int,
-    ivix_idx: int,
-    config: "StrategyConfig",
-) -> float:
-    """M3 (optional): China VIX (iVIX) volatility crisis boost.
-
-    Same structure as compute_ashare_vol_boost but driven by the iVIX series
-    (上证50ETF 波动率指数). Requires an externally-sourced iVIX weekly series
-    aligned to the backtest weekly index; if not loaded, ivix_idx < 0 keeps
-    this a no-op. Data sourcing is a separate step (not in current pipeline).
-    """
-    if not getattr(config, "ivix_vol_boost_enabled", False):
-        return 0.0
-    if ivix_idx < 0 or i < 20:
-        return 0.0
-    threshold = config.ivix_vol_crisis_threshold
-    slope = config.ivix_vol_slope
-    max_boost = config.ivix_vol_max_boost
-    window = config.ivix_vol_pct_window
-
-    current_vol = ivix_vol_values[i, ivix_idx]
-    if pd.isna(current_vol):
-        return 0.0
-    lo = max(20, i - window)
-    hist = [ivix_vol_values[j, ivix_idx] for j in range(lo, i)
-            if not pd.isna(ivix_vol_values[j, ivix_idx])]
-    if len(hist) < 10:
-        return 0.0
-    pct = sum(1 for v in hist if v < current_vol) / len(hist)
-    if pct > threshold:
-        return min((pct - threshold) * slope, max_boost)
-    return 0.0
-
 def compute_dynamic_hongli(hl_vol: float, config: StrategyConfig) -> float:
     """
     Dynamic hongli_ratio based on hongli ETF's own volatility.

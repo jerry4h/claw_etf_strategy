@@ -142,26 +142,34 @@ def compute_dsr(
     n_trials: int,
     n_obs: int,
     skew: float = 0.0,
-    kurtosis: float = 3.0
+    excess_kurtosis: float = 0.0,
+    periods_per_year: int = 1
 ) -> float:
     """Deflated Sharpe Ratio (Bailey & Lopez de Prado, 2014).
 
-    DSR = Phi( (SR_hat - E[max SR_N]) / sigma_hat )
-    其中 sigma_hat = SE(SR_hat) (Mertens, 2002)，
-    E[max SR_N] = sqrt(2*ln N) * sigma_hat 是 N 次独立试验的期望最大 Sharpe
-    （多重测试矫正项）。方差项下限钳到非负，使矫正项不会在高 SR 时崩成负。
+    DSR = Phi( (SR - E[max SR_N]) / sigma_hat )
+    其中 sigma_hat = SE(SR) (Mertens, 2002)，
+    E[max SR_N] = sqrt(2*ln N) * sigma_hat 是 N 次独立试验的期望最大 Sharpe（多重测试矫正项）。
 
-    说明：样本量大时 SR 估计标准误极小，DSR≈1.0 反映的是*真实*统计显著，
-    而非公式钳制——这与旧实现（E[max] 算出负数→z 爆炸→DSR 钳 1.0）不同。
+    口径要求（此前两个 bug 已修正）：
+      1. SR 与 n_obs 必须同频。若传入的是年化 Sharpe，请同时传 periods_per_year
+         (如周频=52)，函数会把它转成每期 Sharpe 再计算，避免"年化SR配周频n"使 z 爆炸。
+      2. excess_kurtosis 是【超额峰度】(正态=0，pandas Series.kurtosis() 即此口径)，
+         公式用 excess_kurtosis/4 * SR²（等价于 Mertens 的 (raw_kurt-3)/4）。
+
+    注意：n_obs 很大时 SE 极小，DSR 会接近 1；这本身不足以证明"真实显著"——
+    真正决定 deflation 的是 n_trials(试验次数)是否被如实估计，n_trials 低估会高估 DSR。
     """
     n = max(int(n_obs), 1)
-    # Sharpe 估计量的方差 (Mertens 2002)；保持非负
-    variance = 1.0 + 0.5 * sharpe**2 - skew * sharpe + (kurtosis - 3.0) / 4.0 * sharpe**2
+    ppy = max(int(periods_per_year), 1)
+    sr = sharpe / np.sqrt(ppy)  # 转为每期 Sharpe，使其与 n_obs(期数) 同频
+    # Sharpe 估计量的方差 (Mertens 2002, 超额峰度口径)；保持非负
+    variance = 1.0 + 0.5 * sr**2 - skew * sr + (excess_kurtosis / 4.0) * sr**2
     if variance <= 0:
         variance = 1.0 / n
-    se_sr = np.sqrt(variance / n)                                     # sigma_hat: SE of SR_hat
+    se_sr = np.sqrt(variance / n)                                     # sigma_hat: SE of SR
     e_max_sr = np.sqrt(2.0 * np.log(max(int(n_trials), 2))) * se_sr   # deflated null max
-    z_stat = (sharpe - e_max_sr) / se_sr
+    z_stat = (sr - e_max_sr) / se_sr
     return float(min(max(_norm_cdf(z_stat), 0.0), 1.0))
 
 # ── PSS（参数稳定性评分, v4 替代 PBO）─────────────────────────────────────────
@@ -1100,10 +1108,11 @@ def evaluate_robustness(
     sharpe = metrics['sharpe_ratio']
     n_obs = len(weekly_returns)
     skew = float(weekly_returns.skew())
-    kurtosis = float(weekly_returns.kurtosis())
+    excess_kurtosis = float(weekly_returns.kurtosis())  # pandas 返回超额峰度(正态=0)
 
-    # 2. DSR
-    dsr = compute_dsr(sharpe, n_trials, n_obs, skew, kurtosis)
+    # 2. DSR（年化 Sharpe + 周频 n_obs → periods_per_year=52 使二者同频；超额峰度口径）
+    dsr = compute_dsr(sharpe, n_trials, n_obs, skew=skew,
+                      excess_kurtosis=excess_kurtosis, periods_per_year=52)
 
     # 3. MC 生存率 (v2: perturbation param, tightened criterion)
     mc_rate, mc_details = run_mc_survival_test(
@@ -1149,7 +1158,7 @@ def evaluate_robustness(
             'n_trials': n_trials,
             'n_obs': n_obs,
             'skew': skew,
-            'kurtosis': kurtosis,
+            'excess_kurtosis': excess_kurtosis,
         },
     }
     if sps_details is not None and not sps_details.empty:
@@ -1836,7 +1845,7 @@ def generate_robustness_report(
             lines.append(f'- 试验数: {dsr_debug.get("n_trials", 0)}')
             lines.append(f'- 观测数: {dsr_debug.get("n_obs", 0)}')
             lines.append(f'- 偏度: {dsr_debug.get("skew", 0):.4f}')
-            lines.append(f'- 峰度: {dsr_debug.get("kurtosis", 0):.4f}')
+            lines.append(f'- 超额峰度: {dsr_debug.get("excess_kurtosis", 0):.4f}')
             lines.append('')
 
         # PSS 详细数据 (v4)
@@ -1891,7 +1900,7 @@ def generate_robustness_report(
 
     # 写入报告
     report_path = output_path / 'ROBUSTNESS_COMPARISON_REPORT.md'
-    with open(report_path, 'w') as f:
+    with open(report_path, 'w', encoding='utf-8') as f:
         f.write(report)
 
     # 写入结构化结果 JSON (v4: 包含 pss, sps)
@@ -1923,7 +1932,7 @@ def generate_robustness_report(
         }
         json_data.append(entry)
 
-    with open(json_path, 'w') as f:
+    with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(json_data, f, indent=2, default=str, ensure_ascii=False)
 
     return report

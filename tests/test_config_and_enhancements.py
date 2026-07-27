@@ -203,11 +203,9 @@ class TestFieldCompleteness:
             # 已对齐到生产 YAML 值：YAML==default，属模糊情况（在 test_yaml_populates_all_known_fields 验证）
             'mom_w', 'vol_w', 'score_margin', 'dynamic_margin_sensitivity',
             'rebalance_threshold', 'max_single_alloc',
-            # M3: 中证500/iVIX vol crisis boost — intentionally default-off optional (not YAML-mapped yet)
+            # M3: 中证500 vol crisis boost — 默认关；YAML 段 ashare_vol 可启用
             'ashare_vol_boost_enabled', 'ashare_vol_crisis_threshold', 'ashare_vol_max_boost',
             'ashare_vol_slope', 'ashare_vol_pct_window',
-            'ivix_vol_boost_enabled', 'ivix_vol_crisis_threshold', 'ivix_vol_max_boost',
-            'ivix_vol_slope', 'ivix_vol_pct_window',
         }
 
         mismatches = []

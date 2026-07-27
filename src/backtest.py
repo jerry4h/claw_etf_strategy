@@ -16,7 +16,7 @@ from src.data_loader import (
 from src.factors import compute_all_factors
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
-    compute_ashare_vol_boost, compute_ivix_vol_boost,
+    compute_ashare_vol_boost,
     compute_inv_vol_weights, compute_score_margin,
     apply_trend_confirmation,
 )
@@ -431,7 +431,7 @@ def run_backtest(
                 stop_loss_weeks = 0
 
             if in_stop_loss:
-                def_ratio = max(def_ratio, 0.95)
+                def_ratio = max(def_ratio, config.max_def)  # 审计 M3: 用 max_def 而非硬编码
                 stop_loss_weeks += 1
                 if stop_loss_weeks >= config.recovery_weeks:
                     in_stop_loss = False
@@ -600,6 +600,8 @@ def compute_metrics(
     std_wret = weekly_returns.std()
 
     # 防御周数
+    # 报告口径：def_ratio > 基准防御比(0.25=生产 def_alloc) 记为防御周。
+    # 硬编码于此因 compute_metrics 不持有 config；若改 def_alloc 需同步此阈值。
     def_weeks = int(nav_series['def_ratio'].gt(0.25).sum())
 
     # 调仓次数

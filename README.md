@@ -87,12 +87,13 @@ T 是领域选择，非超参数：
 
 | 指标 | 结果 |
 |------|:---:|
-| DSR（Deflated Sharpe，n_trials=30 保守矫正） | **≈1.0000** 🟡（已修正公式：n=664 周使 SR 估计标准误极小→真实显著，非钳制；n_trials 为保守估计，真实变体数可能更大） |
+| DSR（Deflated Sharpe，n_trials=30 保守矫正） | **≈0.999** 🟡（已修正两处口径 bug：年化SR→每期SR 与 n_obs 同频、超额峰度口径；正确口径下仍≈0.999 统计显著。真正敏感点是 n_trials：若真实调参次数达上千，DSR 降至 ~0.92——乐观来自试验次数低估而非公式） |
 | MC 生存率（400次±15%扰动，仅活跃参数） | **见鲁棒性报告** 🟡（已修正：仅扰动 11 个真正生效参数，剔除 D4 no-op；生存标准 Sharpe≥1.0 & DD<10%） |
 | PSS 收益 P50 / P10 / P90 | 15.9% / 10.2% / 23.7% |
 | PSS DD P50 / P10 / P90 | 6.7% / 5.5% / 9.2% |
 | PSS Sharpe P50 / P10 / P90 | 1.520 / 1.102 / 1.793 |
-| WF 相对胜率（9个滚动窗口，生产参数固定） | **7/9 vs 每周再平衡（77.8%）**，**8/9 vs 真·买入持有（88.9%）**；唯一两败窗口为 2015-12~2017-04（低波慢牛、动量失效）；熊市窗口（2021-03~2022-07）基准皆负、策略仍正（防御层真实贡献） |
+| WF（固定参数稳定性，`--benchmark`） | 9 窗：**7/9 vs 每周再平衡**、**8/9 vs 真·买入持有**。衡量固定策略相对基准的稳定性，非防过拟合 |
+| WF（真·重选参 OOS，`--reoptimize`） | 9 窗每窗 anchored 训练重选参→test 验证(不重拟合)：**7/9 vs 每周再平衡**、**7/9 vs 真·买入持有**；IS→OOS Sharpe 退化 **-0.18**(测试期反更高，无过拟合)；9 窗中 8 窗独立收敛到同组参数。唯一两败窗 2015-12~2017-04(低波慢牛、动量失效)；熊市窗 2021-03~2022-07 两基准皆负、策略仍正(防御层真实贡献) |
 | **综合评级** | **🟡 基本可上（WF 55.6%，train/test 无过拟合，策略在低风险环境中跑输等权）** |
 
 ## 目录结构
@@ -115,7 +116,7 @@ claw_etf_strategy/
 │   ├── run_backtest.py                  # 单次回测
 │   ├── calc_performance.py              # 绩效对比（当年/近1年/当前回撤）
 │   ├── benchmark_compare.py             # 基准对比（策略/每周再平衡/真买入持有，全期+OOS）
-│   ├── run_walkforward.py               # Walk-Forward 验证（含 --benchmark 基准对比模式）
+│   ├── run_walkforward.py               # Walk-Forward（--reoptimize 真·重选参OOS / --benchmark 固定参数对比）
 │   ├── cost_sensitivity.py              # 交易成本敏感性分析
 │   └── update_etf_data_tushare.py       # Tushare 数据更新
 ├── tests/
@@ -151,10 +152,11 @@ python scripts/benchmark_compare.py --json   # JSON（供回归测试/程序化�
 
 ### Walk-Forward 基准对比（9 个滚动窗口）
 ```bash
-python scripts/run_walkforward.py --rolling --windows 10 --benchmark   # 9 窗 vs rebal / buyhold
-python scripts/run_walkforward.py --json                               # JSON 输出
+python scripts/run_walkforward.py --reoptimize --windows 10   # 真·重选参 OOS（每窗训练选参→test，防过拟合）
+python scripts/run_walkforward.py --benchmark --windows 10    # 固定参数 vs rebal/buyhold（稳定性，非防过拟合）
+python scripts/run_walkforward.py --json                      # JSON 输出
 ```
-逐窗判定策略 Sharpe 是否跑赢两个基准，汇总胜率。默认生产参数固定（不重拟合）。
+`--reoptimize` 每窗用训练段重新选参再到测试段验证，是唯一能回答"参数是否过拟合"的模式；`--benchmark` 用固定生产参数，衡量相对基准的稳定性。
 
 ### 实时调仓计算
 ```bash
@@ -176,4 +178,6 @@ python scripts/update_etf_data_tushare.py
 - 确认调仓后请带 `--save-state` 参数保存仓位状态，下次阈值判断更准
 - 如有多日频分析需求，日频 DD 比周频高约 0.3~2pp
 - 纳指ETF如出现 QDII 溢价 >2%，需人工判断是否延迟买入
+- PE 分位因子(pe_percentile)已算但**未接入决策**——策略为纯价量(动量+波动率)，无估值逻辑
+- 数据更新脚本基线为 `data/all_etfs_nav_latest.csv`(可用 `ETF_BASE_FILE` 覆盖)，勿指向已弃用的 h20269_scaled 文件
 - 策略基于历史回测，**不保证未来收益**

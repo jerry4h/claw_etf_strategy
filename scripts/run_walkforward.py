@@ -269,7 +269,7 @@ def _select_best_on_train(cfg: StrategyConfig, train_start: str, train_end: str,
             m = res.metrics
             if apply_dd_cap and m['max_drawdown'] >= dd_cap:
                 continue
-            dsr = compute_dsr(m['sharpe_ratio'], n_trials=n_trials, n_obs=len(res.nav_series))
+            dsr = compute_dsr(m['sharpe_ratio'], n_trials=n_trials, n_obs=len(res.nav_series), periods_per_year=52)
             cand = {'kw': kw, 'train_sharpe': m['sharpe_ratio'],
                     'train_dd': m['max_drawdown'], 'dsr': dsr}
             if best is None or dsr > best['dsr']:
