@@ -129,7 +129,7 @@ def gen_garch(mu, A, R, nu, gp, params, T, seed):
     return r
 
 
-def eval_sharpe(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds=(11, 22, 33)):
+def eval_sharpe(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds=(11, 22, 33, 44, 55)):
     """多 seed 生成+回测,返回中位数 Sharpe。"""
     sharpes = []
     for s in seeds:
