@@ -37,6 +37,11 @@ class StrategyConfig:
     dynamic_margin_sensitivity: float = 1.0  # 动态margin灵敏度（0=关闭）
     dynamic_margin_window: int = 4           # 动态margin回看窗口（周）
 
+    # v4.0 EWMA 因子（消除 rolling 窗口截断跳变，前端平滑）
+    ewma_factors_enabled: bool = False  # 默认关，不改 v3.1 因子行为
+    ewma_mom_halflife: int = 8          # EWMA 动量半衰期(周)
+    ewma_vol_halflife: int = 11         # EWMA 波动率半衰期(周)
+
     # v4.0 SNR 自适应（信噪比检测器：高波动/低区分时自动减少活跃度）
     snr_adaptive_enabled: bool = False  # 默认关，不改 v3.1 行为
     snr_ewma_halflife: int = 8          # EWMA 半衰期(周)，越大越平滑

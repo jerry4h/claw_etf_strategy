@@ -129,6 +129,9 @@ def run_backtest(
             'vol_window': config.vol_window,
             'vol_ddof': config.vol_ddof,
             'pe_window_years': config.pe_window_years,
+            'ewma_factors_enabled': config.ewma_factors_enabled,
+            'ewma_mom_halflife': config.ewma_mom_halflife,
+            'ewma_vol_halflife': config.ewma_vol_halflife,
         }
     }
     factors = compute_all_factors(weekly_nav, pe_df, config_dict)
@@ -203,7 +206,11 @@ def run_backtest(
             _regime_enabled = False
 
     # === 5. 逐周回测 ===
-    start_idx = max(config.vol_window, config.mom_window)  # 需要两个因子窗口中较大的一个来预热
+    # EWMA 无硬预热窗口但前几期不稳定;保守取 max(原始窗口, halflife*2)
+    if config.ewma_factors_enabled:
+        start_idx = max(config.ewma_mom_halflife * 2, config.ewma_vol_halflife * 2, config.vol_window, config.mom_window)
+    else:
+        start_idx = max(config.vol_window, config.mom_window)
     nav = 1.0
     peak = 1.0
     last_alloc = np.zeros(n_etfs)

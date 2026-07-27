@@ -66,6 +66,31 @@ def calculate_volatility(
     return pd.DataFrame(volatility, index=weekly_nav.index, columns=weekly_nav.columns)
 
 
+def calculate_momentum_ewma(weekly_nav: pd.DataFrame, halflife: int = 8) -> pd.DataFrame:
+    """EWMA 动量因子——指数加权平均周收益。无硬截断窗口,消除边界跳变。
+
+    ewma_mom[t] = alpha*ret[t] + (1-alpha)*ewma_mom[t-1], alpha=1-exp(-ln2/halflife)
+    等价于对历史收益做指数加权求和,近期权重大、远期指数衰减到零(无突然"掉出")。
+    """
+    w_rets = weekly_nav.pct_change()
+    alpha = 1.0 - np.exp(-np.log(2.0) / max(halflife, 1))
+    # pandas ewm 支持 halflife 参数
+    mom = w_rets.ewm(halflife=halflife, adjust=False).mean()
+    return mom
+
+
+def calculate_volatility_ewma(weekly_nav: pd.DataFrame, halflife: int = 11,
+                              annualize: float = np.sqrt(52)) -> pd.DataFrame:
+    """EWMA 波动率因子——指数加权标准差。无硬截断窗口,消除边界跳变。
+
+    ewma_var[t] = alpha*(ret[t]-ewma_mean[t])² + (1-alpha)*ewma_var[t-1]
+    vol = sqrt(ewma_var) * sqrt(52) 年化。
+    """
+    w_rets = weekly_nav.pct_change()
+    vol = w_rets.ewm(halflife=halflife, adjust=False).std() * annualize
+    return vol
+
+
 def calculate_pe_percentile(
     pe_df: pd.DataFrame,
     window_years: int = 5
@@ -167,8 +192,17 @@ def compute_all_factors(
     vol_ddof = config.get('factors', {}).get('vol_ddof', 0)
     pe_window_years = config.get('factors', {}).get('pe_window_years', 5)
 
-    momentum = calculate_momentum(weekly_nav, window=mom_window)
-    volatility = calculate_volatility(weekly_nav, window=vol_window, ddof=vol_ddof)
+    # v4.0: EWMA 因子(开关控制)
+    ewma_on = config.get('ewma_factors_enabled', False)
+    if ewma_on:
+        ewma_mom_hl = config.get('ewma_mom_halflife', 8)
+        ewma_vol_hl = config.get('ewma_vol_halflife', 11)
+        momentum = calculate_momentum_ewma(weekly_nav, halflife=ewma_mom_hl)
+        volatility = calculate_volatility_ewma(weekly_nav, halflife=ewma_vol_hl, annualize=np.sqrt(52))
+    else:
+        momentum = calculate_momentum(weekly_nav, window=mom_window)
+    if not ewma_on:
+        volatility = calculate_volatility(weekly_nav, window=vol_window, ddof=vol_ddof)
 
     result = {
         'momentum': momentum,
