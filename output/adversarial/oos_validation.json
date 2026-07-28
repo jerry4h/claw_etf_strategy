@@ -352,6 +352,7 @@
         "avg_margin_positive": true,
         "worst_dd_within_envelope": false
       },
+      "n_bucket": 10,
       "v41": {
         "pass_rate": 0.5,
         "worst_dd": 0.16990137412388612,
@@ -373,6 +374,7 @@
         "avg_margin_positive": true,
         "worst_dd_within_envelope": true
       },
+      "n_bucket": 5,
       "v41": {
         "pass_rate": 1.0,
         "worst_dd": 0.12091831891443576,
@@ -394,6 +396,7 @@
         "avg_margin_positive": true,
         "worst_dd_within_envelope": false
       },
+      "n_bucket": 30,
       "v41": {
         "pass_rate": 0.8666666666666667,
         "worst_dd": 0.18892753978536878,

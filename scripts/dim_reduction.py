@@ -126,15 +126,22 @@ def analyze_morris(trajs, perms, outputs, delta):
     r, kp1, k = trajs.shape
     out_keys = [ok for ok in outputs[0].keys() if not ok.startswith("_")]
     stats = {ok: {n: {"ees": []} for (n, _, _) in PARAM_SPACE} for ok in out_keys}
+    n_skipped = 0
     idx = 0
     for t in range(r):
         for step in range(k):
             j = perms[t, step]
             name = PARAM_SPACE[j][0]
             y_b = outputs[idx + step]; y_a = outputs[idx + step + 1]
+            # M3 修: 任一端崩溃时哨兵值会产生虚假巨大梯度污染 μ*/σ, 跳过。
+            if "_error" in y_b or "_error" in y_a:
+                n_skipped += 1
+                continue
             for ok in out_keys:
                 stats[ok][name]["ees"].append((y_a[ok] - y_b[ok]) / delta)
         idx += kp1
+    if n_skipped:
+        print(f"  [warn] analyze_morris: 跳过 {n_skipped} 个受崩溃 eval 污染的 EE (共 {r*k} 期望)")
     for ok in out_keys:
         for name, d in stats[ok].items():
             ees = np.asarray(d["ees"])

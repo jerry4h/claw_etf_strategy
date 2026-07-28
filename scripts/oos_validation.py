@@ -178,15 +178,20 @@ def run_channel_c(cfg_name, cfg, real_returns, real_dates, first_nav, block_len,
 
 
 # =========== 判定 ============
-def verdict(v41, v42, d_max_slack=0.13, regress_tol_pass=0.05, regress_tol_dd=0.02, regress_tol_margin=0.05):
+def verdict(v41, v42, n_bucket, d_max_slack=0.13,
+            pass_regress_tol_buckets=1, regress_tol_dd=0.02, regress_tol_margin=0.05):
     """核心判定 = 相对基线不劣化(直接测试过拟合假设); 附带记录 envelope 状态。
 
     过拟合对抗测试的教科书签名: 在独立OOS上, 候选相对基线显著劣化。
     所以真正应该测的是"v4_2 相对 v4_1 有无退化", 而非"v4_2 绝对达到某阈值"
     (后者混淆了策略族设计包线上限, 极端OOS幅度下任何该族策略都可能超阈值)。
 
+    pass_rate 容差按"允许少通过的桶数"定义 (n_bucket = 情景数 or 路径数):
+      pass_rate_tol = pass_regress_tol_buckets / n_bucket
+      -- 与实际离散粒度一致, 不再出现"5% 容差在 0.1 粒度下永远不生效"的问题。
+
     core 检查(过拟合假设的直接反驳):
-      1. pass_rate 不劣化(允许小噪声 regress_tol_pass)
+      1. pass_rate 不劣化(允许最多 pass_regress_tol_buckets 个桶回落)
       2. worst_dd 不劣化(允许小容差 regress_tol_dd)
       3. avg_margin 不劣化 且 > 0
     envelope 记录(独立于 core, 不参与总判定):
@@ -195,8 +200,9 @@ def verdict(v41, v42, d_max_slack=0.13, regress_tol_pass=0.05, regress_tol_dd=0.
     """
     v41_dd = v41.get("worst_maxdd", v41.get("strat_maxdd_max"))
     v42_dd = v42.get("worst_maxdd", v42.get("strat_maxdd_max"))
+    pass_tol = pass_regress_tol_buckets / max(n_bucket, 1)
     core = {
-        "pass_rate_not_regressed":  v42["pass_rate"]  >= v41["pass_rate"]  - regress_tol_pass,
+        "pass_rate_not_regressed":  v42["pass_rate"]  >= v41["pass_rate"]  - pass_tol,
         "worst_dd_not_regressed":   v42_dd            <= v41_dd            + regress_tol_dd,
         "avg_margin_not_regressed": v42["avg_margin"] >= v41["avg_margin"] - regress_tol_margin,
         "avg_margin_positive":      v42["avg_margin"] > 0,
@@ -285,12 +291,15 @@ def main():
         v42 = outs["channels"][ch]["v4_2_robust"]
         v41_wd = v41.get("worst_maxdd", v41.get("strat_maxdd_max"))
         v42_wd = v42.get("worst_maxdd", v42.get("strat_maxdd_max"))
-        core_ok, checks = verdict(v41, v42)
+        # L1 修: pass_rate 容差按桶数(通道 A/B 情景数, 通道 C 路径数)校准, 与实际离散粒度一致
+        n_bucket = v42.get("n") or v42.get("n_paths") or 1
+        core_ok, checks = verdict(v41, v42, n_bucket=n_bucket)
         env_ok = checks["worst_dd_within_envelope"]
         verdicts[ch] = {"core_pass": core_ok, "envelope_ok": env_ok, "checks": checks,
+                        "n_bucket": n_bucket,
                         "v41": {"pass_rate": v41["pass_rate"], "worst_dd": v41_wd, "avg_margin": v41["avg_margin"]},
                         "v42": {"pass_rate": v42["pass_rate"], "worst_dd": v42_wd, "avg_margin": v42["avg_margin"]}}
-        print(f"\n [{ch}]")
+        print(f"\n [{ch}]  (n_bucket={n_bucket})")
         print(f"    v4_1        : pass_rate={v41['pass_rate']:.0%}  worst_DD={v41_wd:.2%}  avg_margin={v41['avg_margin']:+.3f}")
         print(f"    v4_2_robust : pass_rate={v42['pass_rate']:.0%}  worst_DD={v42_wd:.2%}  avg_margin={v42['avg_margin']:+.3f}")
         print(f"    core(相对不劣化) = {'PASS' if core_ok else 'FAIL'}   "

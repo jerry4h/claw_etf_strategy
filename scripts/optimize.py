@@ -32,6 +32,7 @@ import argparse
 import dataclasses
 import importlib.util
 import json
+import math
 import sys
 import time
 import warnings
@@ -131,7 +132,10 @@ def stage_a_ok(s, d_max, dd_slack=0.01, margin_slack=-0.05):
     if s["realized_annual"]  <= s["realized_ew_annual"]:   return False
     if s["adv_worst_maxdd"]   > d_max + dd_slack:          return False
     for m in HARD_MECH:
-        if s["mech_margin"][m] < margin_slack:             return False
+        mg = s["mech_margin"][m]
+        # 显式 NaN 守卫: nan 参与比较返回 False, 会静默通过约束,
+        # 一旦未来 SCENARIO_MECHANISM 移除某 mech 会立刻踩雷。
+        if math.isnan(mg) or mg < margin_slack:            return False
     return True
 
 
@@ -142,7 +146,8 @@ def stage_b_ok(s, d_max):
     if s["realized_annual"]  <= s["realized_ew_annual"]:   return False
     if s["adv_worst_maxdd"]   > d_max:                     return False
     for m in HARD_MECH:
-        if s["mech_margin"][m] <= 0:                       return False
+        mg = s["mech_margin"][m]
+        if math.isnan(mg) or mg <= 0:                      return False
     return True
 
 
@@ -212,10 +217,11 @@ def main():
                   "seeds": list(seeds_a), "results": stage_a, "partial": False})
 
     # ==================== Stage B ====================
-    cand = [(i, s) for i, s in enumerate(stage_a) if stage_a_ok(s, args.dmax)]
-    cand.sort(key=lambda x: -x[1].get("realized_annual", 0))
-    cand = cand[:args.k]
-    print(f"\n===== Stage B: 精验 {len(cand)} 候选, seeds={seeds_b} =====")
+    cand_all = [(i, s) for i, s in enumerate(stage_a) if stage_a_ok(s, args.dmax)]
+    cand_all.sort(key=lambda x: -x[1].get("realized_annual", 0))
+    total_ok = len(cand_all)
+    cand = cand_all[:args.k]
+    print(f"\n===== Stage B: 精验 {len(cand)} 候选 (共 {total_ok}/{args.n} 过初筛, 取 realized_annual Top-{args.k}), seeds={seeds_b} =====")
     if not cand:
         print(" Stage A 无候选过初筛。请扩大搜索空间/放宽 D_max/放宽 Sharpe margin slack。")
         return
@@ -242,7 +248,7 @@ def main():
     # ==================== 选优 & 输出 ====================
     passing = [s for s in stage_b if stage_b_ok(s, args.dmax)]
     print(f"\n===== 结果 =====")
-    print(f" Stage A: {len(cand)}/{args.n} 过初筛")
+    print(f" Stage A: {total_ok}/{args.n} 过初筛; 送 Stage B: {len(cand)} (取 realized_annual Top-{args.k})")
     print(f" Stage B: {len(passing)}/{len(stage_b)} 严格 PASS")
 
     if passing:
@@ -259,13 +265,19 @@ def main():
                     note=f"LHS N={args.n} + 7-seed 严格精验; realized_annual={best['realized_annual']:.4f}")
         print(f"\n最优 config 已写: {yaml_path}")
     else:
-        print(" 无严格 PASS 候选。以下为 Stage B 里 未过约束最少 者 Top-3:")
+        # M1 修: 过滤掉 eval 崩溃的条目(它们没有 mech_margin 键)
+        stage_b_clean = [s for s in stage_b if "error" not in s]
+        print(f" 无严格 PASS 候选。展示 Stage B 里 未过约束最少 者 Top-3 (共 {len(stage_b_clean)} 有效, "
+              f"{len(stage_b)-len(stage_b_clean)} 崩溃跳过):")
+        if not stage_b_clean:
+            print("   Stage B 全部崩溃, 无可展示候选。")
+            return
         def rank(s):
             fails = sum(1 for m in HARD_MECH if s["mech_margin"][m] <= 0)
             fails += 0 if s["adv_worst_maxdd"] <= args.dmax else 1
             return (fails, -s.get("realized_annual", 0))
-        stage_b.sort(key=rank)
-        for s in stage_b[:3]:
+        stage_b_clean.sort(key=rank)
+        for s in stage_b_clean[:3]:
             print(f"  ann={s['realized_annual']:.3%} DDreal={s['realized_maxdd']:.3%} "
                   f"DDadv={s['adv_worst_maxdd']:.3%} "
                   f"vd_m={s['mech_margin']['vol_defense']:+.3f} "
