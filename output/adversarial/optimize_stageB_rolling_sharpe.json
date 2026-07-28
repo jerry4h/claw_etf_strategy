@@ -1,0 +1,1075 @@
+{
+  "config": "config/strategy_v4_2.yaml",
+  "space": "rolling",
+  "objective": "sharpe",
+  "dmax": 0.12,
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55,
+    66,
+    77
+  ],
+  "results": [
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.1447489490005911,
+      "realized_sharpe": 1.6242336336834529,
+      "realized_maxdd": 0.0695707914354249,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.12096877084855802,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 0.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.13965174141534886,
+        "selection": 0.13901423315297357,
+        "defense_asset": -0.08727669314377706,
+        "dispersion": 0.1694876500031084,
+        "composite": -0.018001995466730425
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11124262364269354,
+        "selection": 0.09827239623192716,
+        "defense_asset": 0.10781490376781291,
+        "dispersion": 0.08367686897330513,
+        "composite": 0.12096877084855802
+      },
+      "failed": [
+        "adv_dd_ok",
+        "hard:defense_asset",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.38280252554308614,
+        "step_low": 0.07432954302235642,
+        "step_high": 0.3143901737645458,
+        "max_def": 0.9987349893673725,
+        "vol_window": 10
+      },
+      "stage_a_idx": 251
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.16094979474855609,
+      "realized_sharpe": 1.617854744099573,
+      "realized_maxdd": 0.06734213051465517,
+      "realized_ew_annual": 0.11839977606906449,
+      "adv_worst_maxdd": 0.11557266508628777,
+      "mech_pass": {
+        "vol_defense": 0.0,
+        "selection": 0.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": -0.0036833302791110523,
+        "selection": -0.025861019999392387,
+        "defense_asset": 0.005407224084799878,
+        "dispersion": 0.062007210143666835,
+        "composite": -0.00043422150568872553
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11557266508628777,
+        "selection": 0.10140672512030213,
+        "defense_asset": 0.10640296391188597,
+        "dispersion": 0.08964872405599095,
+        "composite": 0.11207175775240824
+      },
+      "failed": [
+        "hard:vol_defense",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 11,
+        "def_alloc": 0.31245590258472755,
+        "step_low": 0.11590787627854401,
+        "step_high": 0.35929379757000723,
+        "max_def": 0.944114759814493,
+        "vol_window": 11
+      },
+      "stage_a_idx": 110
+    },
+    {
+      "verdict": "PASS",
+      "realized_annual": 0.14030705574322444,
+      "realized_sharpe": 1.6134697892521666,
+      "realized_maxdd": 0.06670411168265579,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.11001421754553908,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.10620935018723321,
+        "selection": 0.13887699488186156,
+        "defense_asset": 0.000578321440471874,
+        "dispersion": 0.1465974750282879,
+        "composite": 0.11102090077657523
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.10827629936024462,
+        "selection": 0.09674268734904133,
+        "defense_asset": 0.10901528705101,
+        "dispersion": 0.08999766985847643,
+        "composite": 0.11001421754553908
+      },
+      "failed": [],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.4783989513629887,
+        "step_low": 0.09930967925742615,
+        "step_high": 0.3038973142320792,
+        "max_def": 1.0,
+        "vol_window": 10
+      },
+      "stage_a_idx": 270
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.14888381610426582,
+      "realized_sharpe": 1.6098520155148162,
+      "realized_maxdd": 0.06824381388431133,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.1154296929538455,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.07847655282286836,
+        "selection": 0.15314832027048464,
+        "defense_asset": 0.056331106644575524,
+        "dispersion": 0.13989671691751293,
+        "composite": -0.0012736203250663936
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11524685262202726,
+        "selection": 0.10064325843243202,
+        "defense_asset": 0.10486456212671476,
+        "dispersion": 0.08411471848800005,
+        "composite": 0.1154296929538455
+      },
+      "failed": [
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.35565642393255736,
+        "step_low": 0.0686658864248891,
+        "step_high": 0.3448821557346866,
+        "max_def": 0.916115735992555,
+        "vol_window": 10
+      },
+      "stage_a_idx": 211
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.15409525885651876,
+      "realized_sharpe": 1.6005730485971699,
+      "realized_maxdd": 0.07305884953491118,
+      "realized_ew_annual": 0.11839977606906449,
+      "adv_worst_maxdd": 0.1170962938978929,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.008096429798463589,
+        "selection": 0.03249392443267496,
+        "defense_asset": 0.029287214054867228,
+        "dispersion": 0.09065438679855942,
+        "composite": -0.037210313880317814
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11153241946410801,
+        "selection": 0.09904392131193238,
+        "defense_asset": 0.10382881304206767,
+        "dispersion": 0.08217114658982974,
+        "composite": 0.1170962938978929
+      },
+      "failed": [
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 11,
+        "def_alloc": 0.4111921677029041,
+        "step_low": 0.17455306360605716,
+        "step_high": 0.28508631341588886,
+        "max_def": 1.0,
+        "vol_window": 11
+      },
+      "stage_a_idx": 255
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.14313769452349678,
+      "realized_sharpe": 1.6005725544573233,
+      "realized_maxdd": 0.06877190191279312,
+      "realized_ew_annual": 0.11839977606906449,
+      "adv_worst_maxdd": 0.1135936484010939,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 0.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.03324437671380154,
+        "selection": 0.10896464231486802,
+        "defense_asset": -0.08390781687843707,
+        "dispersion": 0.1525983309670227,
+        "composite": 0.1045454266946757
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11141253743236634,
+        "selection": 0.10291913024611407,
+        "defense_asset": 0.10894269624823164,
+        "dispersion": 0.08640807161150103,
+        "composite": 0.1135936484010939
+      },
+      "failed": [
+        "hard:defense_asset"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 11,
+        "def_alloc": 0.41333554761023317,
+        "step_low": 0.08124860801092473,
+        "step_high": 0.3055019156116304,
+        "max_def": 0.9328795724744551,
+        "vol_window": 11
+      },
+      "stage_a_idx": 215
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.16699091854694936,
+      "realized_sharpe": 1.5943096057712747,
+      "realized_maxdd": 0.07050637366614468,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.13638470132297828,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 0.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.0694663457815895,
+        "selection": 0.056580063385037294,
+        "defense_asset": -0.04327836424954723,
+        "dispersion": 0.04750492596816924,
+        "composite": 0.03623519146339049
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12129611760950051,
+        "selection": 0.10338148753776316,
+        "defense_asset": 0.13638470132297828,
+        "dispersion": 0.09219629723722796,
+        "composite": 0.1217567835980719
+      },
+      "failed": [
+        "adv_dd_ok",
+        "hard:defense_asset"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.227303341164837,
+        "step_low": 0.12206519199829698,
+        "step_high": 0.3156630480315032,
+        "max_def": 0.8375840203589648,
+        "vol_window": 10
+      },
+      "stage_a_idx": 205
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.15311086152416498,
+      "realized_sharpe": 1.5815194270528339,
+      "realized_maxdd": 0.06551304847735137,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.11700597033950287,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.05846025417563416,
+        "selection": 0.12707233493781578,
+        "defense_asset": 9.970968436678884e-05,
+        "dispersion": 0.09888217955548906,
+        "composite": -0.010429274526851606
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.1165672324285572,
+        "selection": 0.10127206801514313,
+        "defense_asset": 0.11338673742567101,
+        "dispersion": 0.08860980633074644,
+        "composite": 0.11700597033950287
+      },
+      "failed": [
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.34919599573169735,
+        "step_low": 0.07636810846886963,
+        "step_high": 0.38396627634891045,
+        "max_def": 0.8299378402994222,
+        "vol_window": 10
+      },
+      "stage_a_idx": 160
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.15868597034335963,
+      "realized_sharpe": 1.579735215804661,
+      "realized_maxdd": 0.06467520141569577,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.12146256963923363,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.11033208328075594,
+        "selection": 0.10877627411496693,
+        "defense_asset": 0.11220815275023577,
+        "dispersion": 0.08180252722983195,
+        "composite": 0.03977886693968691
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.1208825916388123,
+        "selection": 0.10361848909056205,
+        "defense_asset": 0.1037863026522253,
+        "dispersion": 0.09311566358159543,
+        "composite": 0.12146256963923363
+      },
+      "failed": [
+        "adv_dd_ok"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.2316275945956245,
+        "step_low": 0.07365146708885528,
+        "step_high": 0.22542165403829947,
+        "max_def": 0.6284592093999657,
+        "vol_window": 10
+      },
+      "stage_a_idx": 123
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.16508367574187366,
+      "realized_sharpe": 1.5790052728253492,
+      "realized_maxdd": 0.06948735708657892,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.12223945077216394,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.04006312329917272,
+        "selection": 0.000968770808351338,
+        "defense_asset": 0.05643817038125776,
+        "dispersion": 0.06461887479619621,
+        "composite": 0.004900418579351196
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12170698869072774,
+        "selection": 0.10371466688388199,
+        "defense_asset": 0.10398147997502333,
+        "dispersion": 0.09323124174387681,
+        "composite": 0.12223945077216394
+      },
+      "failed": [
+        "adv_dd_ok"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.21526427643767584,
+        "step_low": 0.14983290190779935,
+        "step_high": 0.20788462339946576,
+        "max_def": 0.727045861419433,
+        "vol_window": 10
+      },
+      "stage_a_idx": 62
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.17132498250458128,
+      "realized_sharpe": 1.5593931290478942,
+      "realized_maxdd": 0.06728805284864746,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.13635164696811816,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 0.0,
+        "defense_asset": 0.0,
+        "dispersion": 0.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.08359124775881821,
+        "selection": -0.018539968867183676,
+        "defense_asset": -0.0012797857162840653,
+        "dispersion": -0.005487644966738481,
+        "composite": -0.016946071163779997
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12294492381622579,
+        "selection": 0.10763059366535123,
+        "defense_asset": 0.13635164696811816,
+        "dispersion": 0.09857790814797783,
+        "composite": 0.12340962829283515
+      },
+      "failed": [
+        "adv_dd_ok",
+        "hard:defense_asset",
+        "hard:dispersion",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.14203345107062304,
+        "step_low": 0.10732938518163493,
+        "step_high": 0.36942217063576166,
+        "max_def": 0.8428207119842871,
+        "vol_window": 10
+      },
+      "stage_a_idx": 225
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.15718444489255257,
+      "realized_sharpe": 1.5589784228291899,
+      "realized_maxdd": 0.06120372980551205,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.12115517475525922,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.10496024235513657,
+        "selection": 0.09031264347890144,
+        "defense_asset": 0.1546562507723689,
+        "dispersion": 0.05459926497414891,
+        "composite": 0.05186096427759335
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12051091128235743,
+        "selection": 0.10301421482910995,
+        "defense_asset": 0.10310491452176186,
+        "dispersion": 0.09350160916694997,
+        "composite": 0.12115517475525922
+      },
+      "failed": [
+        "adv_dd_ok"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.29203947638550487,
+        "step_low": 0.1015020231666198,
+        "step_high": 0.17195027552117353,
+        "max_def": 0.5424392927904551,
+        "vol_window": 10
+      },
+      "stage_a_idx": 252
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.1467896737330261,
+      "realized_sharpe": 1.5517548818452993,
+      "realized_maxdd": 0.06157952741592345,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.1440147068054773,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.01926729806295502,
+        "selection": 0.13222401373096138,
+        "defense_asset": 0.10173055750590487,
+        "dispersion": 0.09482099629536433,
+        "composite": -0.09719569778101766
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12105826066963127,
+        "selection": 0.0965940488349665,
+        "defense_asset": 0.10678750119195003,
+        "dispersion": 0.0886677179215823,
+        "composite": 0.1440147068054773
+      },
+      "failed": [
+        "adv_dd_ok",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.48802537886375674,
+        "step_low": 0.22840689025919347,
+        "step_high": 0.3957346979798875,
+        "max_def": 1.0,
+        "vol_window": 10
+      },
+      "stage_a_idx": 107
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.14875245811194482,
+      "realized_sharpe": 1.5516529211647994,
+      "realized_maxdd": 0.06159926551692703,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.14578978331207784,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.02822291161790591,
+        "selection": 0.12491258037975306,
+        "defense_asset": 0.12379612429797526,
+        "dispersion": 0.09012707508335494,
+        "composite": -0.13074073296423017
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12116302383868283,
+        "selection": 0.09712382685154927,
+        "defense_asset": 0.10676786969834641,
+        "dispersion": 0.09019362160542795,
+        "composite": 0.14578978331207784
+      },
+      "failed": [
+        "adv_dd_ok",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.4699392765737316,
+        "step_low": 0.22281108157612273,
+        "step_high": 0.4025958035969741,
+        "max_def": 1.0,
+        "vol_window": 10
+      },
+      "stage_a_idx": 281
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.14205370166163012,
+      "realized_sharpe": 1.5490335557427433,
+      "realized_maxdd": 0.05873989156074997,
+      "realized_ew_annual": 0.11887619527420212,
+      "adv_worst_maxdd": 0.11131862537130768,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 0.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.0051881738999823845,
+        "selection": 0.09901926084195833,
+        "defense_asset": -0.010788740584318779,
+        "dispersion": 0.06968997301929081,
+        "composite": 0.010668331606679349
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.10985137370563278,
+        "selection": 0.09720479272913321,
+        "defense_asset": 0.09764454495128173,
+        "dispersion": 0.0853331636637658,
+        "composite": 0.11131862537130768
+      },
+      "failed": [
+        "hard:defense_asset"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 7,
+        "def_alloc": 0.3893811236685576,
+        "step_low": 0.0772244086940218,
+        "step_high": 0.24365037965883465,
+        "max_def": 0.7748200495804595,
+        "vol_window": 7
+      },
+      "stage_a_idx": 122
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.1391713642038397,
+      "realized_sharpe": 1.5454099799606533,
+      "realized_maxdd": 0.06287051015222904,
+      "realized_ew_annual": 0.11939308799089043,
+      "adv_worst_maxdd": 0.11764137306568086,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 0.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.1374168955143048,
+        "selection": 0.1492605117303225,
+        "defense_asset": -0.001110036918707702,
+        "dispersion": 0.1342695346108027,
+        "composite": 0.11686295633431076
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11339236316749277,
+        "selection": 0.09764980224027961,
+        "defense_asset": 0.11403396837468681,
+        "dispersion": 0.09029851652601288,
+        "composite": 0.11764137306568086
+      },
+      "failed": [
+        "hard:defense_asset"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 9,
+        "def_alloc": 0.49294412164757817,
+        "step_low": 0.14768497175338172,
+        "step_high": 0.3286525647793792,
+        "max_def": 0.903285307584652,
+        "vol_window": 9
+      },
+      "stage_a_idx": 269
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.16167770465486342,
+      "realized_sharpe": 1.5453405505074216,
+      "realized_maxdd": 0.06463810498595611,
+      "realized_ew_annual": 0.11839977606906449,
+      "adv_worst_maxdd": 0.11876550694893331,
+      "mech_pass": {
+        "vol_defense": 0.0,
+        "selection": 0.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": -0.06224333374581559,
+        "selection": -0.0017825790463670277,
+        "defense_asset": 0.014146047391372152,
+        "dispersion": 0.07431556790116023,
+        "composite": -0.08884484113650937
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11876550694893331,
+        "selection": 0.10141777016495172,
+        "defense_asset": 0.10291047243173794,
+        "dispersion": 0.09376867351375191,
+        "composite": 0.11833293126037443
+      },
+      "failed": [
+        "hard:vol_defense",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 11,
+        "def_alloc": 0.35110045697402226,
+        "step_low": 0.19175704023600681,
+        "step_high": 0.3981996962511671,
+        "max_def": 0.8738477724317697,
+        "vol_window": 11
+      },
+      "stage_a_idx": 145
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.1594610333095856,
+      "realized_sharpe": 1.5422349766042631,
+      "realized_maxdd": 0.06532903353700703,
+      "realized_ew_annual": 0.11839977606906449,
+      "adv_worst_maxdd": 0.12276656161921588,
+      "mech_pass": {
+        "vol_defense": 0.0,
+        "selection": 0.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": -0.023696862516292216,
+        "selection": -0.0026418607046833076,
+        "defense_asset": 0.0014710812761357106,
+        "dispersion": 0.02968250062010802,
+        "composite": -0.0886211469339726
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12276656161921588,
+        "selection": 0.09902012879742228,
+        "defense_asset": 0.1068983104917489,
+        "dispersion": 0.09924483569151618,
+        "composite": 0.12127886064990301
+      },
+      "failed": [
+        "adv_dd_ok",
+        "hard:vol_defense",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 11,
+        "def_alloc": 0.3567876597255517,
+        "step_low": 0.17058901989094916,
+        "step_high": 0.4663175017578511,
+        "max_def": 1.0,
+        "vol_window": 11
+      },
+      "stage_a_idx": 182
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.15216010416957437,
+      "realized_sharpe": 1.5362059046196364,
+      "realized_maxdd": 0.06099913742077377,
+      "realized_ew_annual": 0.11839977606906449,
+      "adv_worst_maxdd": 0.12843514546071957,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.027595272113768443,
+        "selection": 0.02961310559478414,
+        "defense_asset": 0.0372028126783025,
+        "dispersion": 0.09591671402200674,
+        "composite": 0.0007107873595524339
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11759893418895583,
+        "selection": 0.10426012702011848,
+        "defense_asset": 0.10227562209798673,
+        "dispersion": 0.08628007548002896,
+        "composite": 0.12843514546071957
+      },
+      "failed": [
+        "adv_dd_ok"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 11,
+        "def_alloc": 0.3919463660297723,
+        "step_low": 0.06709533228222722,
+        "step_high": 0.2751994837760301,
+        "max_def": 0.5608471379055634,
+        "vol_window": 11
+      },
+      "stage_a_idx": 203
+    },
+    {
+      "verdict": "PASS",
+      "realized_annual": 0.1519892839273651,
+      "realized_sharpe": 1.534987663466604,
+      "realized_maxdd": 0.06267596112093282,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.11346992770764923,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.08575267650173934,
+        "selection": 0.11645321019553656,
+        "defense_asset": 0.08800880566809022,
+        "dispersion": 0.08411680458473092,
+        "composite": 0.03541919116804426
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11296037283243052,
+        "selection": 0.09748488130330003,
+        "defense_asset": 0.0978238887579888,
+        "dispersion": 0.09237786964105504,
+        "composite": 0.11346992770764923
+      },
+      "failed": [],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.4193442231410839,
+        "step_low": 0.12653070696508392,
+        "step_high": 0.3900927161397968,
+        "max_def": 0.6809056812031278,
+        "vol_window": 10
+      },
+      "stage_a_idx": 49
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.15270268097089756,
+      "realized_sharpe": 1.521207467405329,
+      "realized_maxdd": 0.06069606729174669,
+      "realized_ew_annual": 0.11839977606906449,
+      "adv_worst_maxdd": 0.11521401080762571,
+      "mech_pass": {
+        "vol_defense": 0.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": -0.002733032145489478,
+        "selection": 0.017194231979676955,
+        "defense_asset": 0.03585567688296021,
+        "dispersion": 0.07362187113394558,
+        "composite": -0.009647257445740354
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11370767966700156,
+        "selection": 0.10109935098177204,
+        "defense_asset": 0.0993574340567694,
+        "dispersion": 0.0884764531864424,
+        "composite": 0.11521401080762571
+      },
+      "failed": [
+        "hard:vol_defense",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 11,
+        "def_alloc": 0.4264549382749533,
+        "step_low": 0.14629414849898703,
+        "step_high": 0.48858220846770917,
+        "max_def": 0.7057243749149544,
+        "vol_window": 11
+      },
+      "stage_a_idx": 165
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.1619891385650858,
+      "realized_sharpe": 1.506427551460157,
+      "realized_maxdd": 0.06285390660038674,
+      "realized_ew_annual": 0.11896564946222354,
+      "adv_worst_maxdd": 0.11962956228205376,
+      "mech_pass": {
+        "vol_defense": 0.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": -0.006173609000653224,
+        "selection": 0.001807271505114505,
+        "defense_asset": 0.12585398116266244,
+        "dispersion": 0.03196604696136607,
+        "composite": -0.06042410538354892
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11902207249714858,
+        "selection": 0.10887427722215388,
+        "defense_asset": 0.11072751211689713,
+        "dispersion": 0.10012080884740336,
+        "composite": 0.11962956228205376
+      },
+      "failed": [
+        "hard:vol_defense",
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 10,
+        "def_alloc": 0.3439456123637928,
+        "step_low": 0.21749756816118881,
+        "step_high": 0.3542715075998265,
+        "max_def": 0.5885222685716534,
+        "vol_window": 10
+      },
+      "stage_a_idx": 217
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.1426746434916384,
+      "realized_sharpe": 1.5055576621661257,
+      "realized_maxdd": 0.06437725263136185,
+      "realized_ew_annual": 0.1199232071295444,
+      "adv_worst_maxdd": 0.11205487502183328,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 0.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.05921980979895014,
+        "selection": 0.03948342919032366,
+        "defense_asset": 0.062447431000316356,
+        "dispersion": 0.07070357282175443,
+        "composite": -0.01847784626362603
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11039544012376813,
+        "selection": 0.10115367605836023,
+        "defense_asset": 0.10406964230060088,
+        "dispersion": 0.0843493295785507,
+        "composite": 0.11205487502183328
+      },
+      "failed": [
+        "hard:composite"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 8,
+        "def_alloc": 0.25436979083670563,
+        "step_low": 0.05983452047282052,
+        "step_high": 0.34253829816736076,
+        "max_def": 0.9644567409607312,
+        "vol_window": 8
+      },
+      "stage_a_idx": 294
+    },
+    {
+      "verdict": "FAIL",
+      "realized_annual": 0.1515117278373408,
+      "realized_sharpe": 1.5027678936777826,
+      "realized_maxdd": 0.06745442114744678,
+      "realized_ew_annual": 0.1199232071295444,
+      "adv_worst_maxdd": 0.12206016133658322,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 0.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.007666685965179165,
+        "selection": -0.036047949445361716,
+        "defense_asset": 0.03868586483789527,
+        "dispersion": 0.0020982546011549807,
+        "composite": 0.014412561948633607
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.12170880625164801,
+        "selection": 0.0976773917029177,
+        "defense_asset": 0.10562995307380953,
+        "dispersion": 0.09091887777043654,
+        "composite": 0.12206016133658322
+      },
+      "failed": [
+        "adv_dd_ok"
+      ],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 8,
+        "def_alloc": 0.3030652582014919,
+        "step_low": 0.15879235348924947,
+        "step_high": 0.3321442834322724,
+        "max_def": 1.0,
+        "vol_window": 8
+      },
+      "stage_a_idx": 197
+    },
+    {
+      "verdict": "PASS",
+      "realized_annual": 0.1414798881100714,
+      "realized_sharpe": 1.5023206290999973,
+      "realized_maxdd": 0.06865467192149599,
+      "realized_ew_annual": 0.1199232071295444,
+      "adv_worst_maxdd": 0.11595310352705403,
+      "mech_pass": {
+        "vol_defense": 1.0,
+        "selection": 1.0,
+        "defense_asset": 1.0,
+        "dispersion": 1.0,
+        "composite": 1.0
+      },
+      "mech_margin": {
+        "vol_defense": 0.07154191898615592,
+        "selection": 0.08677878559424201,
+        "defense_asset": 0.0959453804586653,
+        "dispersion": 0.10890007571884386,
+        "composite": 0.06118226765072199
+      },
+      "mech_worst_dd": {
+        "vol_defense": 0.11547698803417213,
+        "selection": 0.09686787361156857,
+        "defense_asset": 0.09969418873329886,
+        "dispersion": 0.08537781090134912,
+        "composite": 0.11595310352705403
+      },
+      "failed": [],
+      "params": {
+        "top_n": 2,
+        "inv_vol_window": 8,
+        "def_alloc": 0.4054140379344354,
+        "step_low": 0.1445205589030127,
+        "step_high": 0.2708484827865434,
+        "max_def": 0.8749513329182708,
+        "vol_window": 8
+      },
+      "stage_a_idx": 179
+    }
+  ]
+}
