@@ -1,15 +1,21 @@
-# 虾池ETF轮动策略 v4.2 — 对抗鲁棒生产版
+# 虾池ETF轮动策略 v4.3 — tapered-vol 生产版（无窗口跳变）
 
 基于 **5只ETF** 的周频动量轮动策略，全连续/零门控/四层架构（含 DefAlloc）。
-**Sharpe 1.635 / 年化 15.84% / 最大回撤 6.75%**（realized 2013-08 ~ 2026-07，666周）；
-**对抗压力全情景 worst_DD 11.60% < 12%，5 机制 Sharpe 门禁 4/4 硬 + soft selection 全 PASS，
-三通道 OOS 验证 TRUE_ROBUST**。
+**Sharpe 1.488 / 年化 14.52% / 最大回撤 5.84% / Calmar 2.49**（realized 2013-08 ~ 2026-07）；
+**tapered vol 消除 rolling 窗口跳变（-27~42%）；对抗 3 通道 OOS 通过率全 ≥ 前代 v4.2**。
 
-v4.2 由 **v4.0 对抗鲁棒性框架**（评估入口 / 维度约简 / 约束优化 / OOS 验证）产出，
-相对 v4.1 历史配置牺牲 realized 年化 -1.21pp，换来对抗全线通过 + Sharpe 反涨 0.025。
-方法学与决策依据详见 [`docs/adversarial_robustness_methodology.md`](docs/adversarial_robustness_methodology.md)。
+v4.3 由 **v4.0 对抗鲁棒性框架 + max-Sharpe 目标 + OOS 泛化门** 产出。经**控制变量消融实验**
+确认：在相同优化方法下，rolling 找不到任何可泛化的鲁棒配置（0/3 过 OOS 门），唯 tapered vol
+能（1/5）——**taper 是因子级的真实优势，不是方法的假象**。方法学详见
+[`docs/adversarial_robustness_methodology.md`](docs/adversarial_robustness_methodology.md)。
 
-## v4.2 相对 v4.1 (历史基线) 的取舍
+**生产状态**：`config/strategy_v4_3.yaml` 为**默认生产 config**（`rebalance_live.py` /
+`run_backtest.py` / `evaluate.py` 等默认路径已全部切换，实盘脚本已支持 tapered vol 且经
+`--verify` 确认与回测引擎一致 ΔSharpe<0.01）。前代 `config/strategy_v4_2.yaml`（rolling，
+Sharpe 1.635/更高年化但 vol 有跳变）保留为**已验证替代配置**；如需切回：
+`python scripts/rebalance_live.py --config config/strategy_v4_2.yaml`。
+
+## v4.3 相对 v4.2 (前代生产) 的取舍
 
 针对"realized 高 Sharpe 只代表历史这一条路径通过"的结构性风险，v4.0 框架把
 "另一条路径下也不崩"变成可优化、可门禁的量化指标。**v4.1 → v4.2 是这个框架
@@ -38,12 +44,11 @@ v4.2 由 **v4.0 对抗鲁棒性框架**（评估入口 / 维度约简 / 约束�
 | `max_def` | 0.95 | 0.811 | 峰值防御更低 |
 | `vol_window` | 11 | 10 | vol 信号更快 |
 
-**当前状态**：`config/strategy_v4_2.yaml` 已成为**默认生产 config**，`rebalance_live.py`
-/ `run_backtest.py` / `evaluate.py` 等所有默认路径已切换；`config/strategy_v4_1.yaml`
-保留作**历史基线**（对抗 OOS 验证的对照组、回归测试的历史行为参照）。
-临时切回 v4.1：`python scripts/rebalance_live.py --config config/strategy_v4_1.yaml`。
+**版本沿革**：`config/strategy_v4_2.yaml`（rolling）曾是生产配置，现已被 **v4.3 取代**、降为
+**前代已验证配置**（对抗 OOS 对照 + 回归 pin 保留）；`config/strategy_v4_1.yaml` 仍作**历史基线**
+（对抗 OOS 验证的对照组、回归测试的历史行为参照）。当前默认生产 = v4.3（见顶部）。
 
-## v4.3 — tapered-vol 无跳变替代配置（与 v4.2 并列归档）
+## v4.3 — tapered-vol 生产版的由来（消除窗口跳变）
 
 rolling `vol_window` 有一个**设计层面的固有缺陷**：当最老一周滚出窗口时波动率会阶跃跳变。
 v4.3 用 **tapered vol**（窗口内最老若干周线性降权）替代硬截断窗口，实测把纳指 vol 的
@@ -68,8 +73,9 @@ OOS 泛化门** 优化得到。方法学上有两个关键教训（详见 method
 | OOS 三通道通过率 | 基线 | **全 ≥ v4.2**（A 80%>70%, B 100%=, C 93%>90%） |
 | def_alloc | 0.145 | 0.349（更防御） |
 
-**如何选**：看重风险调整收益（Sharpe）用 v4.2；看重回撤控制（MaxDD/Calmar）+ 无跳变设计
-用 v4.3。默认加载 v4.2；切 v4.3：`python scripts/rebalance_live.py --config config/strategy_v4_3.yaml`。
+**选型**：**v4.3 已是默认生产**（无跳变 + 更低回撤 + 更高 Calmar，且经消融确认因子级鲁棒优势）。
+若更偏好风险调整收益（更高 Sharpe/年化），可切回前代 v4.2：
+`python scripts/rebalance_live.py --config config/strategy_v4_2.yaml`。
 
 ## v4.0 对抗鲁棒性框架
 

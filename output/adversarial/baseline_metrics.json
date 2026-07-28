@@ -1,18 +1,18 @@
 {
-  "objective": 0.15843660560639905,
+  "objective": 0.145217905430306,
   "verdict": "PASS",
   "failed_constraints": [],
   "realized": {
-    "annual_return": 0.15843660560639905,
-    "max_drawdown": 0.06748735905410348,
-    "sharpe": 1.634952068385239,
-    "ew_annual_return": 0.11896564946222354,
-    "ew_max_drawdown": 0.20198315146528822,
-    "ew_sharpe": 0.9234962451600892,
+    "annual_return": 0.145217905430306,
+    "max_drawdown": 0.05842581279905498,
+    "sharpe": 1.4878019225442454,
+    "ew_annual_return": 0.11718269909313306,
+    "ew_max_drawdown": 0.20198315146528836,
+    "ew_sharpe": 0.9055765841738279,
     "window": {
-      "start": "2013-08-02",
+      "start": "2013-08-30",
       "end": "2026-07-24",
-      "weeks": 666,
+      "weeks": 662,
       "n_valid_etf": 5
     }
   },
@@ -22,11 +22,11 @@
     "n_pass": 5,
     "n_pass_return": 0,
     "n_stress": 5,
-    "worst_sharpe": 0.8157598440905329,
+    "worst_sharpe": 0.8416437453349985,
     "worst_scenario": "stagflation",
-    "worst_maxdd": 0.11602733320157402,
-    "baseline_sharpe": 1.1798626357539266,
-    "baseline_retention": 0.8253242756676855,
+    "worst_maxdd": 0.11945693409640767,
+    "baseline_sharpe": 1.1643643242982877,
+    "baseline_retention": 0.860031950112526,
     "by_mechanism": {
       "vol_defense": {
         "scenarios": [
@@ -35,8 +35,8 @@
         "n": 1,
         "pass_rate": 1.0,
         "pass_rate_return": 0.0,
-        "worst_sharpe": 0.9526136807510641,
-        "worst_maxdd": 0.11543084243423787
+        "worst_sharpe": 1.0044182418369085,
+        "worst_maxdd": 0.11028450474311516
       },
       "selection": {
         "scenarios": [
@@ -45,8 +45,8 @@
         "n": 1,
         "pass_rate": 1.0,
         "pass_rate_return": 0.0,
-        "worst_sharpe": 0.9973877880813788,
-        "worst_maxdd": 0.1044955718768872
+        "worst_sharpe": 1.0025112518583745,
+        "worst_maxdd": 0.11945693409640767
       },
       "defense_asset": {
         "scenarios": [
@@ -55,8 +55,8 @@
         "n": 1,
         "pass_rate": 1.0,
         "pass_rate_return": 0.0,
-        "worst_sharpe": 0.9460189324809669,
-        "worst_maxdd": 0.10483433882422244
+        "worst_sharpe": 0.9031379271270022,
+        "worst_maxdd": 0.11106808949765758
       },
       "dispersion": {
         "scenarios": [
@@ -65,8 +65,8 @@
         "n": 1,
         "pass_rate": 1.0,
         "pass_rate_return": 0.0,
-        "worst_sharpe": 1.1570661308009356,
-        "worst_maxdd": 0.09315199516080284
+        "worst_sharpe": 1.2552414361812658,
+        "worst_maxdd": 0.08237611038670374
       },
       "composite": {
         "scenarios": [
@@ -75,75 +75,75 @@
         "n": 1,
         "pass_rate": 1.0,
         "pass_rate_return": 0.0,
-        "worst_sharpe": 0.8157598440905329,
-        "worst_maxdd": 0.11602733320157402
+        "worst_sharpe": 0.8416437453349985,
+        "worst_maxdd": 0.11407331305789555
       }
     },
     "scenarios": {
       "baseline": {
-        "strategy": 1.1798626357539266,
-        "ew_rebal": 1.0176916537365568,
+        "strategy": 1.1643643242982877,
+        "ew_rebal": 1.0169810123490999,
         "beats_ew": true,
         "beats_ew_return": false,
-        "strat_maxdd": 0.10400812881781323,
-        "ew_maxdd": 0.10865863682370536,
-        "strat_annual": 0.1101259308042557,
-        "ew_annual": 0.12118989186437146,
+        "strat_maxdd": 0.09808372491999551,
+        "ew_maxdd": 0.1086586368237049,
+        "strat_annual": 0.11322449736246099,
+        "ew_annual": 0.1197350689281671,
         "mechanism": "baseline"
       },
       "vol_stress": {
-        "strategy": 0.9526136807510641,
-        "ew_rebal": 0.8771087172568233,
+        "strategy": 1.0044182418369085,
+        "ew_rebal": 0.8767483472539511,
         "beats_ew": true,
         "beats_ew_return": false,
-        "strat_maxdd": 0.11543084243423787,
-        "ew_maxdd": 0.14824424582854834,
-        "strat_annual": 0.1040810962258305,
-        "ew_annual": 0.12023234345529032,
+        "strat_maxdd": 0.11028450474311516,
+        "ew_maxdd": 0.14824424582854814,
+        "strat_annual": 0.10388470244232328,
+        "ew_annual": 0.11866001272401339,
         "mechanism": "vol_defense"
       },
       "offense_cooldown": {
-        "strategy": 0.9973877880813788,
-        "ew_rebal": 0.8825649147951691,
+        "strategy": 1.0025112518583745,
+        "ew_rebal": 0.8821905989876719,
         "beats_ew": true,
         "beats_ew_return": false,
-        "strat_maxdd": 0.1044955718768872,
-        "ew_maxdd": 0.11631575110459583,
-        "strat_annual": 0.09770109816301487,
-        "ew_annual": 0.10545263046371112,
+        "strat_maxdd": 0.11945693409640767,
+        "ew_maxdd": 0.11631575110459627,
+        "strat_annual": 0.0979658683546647,
+        "ew_annual": 0.10401817003850278,
         "mechanism": "selection"
       },
       "bond_bear": {
-        "strategy": 0.9460189324809669,
-        "ew_rebal": 0.8036257934562429,
+        "strategy": 0.9031379271270022,
+        "ew_rebal": 0.8025376139332944,
         "beats_ew": true,
         "beats_ew_return": false,
-        "strat_maxdd": 0.10483433882422244,
-        "ew_maxdd": 0.12671333621533026,
-        "strat_annual": 0.09023724019870683,
-        "ew_annual": 0.09760805436122544,
+        "strat_maxdd": 0.11106808949765758,
+        "ew_maxdd": 0.12671333621533082,
+        "strat_annual": 0.0869504987121128,
+        "ew_annual": 0.09618374439558774,
         "mechanism": "defense_asset"
       },
       "decorrelation": {
-        "strategy": 1.1570661308009356,
-        "ew_rebal": 1.0859859466449144,
+        "strategy": 1.2552414361812658,
+        "ew_rebal": 1.0856798179406524,
         "beats_ew": true,
         "beats_ew_return": false,
-        "strat_maxdd": 0.09315199516080284,
-        "ew_maxdd": 0.10580071458472531,
-        "strat_annual": 0.1141364154156781,
-        "ew_annual": 0.12285489868012323,
+        "strat_maxdd": 0.08237611038670374,
+        "ew_maxdd": 0.10580071458472545,
+        "strat_annual": 0.11649627813607744,
+        "ew_annual": 0.1228935647573226,
         "mechanism": "dispersion"
       },
       "stagflation": {
-        "strategy": 0.8157598440905329,
-        "ew_rebal": 0.7440476478808867,
+        "strategy": 0.8416437453349985,
+        "ew_rebal": 0.7431161619297881,
         "beats_ew": true,
         "beats_ew_return": false,
-        "strat_maxdd": 0.11602733320157402,
-        "ew_maxdd": 0.168036364979192,
-        "strat_annual": 0.09183757997920239,
-        "ew_annual": 0.1045076705875807,
+        "strat_maxdd": 0.11407331305789555,
+        "ew_maxdd": 0.16803636497919305,
+        "strat_annual": 0.09208393798044656,
+        "ew_annual": 0.1029574094511474,
         "mechanism": "composite"
       }
     }
@@ -160,43 +160,43 @@
         "passed": true,
         "pass_rate_sharpe": 1.0,
         "pass_rate_return": 0.0,
-        "worst_maxdd": 0.11543084243423787,
-        "worst_sharpe": 0.9526136807510641
+        "worst_maxdd": 0.11028450474311516,
+        "worst_sharpe": 1.0044182418369085
       },
       "selection": {
         "gate": "soft",
         "passed": true,
         "pass_rate_sharpe": 1.0,
         "pass_rate_return": 0.0,
-        "worst_maxdd": 0.1044955718768872,
-        "worst_sharpe": 0.9973877880813788
+        "worst_maxdd": 0.11945693409640767,
+        "worst_sharpe": 1.0025112518583745
       },
       "defense_asset": {
         "gate": "hard",
         "passed": true,
         "pass_rate_sharpe": 1.0,
         "pass_rate_return": 0.0,
-        "worst_maxdd": 0.10483433882422244,
-        "worst_sharpe": 0.9460189324809669
+        "worst_maxdd": 0.11106808949765758,
+        "worst_sharpe": 0.9031379271270022
       },
       "dispersion": {
         "gate": "hard",
         "passed": true,
         "pass_rate_sharpe": 1.0,
         "pass_rate_return": 0.0,
-        "worst_maxdd": 0.09315199516080284,
-        "worst_sharpe": 1.1570661308009356
+        "worst_maxdd": 0.08237611038670374,
+        "worst_sharpe": 1.2552414361812658
       },
       "composite": {
         "gate": "hard",
         "passed": true,
         "pass_rate_sharpe": 1.0,
         "pass_rate_return": 0.0,
-        "worst_maxdd": 0.11602733320157402,
-        "worst_sharpe": 0.8157598440905329
+        "worst_maxdd": 0.11407331305789555,
+        "worst_sharpe": 0.8416437453349985
       }
     }
   },
-  "_config": "config/strategy_v4_2.yaml",
+  "_config": "config/strategy_v4_3.yaml",
   "_dmax": 0.12
 }

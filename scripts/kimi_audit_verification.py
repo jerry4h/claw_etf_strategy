@@ -61,7 +61,7 @@ def run_ablation(cfg, weekly=None, disable_layer3=False, disable_layer4=False):
 
 
 def main():
-    cfg = load_config(PROJECT / 'config' / 'strategy_v4_2.yaml')
+    cfg = load_config(PROJECT / 'config' / 'strategy_v4_3.yaml')
     nav_path = PROJECT / cfg.nav_path
     df = load_nav_data(nav_path)
     weekly = resample_weekly(df, anchor=cfg.anchor)

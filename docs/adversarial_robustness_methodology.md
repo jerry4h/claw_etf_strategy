@@ -194,6 +194,28 @@ Calmar 2.49；独立 OOS 三通道通过率**全 ≥ v4.2**（不再过拟合）
 | vol 跳变 | 有 | 消除 -27~42% |
 | OOS 三通道通过率 | 基线 | 全 ≥ v4.2 |
 
-v4.3 用 realized Sharpe(-0.147) 换 无跳变 + 更低回撤 + 更高 Calmar，且不过拟合。二者
-互不支配，**都归档为已验证生产配置**，默认 v4.2，实盘按风险偏好选。tapered vol 的
+v4.3 用 realized Sharpe(-0.147) 换 无跳变 + 更低回撤 + 更高 Calmar，且不过拟合。**经 11.5 节
+消融实验确认 taper 是因子级真实优势后，v4.3 已提升为默认生产配置**；前代 v4.2 降为已验证
+替代配置（回退用 `rebalance_live.py --config config/strategy_v4_2.yaml`）。tapered vol 的
 `vol_taper_window`/`vol_taper_len` 已纳入优化搜索空间（`optimize.py --space taper`）。
+
+### 11.5 消融实验：隔离"因子 vs 方法"（rolling 用同一新方法重跑）
+
+v4.2 用旧方法（max-年化，无 OOS 门），v4.3 用新方法（max-Sharpe + OOS 门）——直接对比会
+混淆"因子变化"与"方法变化"。做控制变量：rolling 也用**同一套新方法**重跑
+（`optimize.py --space rolling --objective sharpe --oos-seeds 100-106`, N=300）。
+
+结果（同方法下）：
+- **rolling**: Stage B 3/25 训练 seed PASS，**Stage C OOS 泛化门 0/3 通过**——3 个候选在独立
+  seed 上机制 margin 全部强负（composite -0.153/-0.041/-0.296），无一泛化。
+- **taper (v4.3)**: Stage C 1/5 通过，幸存者 OOS margin 为正。
+
+**结论（隔离出的纯因子效应）**：在完全相同的激进 max-Sharpe 优化 + 同一道 OOS 门下，
+rolling 找不到任何可泛化的鲁棒配置，唯 taper 能。机制：rolling vol 跳变 → 防御触发绑定
+seed 特定跳变 → 换 seed 失效；taper 平滑 → 触发在结构性 vol 水平 → 跨 seed 泛化。
+
+**方法与因子各司其职**：OOS 门（方法）负责揭穿过拟合（两种因子下都拒掉了过拟合候选，
+质控不可缺）；taper（因子）负责在激进优化下仍留有可泛化鲁棒余量。反直觉副产品：v4.2
+（rolling + max-年化）本身不过拟合，是因为 max-年化恰好落在温和 config；一旦改 max-Sharpe
+逼近角点，rolling 立即过拟合——即"追 Sharpe 反而让 rolling 过拟合"。这坐实了 v4.3 的
+taper 因子优势是真实的、非方法假象，构成把 v4.3 提升为生产的决定性依据。

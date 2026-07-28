@@ -32,7 +32,7 @@ PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
 from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data
 from src.utils import compute_sharpe, annualize_return
-from src.factors import calculate_momentum, calculate_volatility, calculate_momentum_ewma, calculate_volatility_ewma
+from src.factors import calculate_momentum, calculate_volatility, calculate_momentum_ewma, calculate_volatility_ewma, calculate_volatility_tapered
 from src.strategy import load_config, calculate_defense_ratio, check_stop_loss
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
@@ -40,34 +40,44 @@ from src.engine_core import (
     apply_trend_confirmation, compute_ashare_vol_boost,
 )
 
-cfg = load_config(PROJECT / 'config/strategy_v4_2.yaml')
-MOM_W = cfg.mom_w
-VOL_W = cfg.vol_w
-TOP_N = cfg.top_n
-INV_VOL_W = cfg.inv_vol_window
-MOM_WINDOW = cfg.mom_window
-VOL_WINDOW = cfg.vol_window
-DEF_ALLOC = cfg.def_alloc
-STEP_LOW = cfg.step_low
-STEP_HIGH = cfg.step_high
-MAX_DEF = cfg.max_def
-MAX_SINGLE = cfg.max_single_alloc
-REBAL_THRESH = cfg.rebalance_threshold
-FEE = cfg.fee_rate
-RISK_FREE = cfg.risk_free_rate
-SCORE_MARGIN = cfg.score_margin
-TREND_CONFIRM = getattr(cfg, 'trend_confirm_weeks', 0) or 0
-DM_SENS = getattr(cfg, 'dynamic_margin_sensitivity', 0.0) or 0.0
-DM_WIN = getattr(cfg, 'dynamic_margin_window', 4)
-HONGLI_RATIO = cfg.hongli_ratio
+def _apply_cfg(c):
+    """把 config 派生为模块级常量 (module import 时用默认 config 调一次; main() --config 时重调切换)。"""
+    global cfg, MOM_W, VOL_W, TOP_N, INV_VOL_W, MOM_WINDOW, VOL_WINDOW, DEF_ALLOC
+    global STEP_LOW, STEP_HIGH, MAX_DEF, MAX_SINGLE, REBAL_THRESH, FEE, RISK_FREE
+    global SCORE_MARGIN, TREND_CONFIRM, DM_SENS, DM_WIN, HONGLI_RATIO, _START_IDX
+    cfg = c
+    MOM_W = c.mom_w
+    VOL_W = c.vol_w
+    TOP_N = c.top_n
+    INV_VOL_W = c.inv_vol_window
+    MOM_WINDOW = c.mom_window
+    VOL_WINDOW = c.vol_window
+    DEF_ALLOC = c.def_alloc
+    STEP_LOW = c.step_low
+    STEP_HIGH = c.step_high
+    MAX_DEF = c.max_def
+    MAX_SINGLE = c.max_single_alloc
+    REBAL_THRESH = c.rebalance_threshold
+    FEE = c.fee_rate
+    RISK_FREE = c.risk_free_rate
+    SCORE_MARGIN = c.score_margin
+    TREND_CONFIRM = getattr(c, 'trend_confirm_weeks', 0) or 0
+    DM_SENS = getattr(c, 'dynamic_margin_sensitivity', 0.0) or 0.0
+    DM_WIN = getattr(c, 'dynamic_margin_window', 4)
+    HONGLI_RATIO = c.hongli_ratio
+    # 回测/replay 起始预热 (须与 src/backtest.py start_idx 口径一致)
+    if c.ewma_factors_enabled:
+        _START_IDX = max(c.ewma_mom_halflife * 2, c.ewma_vol_halflife * 2, MOM_WINDOW, VOL_WINDOW)
+    elif c.vol_taper_enabled:
+        _START_IDX = max(c.vol_taper_window, MOM_WINDOW)   # P0-2: taper 需 vol_taper_window 预热
+    else:
+        _START_IDX = max(MOM_WINDOW, VOL_WINDOW)
+
+
+# 默认生产 config = v4.3 (tapered-vol); main() 可用 --config 切换 (如回退 v4.2/v4.1)
+_apply_cfg(load_config(PROJECT / 'config/strategy_v4_3.yaml'))
 
 STATE_FILE = PROJECT / 'data' / '.last_alloc.json'
-
-# 回测/replay 起始（EWMA 需要更多预热）
-if cfg.ewma_factors_enabled:
-    _START_IDX = max(cfg.ewma_mom_halflife * 2, cfg.ewma_vol_halflife * 2, MOM_WINDOW, VOL_WINDOW)
-else:
-    _START_IDX = max(MOM_WINDOW, VOL_WINDOW)
 
 def load_state() -> dict | None:
     if STATE_FILE.exists():
@@ -98,6 +108,10 @@ def engine_factors(nav):
     if cfg.ewma_factors_enabled:
         m4 = calculate_momentum_ewma(nav, halflife=cfg.ewma_mom_halflife)
         v20 = calculate_volatility_ewma(nav, halflife=cfg.ewma_vol_halflife)
+    elif cfg.vol_taper_enabled:
+        # P0-1 修: taper 模式与引擎一致 —— 复用 calculate_volatility_tapered, 不自己重写
+        m4 = calculate_momentum(nav, window=MOM_WINDOW)
+        v20 = calculate_volatility_tapered(nav, window=cfg.vol_taper_window, taper=cfg.vol_taper_len)
     else:
         m4 = calculate_momentum(nav, window=MOM_WINDOW)
         v20 = calculate_volatility(nav, window=VOL_WINDOW)
@@ -339,18 +353,25 @@ def print_rebalance(prev_al, curr_al):
 
 def main():
     p = argparse.ArgumentParser(description=f'{cfg.name} 实时调仓')
-    p.add_argument('csv', nargs='?', default=cfg.nav_path, help='CSV路径')
+    p.add_argument('csv', nargs='?', default=None, help='CSV路径(默认取 config.nav_path)')
+    p.add_argument('--config', default='config/strategy_v4_3.yaml',
+                   help='策略配置(默认 v4.3 生产; 回退 v4.2 用 config/strategy_v4_2.yaml)')
     p.add_argument('--verify', action='store_true', help='全量回测 vs 引擎验证')
     p.add_argument('--week', type=str, default=None, help='指定日期 YYYY-MM-DD')
     p.add_argument('--amount', type=float, default=500000, help='总资金(元)')
     p.add_argument('--save-state', action='store_true', help='确认调仓并保存状态')
     a = p.parse_args()
 
+    # P0-3: 按 --config 切换生产配置 (重派生模块常量 + taper-aware 预热)
+    if a.config and a.config != 'config/strategy_v4_3.yaml':
+        _apply_cfg(load_config(PROJECT / a.config))
+    csv = a.csv or cfg.nav_path
+
     if a.verify:
         from src.backtest import run_backtest
         r = run_backtest(cfg)
         eng = r.metrics
-        df = load(PROJECT / a.csv)
+        df = load(PROJECT / csv)
         n = len(df); nav, peak = 1.0, 1.0; dd_max = 0.0
         prev_al = {}; prev_sel = None; wrets = []
         prev_pending = None; prev_pending_count = 0; gap_hist = []
@@ -406,11 +427,11 @@ def main():
         print(f"\n {'✅ 通过' if ok else '⚠️ 偏差较大, 需排查'}")
         return
 
-    df = load(PROJECT / a.csv)
+    df = load(PROJECT / csv)
     idx = (len(df) - 1 if not a.week
            else df.index.get_indexer([pd.to_datetime(a.week)])[0])
     if idx < _START_IDX:
-        print(f"[ERROR] 数据不足. 最早: {df.index[max(MOM_WINDOW, VOL_WINDOW)].date()}")
+        print(f"[ERROR] 数据不足. 最早: {df.index[_START_IDX].date()}")
         return
 
     # 计算上次选中的进攻ETF（用于score_margin + trend confirmation）
@@ -421,7 +442,7 @@ def main():
     if idx > _START_IDX:
         # Build pending state by replaying recent weeks
         lookback = max(TREND_CONFIRM + 2, 3)
-        start_replay = max(MOM_WINDOW, VOL_WINDOW)
+        start_replay = _START_IDX   # P0-2: taper-aware 预热起点
         replay_from = max(start_replay, idx - lookback)
         _prev_sel = None
         _prev_pending = None
@@ -461,13 +482,16 @@ def main():
                         prev_pending_count=prev_pending_count, gap_history=prev_gap_hist,
                         force_def_floor=MAX_DEF).alloc
 
+    _vol_desc = (f"tapered_vol{cfg.vol_taper_window}+{cfg.vol_taper_len}" if cfg.vol_taper_enabled
+                 else (f"ewma_vol(hl={cfg.ewma_vol_halflife})" if cfg.ewma_factors_enabled
+                       else f"vol{VOL_WINDOW}"))
     print("=" * 70)
     print(f" {cfg.name}  实时调仓")
     print("=" * 70)
-    print(f" 数据: {a.csv} | 基准: {df.index[idx].date()} | 调仓: 下周一")
+    print(f" 数据: {csv} | 基准: {df.index[idx].date()} | 调仓: 下周一")
     print(f" 范围: {df.index[0].date()} ~ {df.index[-1].date()} ({len(df)}周)")
     print(f" mom_w={MOM_W}  vol_w={VOL_W}  top_n={TOP_N}  invvol{INV_VOL_W}  "
-          f"mom_window={MOM_WINDOW}  vol_window={VOL_WINDOW}  "
+          f"mom_window={MOM_WINDOW}  {_vol_desc}  "
           f"step_low={STEP_LOW}  thresh={REBAL_THRESH}")
 
     last_state = load_state()

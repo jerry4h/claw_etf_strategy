@@ -195,7 +195,8 @@ def cfg_to_yaml(cfg, out_path, base_yaml_path, note=""):
         factors["vol_taper_enabled"] = True
         factors["vol_taper_window"] = int(cfg.vol_taper_window)
         factors["vol_taper_len"] = int(cfg.vol_taper_len)
-        # vol_window 在 taper 模式失效, 保留但注释由用户判断 (yaml.safe_dump 不写注释, 值保持 base)
+        # P1-3 修: taper 模式下 vol_window 不生效, 从生成物中删除避免误导性并存
+        factors.pop("vol_window", None)
     else:
         factors["vol_window"] = int(cfg.vol_window)
     # inv_vol_window 联动写回, 避免与有效波动率窗口静默分裂
@@ -217,7 +218,7 @@ def save_partial(path, obj):
 def main():
     global SPACE, TAPER_MODE
     p = argparse.ArgumentParser()
-    p.add_argument("--config",   default="config/strategy_v4_2.yaml")
+    p.add_argument("--config",   default="config/strategy_v4_3.yaml")
     p.add_argument("--space",    choices=["rolling", "taper"], default="rolling",
                    help="rolling=v4.2 6 主控(含 vol_window); taper=v4.3 7 主控(vol_taper_window/len 取代 vol_window)")
     p.add_argument("--dmax",     type=float, default=0.12)

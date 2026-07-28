@@ -13,7 +13,7 @@ selection:
   trend_confirm_weeks: 0
 factors:
   mom_window: 6
-  vol_window: 10
+  vol_window: 10          # taper 开启时此硬窗口不生效(仅历史占位; 有效窗口见 vol_taper_window)
   pe_window_years: 5
   ewma_factors_enabled: false
   ewma_mom_halflife: 16

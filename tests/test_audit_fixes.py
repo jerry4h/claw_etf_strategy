@@ -218,3 +218,37 @@ def test_v4_3_tapered_alternative_headline_pinned():
     assert abs(m["max_drawdown"]  - 0.0584) < 0.005, f"v4.3 MaxDD 漂移: {m['max_drawdown']:.4%} 期望 ~5.84%"
     # v4.3 设计卖点: realized MaxDD 应低于 v4.2 (6.75%)
     assert m["max_drawdown"] < 0.0675, f"v4.3 MaxDD {m['max_drawdown']:.4%} 未低于 v4.2 6.75%"
+
+
+def test_v4_3_live_uses_taper_vol_matching_engine():
+    """P1-1 生产门禁: v4.3 下实盘脚本 rebalance_live 的因子计算必须用 tapered vol (与引擎一致)。
+
+    历史 bug: rebalance_live.engine_factors 只分支 ewma, 否则永远 calculate_volatility(rolling),
+    缺 vol_taper 分支 -> 若 v4.3 上线, 实盘走 rolling(10) 而回测走 taper(14+7), 系统性偏离。
+    本测试直接验证 engine_factors 在 v4.3 config 下产出的 vol == tapered, 且 != rolling。
+    """
+    import warnings, numpy as np
+    warnings.filterwarnings("ignore")
+    rl = _load_module("rl_taper", "scripts/rebalance_live.py")
+    from src.strategy import load_config as _lc
+    from src.factors import calculate_volatility_tapered, calculate_volatility
+    # 切到 v4.3 生产 config (rebalance_live 默认已是 v4.3, 显式确保)
+    rl._apply_cfg(_lc(PROJECT / "config/strategy_v4_3.yaml"))
+    assert rl.cfg.vol_taper_enabled is True
+    # taper-aware 预热起点须 = vol_taper_window (P0-2)
+    assert rl._START_IDX >= rl.cfg.vol_taper_window, \
+        f"_START_IDX={rl._START_IDX} 未适配 taper 预热 {rl.cfg.vol_taper_window}"
+    nav = rl.load(PROJECT / rl.cfg.nav_path)
+    _wr_df, _wr_np, _m4, v20 = rl.engine_factors(nav)
+    tapered = calculate_volatility_tapered(nav, window=rl.cfg.vol_taper_window, taper=rl.cfg.vol_taper_len)
+    rolling = calculate_volatility(nav, window=rl.cfg.vol_window)
+    # 实盘 vol 必须等于 tapered (复用同一引擎函数)
+    assert np.allclose(v20["纳指ETF"].dropna().values,
+                       tapered["纳指ETF"].dropna().values, atol=1e-9), \
+        "v4.3 实盘 engine_factors 未使用 tapered vol"
+    # 且必须 != rolling (证明 taper 分支真的生效, 不是回落到 rolling)
+    common = v20["纳指ETF"].dropna().index.intersection(rolling["纳指ETF"].dropna().index)
+    diff = (v20["纳指ETF"].loc[common] - rolling["纳指ETF"].loc[common]).abs().mean()
+    assert diff > 1e-3, f"v4.3 实盘 vol 与 rolling 几乎相同(diff={diff:.2e}), taper 分支疑似未生效"
+    # 复位到默认(避免污染其它测试的模块状态)
+    rl._apply_cfg(_lc(PROJECT / "config/strategy_v4_3.yaml"))
