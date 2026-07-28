@@ -197,6 +197,6 @@
       }
     }
   },
-  "_config": "config/strategy_v4_2_robust.yaml",
+  "_config": "config/strategy_v4_2.yaml",
   "_dmax": 0.12
 }

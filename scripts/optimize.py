@@ -26,7 +26,7 @@
 输出:
   output/adversarial/optimize_stageA.json  ── 所有 N 点结果 + 参数
   output/adversarial/optimize_stageB.json  ── K 候选精验结果
-  config/strategy_v4_2_robust.yaml         ── 最优严格PASS config(若存在)
+  config/strategy_v4_next.yaml         ── 最优严格PASS config(若存在)
 """
 import argparse
 import dataclasses
@@ -176,13 +176,13 @@ def save_partial(path, obj):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--config",   default="config/strategy_v4_1.yaml")
+    p.add_argument("--config",   default="config/strategy_v4_2.yaml")
     p.add_argument("--dmax",     type=float, default=0.12)
     p.add_argument("--n",        type=int, default=200)
     p.add_argument("--k",        type=int, default=15)
     p.add_argument("--seeds-a",  default="11,22,33")
     p.add_argument("--seeds-b",  default="11,22,33,44,55,66,77")
-    p.add_argument("--out-yaml", default="config/strategy_v4_2_robust.yaml")
+    p.add_argument("--out-yaml", default="config/strategy_v4_next.yaml")
     args = p.parse_args()
 
     seeds_a = tuple(int(x) for x in args.seeds_a.split(","))

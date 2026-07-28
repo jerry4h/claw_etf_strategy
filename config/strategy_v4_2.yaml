@@ -1,7 +1,7 @@
 strategy:
-  name: 虾池ETF轮动 v4.2 — 鲁棒优化(节点3输出)
+  name: 虾池ETF轮动 v4.2 — 对抗鲁棒生产版
   version: '4.2'
-  note: LHS N=200 + 7-seed 严格精验; realized_annual=0.1584
+  note: v4.0 框架(评估/降维/优化/OOS)产出的生产 config; 7-seed 严格 PASS, 3 通道 OOS TRUE_ROBUST
 scoring:
   mom_w: 1.0
   vol_w: 1.1

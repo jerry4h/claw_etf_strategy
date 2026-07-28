@@ -66,7 +66,7 @@ CCC-GARCH DGP 结构固定，但每条合成路径的 Student-t innovation 序�
 
 6 维 LHS N=200 + 双阶段（Stage A 3-seed 粗筛 + margin slack -0.05；Stage B 7-seed 严格约束）。共 200 次评估约 1 小时。
 
-**v4_2_robust 相对 v4_1 的参数变化**（**"轻&快防御"取代"重&深防御"**）：
+**v4.2 相对 v4.1 的参数变化**（**"轻&快防御"取代"重&深防御"**）：
 
 | 参数 | v4_1 | v4_2 | 方向 |
 |---|---|---|---|
@@ -106,7 +106,7 @@ CCC-GARCH DGP 结构固定，但每条合成路径的 Student-t innovation 序�
 
 历史教训：早期版本的 verdict 函数把两者混在一起（"worst_DD ≤ 13% 才 PASS"），导致 v4_2 在 σ×1.4 这种极端幅度下自动判 FAIL，掩盖了"其实 v4_2 相对 v4_1 全线更好"的事实。修正后 core=相对不劣化, envelope=绝对上界, 分开报。
 
-**实测结论**（v4_1 → v4_2_robust，见 `output/adversarial/oos_validation.json`）：
+**实测结论**（v4.1 历史基线 → v4.2 生产，见 `output/adversarial/oos_validation.json`）：
 
 | 通道 | pass_rate | worst_DD | avg_margin | core | envelope |
 |---|---|---|---|---|---|
@@ -135,8 +135,8 @@ CCC-GARCH DGP 结构固定，但每条合成路径的 Student-t innovation 序�
 - 维度约简: `scripts/dim_reduction.py --r 4 --seeds 11,22,33`
 - 约束优化: `scripts/optimize.py --n 200 --k 15`
 - OOS 验证: `scripts/oos_validation.py`
-- 基线快照: `output/adversarial/baseline_metrics.json`（当前 = v4_2_robust）
-- 生产 config: `config/strategy_v4_2_robust.yaml`
+- 基线快照: `output/adversarial/baseline_metrics.json`（当前 = v4.2 生产）
+- 生产 config: `config/strategy_v4_2.yaml`
 
 ## 10. 未来工作方向（这些 v4.0 框架无法覆盖）
 

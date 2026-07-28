@@ -1,6 +1,6 @@
 {
   "config_baseline": "config/strategy_v4_1.yaml",
-  "config_candidate": "config/strategy_v4_2_robust.yaml",
+  "config_candidate": "config/strategy_v4_2.yaml",
   "channels": {
     "A_held_out_magnitudes": {
       "v4_1": {
@@ -102,8 +102,8 @@
         "avg_margin": 0.0026174053003926944,
         "n": 10
       },
-      "v4_2_robust": {
-        "config": "v4_2_robust",
+      "v4_2": {
+        "config": "v4_2",
         "scenarios": {
           "vol_small": {
             "strat_sharpe": 1.3571173078642704,
@@ -257,8 +257,8 @@
         "avg_margin": 0.18181561102958688,
         "n": 5
       },
-      "v4_2_robust": {
-        "config": "v4_2_robust",
+      "v4_2": {
+        "config": "v4_2",
         "scenarios": {
           "vol_stress": {
             "strat_sharpe": 0.9444477742052158,
@@ -326,8 +326,8 @@
         "pass_rate": 0.8666666666666667,
         "avg_margin": 0.22243502877655724
       },
-      "v4_2_robust": {
-        "config": "v4_2_robust",
+      "v4_2": {
+        "config": "v4_2",
         "n_paths": 30,
         "block_len": 8,
         "strat_sharpe_median": 1.067563526571076,

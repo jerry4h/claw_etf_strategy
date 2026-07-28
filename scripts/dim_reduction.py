@@ -154,7 +154,7 @@ def analyze_morris(trajs, perms, outputs, delta):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--config", default="config/strategy_v4_1.yaml")
+    p.add_argument("--config", default="config/strategy_v4_2.yaml")
     p.add_argument("--r", type=int, default=4, help="Morris 轨迹数")
     p.add_argument("--seeds", default="11,22,33")
     p.add_argument("--out", default=str(OUT / "morris_sensitivity.json"))

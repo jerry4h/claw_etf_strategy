@@ -349,7 +349,7 @@ def main():
 
     if args.score:
         from src.strategy import load_config
-        cfg = load_config(PROJ / "config" / "strategy_v4_1.yaml")
+        cfg = load_config(PROJ / "config" / "strategy_v4_2.yaml")
         sc = robustness_score(cfg)
         if args.json:
             print(json.dumps(sc, ensure_ascii=False, indent=2, default=str))

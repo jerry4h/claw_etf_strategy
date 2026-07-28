@@ -12,7 +12,7 @@ OOS 三条独立通道(每条从一个正交方向验证):
   B. independent_seeds  : 相同 DGP + 相同扰动幅度 + 完全独立 seed 集(100-116, 17 个)
   C. block_bootstrap    : 完全独立 DGP(非参数, 从真实周收益 block=8 重采样, 跳出 CCC-GARCH 假设)
 
-对每条通道: 同时评估 v4_1(基线) 和 v4_2_robust(候选), 比较退化程度。
+对每条通道: 同时评估 v4_1(历史基线) 和 v4_2(生产), 比较退化程度。
 输出: pass_rate / worst_maxdd / 平均 Sharpe margin(strat-ew), 逐 config 逐通道。
 
 真鲁棒判定(三条都满足):
@@ -214,7 +214,7 @@ def verdict(v41, v42, n_bucket, d_max_slack=0.13,
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--cfg-baseline",  default="config/strategy_v4_1.yaml")
-    p.add_argument("--cfg-candidate", default="config/strategy_v4_2_robust.yaml")
+    p.add_argument("--cfg-candidate", default="config/strategy_v4_2.yaml")
     p.add_argument("--oos-seeds",     default="100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116")
     p.add_argument("--block-len",     type=int, default=8)
     p.add_argument("--n-paths",       type=int, default=30)
@@ -249,7 +249,7 @@ def main():
             "channels": {}}
 
     # ======== 通道 A ========
-    for label, cfg in (("v4_1", cfg_a), ("v4_2_robust", cfg_b)):
+    for label, cfg in (("v4_1", cfg_a), ("v4_2", cfg_b)):
         print(f"\n[通道A held-out 幅度] {label} ...", flush=True)
         t0 = time.time()
         res = run_channel_ab(label, cfg, dgp, OOS_MAGNITUDE_SCENARIOS, TRAINING_SEEDS, f"A_{label}")
@@ -259,7 +259,7 @@ def main():
 
     # ======== 通道 B ========
     train_scen = {k: adv.STRESS_SCENARIOS[k] for k in TRAINING_SCENARIOS}
-    for label, cfg in (("v4_1", cfg_a), ("v4_2_robust", cfg_b)):
+    for label, cfg in (("v4_1", cfg_a), ("v4_2", cfg_b)):
         print(f"\n[通道B 独立 seed 集] {label} ...", flush=True)
         t0 = time.time()
         res = run_channel_ab(label, cfg, dgp, train_scen, oos_seeds, f"B_{label}")
@@ -269,7 +269,7 @@ def main():
 
     # ======== 通道 C ========
     real_returns = w_rets.values if hasattr(w_rets, "values") else np.asarray(w_rets)
-    for label, cfg in (("v4_1", cfg_a), ("v4_2_robust", cfg_b)):
+    for label, cfg in (("v4_1", cfg_a), ("v4_2", cfg_b)):
         print(f"\n[通道C block bootstrap] {label} ...", flush=True)
         t0 = time.time()
         res = run_channel_c(label, cfg, real_returns, real_dates, first_nav,
@@ -288,7 +288,7 @@ def main():
                     ("B_independent_seeds",   "worst_maxdd"),
                     ("C_block_bootstrap",     "strat_maxdd_max")):
         v41 = outs["channels"][ch]["v4_1"]
-        v42 = outs["channels"][ch]["v4_2_robust"]
+        v42 = outs["channels"][ch]["v4_2"]
         v41_wd = v41.get("worst_maxdd", v41.get("strat_maxdd_max"))
         v42_wd = v42.get("worst_maxdd", v42.get("strat_maxdd_max"))
         # L1 修: pass_rate 容差按桶数(通道 A/B 情景数, 通道 C 路径数)校准, 与实际离散粒度一致
@@ -301,7 +301,7 @@ def main():
                         "v42": {"pass_rate": v42["pass_rate"], "worst_dd": v42_wd, "avg_margin": v42["avg_margin"]}}
         print(f"\n [{ch}]  (n_bucket={n_bucket})")
         print(f"    v4_1        : pass_rate={v41['pass_rate']:.0%}  worst_DD={v41_wd:.2%}  avg_margin={v41['avg_margin']:+.3f}")
-        print(f"    v4_2_robust : pass_rate={v42['pass_rate']:.0%}  worst_DD={v42_wd:.2%}  avg_margin={v42['avg_margin']:+.3f}")
+        print(f"    v4_2        : pass_rate={v42['pass_rate']:.0%}  worst_DD={v42_wd:.2%}  avg_margin={v42['avg_margin']:+.3f}")
         print(f"    core(相对不劣化) = {'PASS' if core_ok else 'FAIL'}   "
               f"envelope(≤D_max slack) = {'IN' if env_ok else 'OUT'}")
         print(f"    checks : {checks}")
@@ -314,7 +314,7 @@ def main():
                               else "v4_2 部分通道超出设计包线(极端OOS幅度天然突破策略族上限,与过拟合无关)")
     print("\n" + "=" * 74)
     if all_core:
-        print(f" 最终结论: v4_2_robust 真鲁棒(三通道 core PASS, 过拟合假设被反驳)")
+        print(f" 最终结论: v4_2 真鲁棒(三通道 core PASS, 过拟合假设被反驳)")
     else:
         print(f" 最终结论: 过拟合可疑 (至少一条 core FAIL, v4_2 相对基线在独立测试上劣化)")
     print(f" 设计包线: {outs['envelope_note']}")
