@@ -43,6 +43,34 @@ v4.2 由 **v4.0 对抗鲁棒性框架**（评估入口 / 维度约简 / 约束�
 保留作**历史基线**（对抗 OOS 验证的对照组、回归测试的历史行为参照）。
 临时切回 v4.1：`python scripts/rebalance_live.py --config config/strategy_v4_1.yaml`。
 
+## v4.3 — tapered-vol 无跳变替代配置（与 v4.2 并列归档）
+
+rolling `vol_window` 有一个**设计层面的固有缺陷**：当最老一周滚出窗口时波动率会阶跃跳变。
+v4.3 用 **tapered vol**（窗口内最老若干周线性降权）替代硬截断窗口，实测把纳指 vol 的
+周环比跳变**均值降 27%、p95 降 42%**（vol 绝对水平仅 +1.9%）。
+
+v4.3 经 **7 维 taper 搜索（含 `vol_taper_window`/`vol_taper_len`）+ max-Sharpe 目标 +
+OOS 泛化门** 优化得到。方法学上有两个关键教训（详见 methodology 文档）：
+1. **max-年化目标会过拟合对抗测试**：第一次用"max 年化"跑出的 taper config 在 in-sample
+   对抗 PASS，但独立 block bootstrap 上通过率从 90% 崩到 63% —— 典型过拟合。
+2. **OOS 入环门修复**：改用 max-Sharpe 目标 + Stage C（独立 seed 泛化门），5 个 in-sample
+   PASS 候选里**拒掉 4 个过拟合**，只留 1 个在独立 seed 上仍 PASS 的。
+
+**v4.2 与 v4.3 互不支配**（都已验证、都归档为生产配置）：
+
+| 指标 | v4.2 (rolling10) | v4.3 (taper14+7) |
+|---|---|---|
+| realized Sharpe | **1.635** | 1.488 |
+| realized 年化 | **15.84%** | 14.52% |
+| realized MaxDD | 6.75% | **5.84%** |
+| Calmar | 2.35 | **2.49** |
+| vol 窗口跳变 | 有 | **消除 -27~42%** |
+| OOS 三通道通过率 | 基线 | **全 ≥ v4.2**（A 80%>70%, B 100%=, C 93%>90%） |
+| def_alloc | 0.145 | 0.349（更防御） |
+
+**如何选**：看重风险调整收益（Sharpe）用 v4.2；看重回撤控制（MaxDD/Calmar）+ 无跳变设计
+用 v4.3。默认加载 v4.2；切 v4.3：`python scripts/rebalance_live.py --config config/strategy_v4_3.yaml`。
+
 ## v4.0 对抗鲁棒性框架
 
 四节点 + 收尾，实现"realized + adversarial 双维度评估 + 多目标约束优化"：

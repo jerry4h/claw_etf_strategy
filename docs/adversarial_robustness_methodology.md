@@ -144,3 +144,56 @@ CCC-GARCH DGP 结构固定，但每条合成路径的 Student-t innovation 序�
 2. **Universe 层优化**：把资产池本身作为可优化维度（引入短端国债、黄金、境外指数 ETF 等硬防御标的），解决 σ×1.4 类"策略族上界"问题。
 3. **尾部对冲结构**：Layer 4（可选）加入 put-protection 或 tail hedge sleeve，绕开纯多头策略的架构约束。
 4. **在线适应**：目前 v4_2 参数固定；探索基于**近期实际扰动幅度**（rolling σ、rolling correlation）在线调整 def_alloc/step_low 的机制。
+
+## 11. v4.3 案例：tapered-vol 与"过拟合对抗测试"的实证教训
+
+v4.3 是本框架**最有价值的一次实证**——它把"优化目标错配会过拟合对抗测试"从抽象警告
+变成了可复现的实测证据，并给出了修复方法（OOS 入环门）。
+
+### 11.1 设计动机与跳变量化
+
+rolling `vol_window` 有固有缺陷：最老一周滚出窗口时波动率阶跃跳变。tapered vol
+（窗口内最老若干周线性降权，`calculate_volatility_tapered`）平滑了这个边界。实测纳指
+vol 周环比跳变：均值 -27.3%、p95 **-42.2%**、max -13.0%，而 vol 绝对水平仅 +1.9%。
+**设计论点成立：taper 确实消除跳变且不改变量级。**
+
+### 11.2 教训一：max-年化目标过拟合对抗测试（可复现）
+
+第一次 v4.3 用框架默认的 **max realized 年化** 目标 + 7 维 taper 搜索。结果：
+- Stage B 只有 **1/20** 通过 7-seed 严格约束（危险信号：约束勉强可满足→唯一通过者是极端角点）。
+- 该 config in-sample 对抗 PASS，realized 年化 15.47%，但 **realized Sharpe 仅 1.31**。
+- **独立 OOS 三通道验证暴露过拟合**：block bootstrap（最独立 DGP 族）通过率从 v4.2 的
+  90% **崩到 63%**，worst_DD 13.97%→17.57%；独立 seed 通道 margin 从 +0.232→+0.088。
+- **过拟合签名教科书级**：越独立的测试劣化越狠（通道 A 同 DGP 还行，通道 C 独立 DGP 崩）。
+
+根因：max-年化目标在 DD≤12% 约束边界上找最高收益角点，该角点是"threading 训练集
+6 情景×7 seed 那根针"的极端配置，不泛化。
+
+### 11.3 教训二：OOS 入环门（Stage C）修复
+
+改进 `optimize.py`：
+1. **目标改 max realized Sharpe**（realized 部分确定性、不依赖 seed，排序精确无噪声）。
+2. **新增 Stage C OOS 泛化门**：Stage B 在训练 seed(11-77) 严格 PASS 的候选，必须**再在
+   独立 seed(100-106) 上仍 PASS**（对抗 DD≤D_max & 硬机制 margin>0）才入围。这是把
+   train/validation 拆分直接做进选择循环。
+
+结果：Stage B 5/25 PASS，**Stage C 拒掉其中 4 个**（它们在独立 seed 上 composite margin
+转负），只留 1 个真泛化的。最终 v4.3：Sharpe 1.488 / 年化 14.52% / MaxDD 5.84% /
+Calmar 2.49；独立 OOS 三通道通过率**全 ≥ v4.2**（不再过拟合）。
+
+**方法学结论**：当"in-sample 对抗 PASS 候选"很稀少（如 1/20）时，唯一通过者极可能过拟合；
+健康的优化应有若干通过候选 + 一道独立 OOS 门筛掉不泛化的。这道门应成为框架**标准步骤**。
+
+### 11.4 v4.2 与 v4.3 互不支配，双保留
+
+| 指标 | v4.2 (rolling10) | v4.3 (taper14+7) |
+|---|---|---|
+| realized Sharpe | 1.635 | 1.488 |
+| realized MaxDD | 6.75% | 5.84% |
+| Calmar | 2.35 | 2.49 |
+| vol 跳变 | 有 | 消除 -27~42% |
+| OOS 三通道通过率 | 基线 | 全 ≥ v4.2 |
+
+v4.3 用 realized Sharpe(-0.147) 换 无跳变 + 更低回撤 + 更高 Calmar，且不过拟合。二者
+互不支配，**都归档为已验证生产配置**，默认 v4.2，实盘按风险偏好选。tapered vol 的
+`vol_taper_window`/`vol_taper_len` 已纳入优化搜索空间（`optimize.py --space taper`）。

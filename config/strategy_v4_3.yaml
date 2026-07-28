@@ -1,0 +1,68 @@
+strategy:
+  name: 虾池ETF轮动 v4.3 — tapered-vol 无跳变/低回撤生产替代
+  version: '4.3'
+  note: "taper 消除 vol 窗口跳变(-27~42%); max-Sharpe 目标 + OOS 泛化门(Stage C 拒 4/5 过拟合)。Sharpe 1.488 / 年化 14.52% / MaxDD 5.84% / Calmar 2.49; OOS 三通道通过率全 >= v4.2。与 v4.2 互不支配 — 用低 Sharpe 换无跳变+低回撤; 实盘按风险偏好在 v4.2/v4.3 间选。"
+scoring:
+  mom_w: 1.0
+  vol_w: 1.1
+selection:
+  top_n: 2
+  score_margin: 0.02
+  dynamic_margin_sensitivity: 1.0
+  dynamic_margin_window: 3
+  trend_confirm_weeks: 0
+factors:
+  mom_window: 6
+  vol_window: 10
+  pe_window_years: 5
+  ewma_factors_enabled: false
+  ewma_mom_halflife: 16
+  ewma_vol_halflife: 6
+  vol_taper_enabled: true
+  vol_taper_window: 14
+  vol_taper_len: 7
+defense:
+  def_alloc: 0.3492
+  step_low: 0.0764
+  step_high: 0.384
+  max_def: 0.8299
+  hongli_ratio: 0.5
+crisis_correlation:
+  window: 26
+  corr_threshold: 0.6
+  boost_slope: 1.875
+  max_boost: 0.15
+hongli_formula:
+  intercept: 0.8
+  vol_coeff: 2.67
+rebalance:
+  threshold: 0.025
+  fee_rate: 5.0e-05
+  anchor: W-MON
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+allocation:
+  max_single_alloc: 0.4
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+inv_vol_allocation:
+  enabled: true
+  window: 14
+d4_individual_filter:
+  enabled: false
+softmax_allocation:
+  enabled: false
+dynamic_weighting:
+  enabled: false
+constituent_signals:
+  enabled: false
+regime_classifier:
+  enabled: false
+data:
+  nav_path: data/all_etfs_nav_latest.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: 2013-05-17
+  end_date: null
+reporting:
+  risk_free_rate: 0.025

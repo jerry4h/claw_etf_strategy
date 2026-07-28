@@ -194,3 +194,27 @@ def test_v4_2_multiobjective_pass_verdict():
     # 全情景 DD 应 ≤ D_max
     assert ev["adversarial"]["worst_maxdd"] <= 0.12 + 0.005, \
         f"v4.2 全情景 DD {ev['adversarial']['worst_maxdd']:.4f} > 12% + 容差"
+
+
+def test_v4_3_tapered_alternative_headline_pinned():
+    """归档回归: v4.3 tapered-vol 替代生产 config 的关键数字 pin。
+
+    v4.3 与 v4.2 互不支配(用低 Sharpe 换无跳变+低回撤), 两者都归档为已验证配置。
+    这里 pin 住 v4.3 的 taper 开关 + 三个 backtest 数字, 防止 config/引擎漂移。
+    """
+    import warnings
+    warnings.filterwarnings("ignore")
+    from src.strategy import load_config as _lc
+    from src.backtest import run_backtest as _rb
+    cfg = _lc(PROJECT / "config/strategy_v4_3.yaml")
+    # taper 设计: v4.3 必须是 tapered vol (消除窗口跳变), 非 rolling
+    assert cfg.vol_taper_enabled is True, "v4.3 必须启用 vol_taper (设计核心)"
+    assert cfg.vol_taper_window == 14 and cfg.vol_taper_len == 7, \
+        f"v4.3 taper 参数漂移: window={cfg.vol_taper_window} len={cfg.vol_taper_len}"
+    assert cfg.ewma_factors_enabled is False, "v4.3 不应同时开 EWMA"
+    m = _rb(cfg).metrics
+    assert abs(m["sharpe_ratio"]  - 1.4878) < 0.01,  f"v4.3 Sharpe 漂移: {m['sharpe_ratio']:.4f} 期望 ~1.488"
+    assert abs(m["annual_return"] - 0.1452) < 0.005, f"v4.3 年化漂移: {m['annual_return']:.4%} 期望 ~14.52%"
+    assert abs(m["max_drawdown"]  - 0.0584) < 0.005, f"v4.3 MaxDD 漂移: {m['max_drawdown']:.4%} 期望 ~5.84%"
+    # v4.3 设计卖点: realized MaxDD 应低于 v4.2 (6.75%)
+    assert m["max_drawdown"] < 0.0675, f"v4.3 MaxDD {m['max_drawdown']:.4%} 未低于 v4.2 6.75%"

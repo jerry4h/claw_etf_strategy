@@ -46,7 +46,8 @@ sys.path.insert(0, str(PROJ))
 
 from src.strategy import load_config
 
-SPACE = [
+# v4.2 血统: rolling vol, 6 主控 (默认)
+SPACE_ROLLING = [
     ("max_def_extra",   (0.15, 0.75), False),
     ("def_alloc",       (0.10, 0.50), False),
     ("top_n",           (2,    3   ), True ),
@@ -54,6 +55,18 @@ SPACE = [
     ("step_delta_high", (0.05, 0.35), False),
     ("vol_window",      (6,    14  ), True ),
 ]
+# v4.3: tapered vol (消除窗口跳变), 去掉硬窗口 vol_window, 改搜 taper 窗口+降权长度, 7 主控
+SPACE_TAPER = [
+    ("max_def_extra",    (0.15, 0.75), False),
+    ("def_alloc",        (0.10, 0.50), False),
+    ("top_n",            (2,    3   ), True ),
+    ("step_low",         (0.05, 0.25), False),
+    ("step_delta_high",  (0.05, 0.35), False),
+    ("vol_taper_window", (8,    20  ), True ),   # tapered vol 窗口
+    ("vol_taper_len",    (2,    8   ), True ),   # 最老 N 周线性降权 (unit_to_cfg 里约束 < window-1)
+]
+SPACE = SPACE_ROLLING       # main() 按 --space 切换
+TAPER_MODE = False          # main() 按 --space 切换
 HARD_MECH = ("vol_defense", "defense_asset", "dispersion", "composite")
 OUT = PROJ / "output" / "adversarial"
 
@@ -84,20 +97,32 @@ def unit_to_cfg(base_cfg, u):
         kw[name] = val
     kw["step_high"] = kw["step_low"] + kw.pop("step_delta_high")
     kw["max_def"]   = min(1.0, kw["def_alloc"] + kw.pop("max_def_extra"))
-    # P1-4 修: inv_vol_window 与 vol_window 语义联动 (二者都是"波动率窗口"),
-    # 让优化器改 vol_window 时 inv_vol_window 同步跟随, 避免静默分裂。
-    kw["inv_vol_window"] = kw["vol_window"]
+    if TAPER_MODE:
+        # v4.3: tapered vol. 约束 taper_len 至少留 2 个满权重周 (1 <= len <= window-2)。
+        kw["vol_taper_enabled"] = True
+        kw["vol_taper_len"] = max(1, min(kw["vol_taper_len"], kw["vol_taper_window"] - 2))
+        # inv_vol_window 跟随有效波动率窗口 (taper window)
+        kw["inv_vol_window"] = kw["vol_taper_window"]
+    else:
+        # P1-4 修: rolling 模式下 inv_vol_window 与 vol_window 联动, 避免静默分裂。
+        kw["inv_vol_window"] = kw["vol_window"]
     return dataclasses.replace(base_cfg, **kw)
 
 
 def cfg_params_flat(cfg):
-    """将 cfg 的 6+ 派生字段扁平化, 便于 JSON 存/打印。"""
-    return {
-        "top_n": int(cfg.top_n), "vol_window": int(cfg.vol_window),
-        "inv_vol_window": int(cfg.inv_vol_window),
+    """将 cfg 的主控派生字段扁平化, 便于 JSON 存/打印 (按 rolling/taper 模式)。"""
+    d = {
+        "top_n": int(cfg.top_n), "inv_vol_window": int(cfg.inv_vol_window),
         "def_alloc": float(cfg.def_alloc), "step_low": float(cfg.step_low),
         "step_high": float(cfg.step_high), "max_def": float(cfg.max_def),
     }
+    if TAPER_MODE:
+        d["vol_taper_enabled"] = bool(cfg.vol_taper_enabled)
+        d["vol_taper_window"] = int(cfg.vol_taper_window)
+        d["vol_taper_len"] = int(cfg.vol_taper_len)
+    else:
+        d["vol_window"] = int(cfg.vol_window)
+    return d
 
 
 def eval_summary(cfg, ev_mod, seeds, d_max):
@@ -119,6 +144,7 @@ def eval_summary(cfg, ev_mod, seeds, d_max):
     return {
         "verdict": ev["verdict"],
         "realized_annual": float(r["annual_return"]),
+        "realized_sharpe": float(r["sharpe"]),
         "realized_maxdd":  float(r["max_drawdown"]),
         "realized_ew_annual": float(r["ew_annual_return"]),
         "adv_worst_maxdd": float(adv["worst_maxdd"]),
@@ -156,15 +182,23 @@ def stage_b_ok(s, d_max):
 
 
 def cfg_to_yaml(cfg, out_path, base_yaml_path, note=""):
-    """把 6 主控派生字段写回 yaml (其他字段保留 base 内容)。"""
+    """把主控派生字段写回 yaml (其他字段保留 base 内容); 按 rolling/taper 模式区分。"""
     import yaml
     y = yaml.safe_load(open(base_yaml_path, "r", encoding="utf-8"))
-    y["strategy"] = {"name": "虾池ETF轮动 (v4.0 框架优化候选)", "version": "候选"}
+    label = "v4.3 tapered-vol 优化" if TAPER_MODE else "v4.0 框架优化候选"
+    y["strategy"] = {"name": f"虾池ETF轮动 ({label})", "version": "候选"}
     if note:
         y["strategy"]["note"] = note
     y.setdefault("selection", {})["top_n"] = int(cfg.top_n)
-    y.setdefault("factors", {})["vol_window"] = int(cfg.vol_window)
-    # P1-4 修: inv_vol_window 与 vol_window 联动写回, 避免用户看到 yaml 里 vol_window=8 但 inv_vol_window=10 的静默分裂
+    factors = y.setdefault("factors", {})
+    if TAPER_MODE:
+        factors["vol_taper_enabled"] = True
+        factors["vol_taper_window"] = int(cfg.vol_taper_window)
+        factors["vol_taper_len"] = int(cfg.vol_taper_len)
+        # vol_window 在 taper 模式失效, 保留但注释由用户判断 (yaml.safe_dump 不写注释, 值保持 base)
+    else:
+        factors["vol_window"] = int(cfg.vol_window)
+    # inv_vol_window 联动写回, 避免与有效波动率窗口静默分裂
     y.setdefault("inv_vol_allocation", {})["window"] = int(cfg.inv_vol_window)
     defense = y.setdefault("defense", {})
     defense["def_alloc"] = round(float(cfg.def_alloc), 4)
@@ -181,15 +215,30 @@ def save_partial(path, obj):
 
 
 def main():
+    global SPACE, TAPER_MODE
     p = argparse.ArgumentParser()
     p.add_argument("--config",   default="config/strategy_v4_2.yaml")
+    p.add_argument("--space",    choices=["rolling", "taper"], default="rolling",
+                   help="rolling=v4.2 6 主控(含 vol_window); taper=v4.3 7 主控(vol_taper_window/len 取代 vol_window)")
     p.add_argument("--dmax",     type=float, default=0.12)
     p.add_argument("--n",        type=int, default=200)
     p.add_argument("--k",        type=int, default=15)
+    p.add_argument("--objective", choices=["annual", "sharpe"], default="annual",
+                   help="优化目标: annual=max realized 年化(v4.2 血统); sharpe=max realized Sharpe")
     p.add_argument("--seeds-a",  default="11,22,33")
     p.add_argument("--seeds-b",  default="11,22,33,44,55,66,77")
+    p.add_argument("--oos-seeds", default="",
+                   help="Stage C 泛化门的独立 seed 集(如 100,101,...,116); 空=跳过。候选须在此独立seed上仍PASS才入围, 防过拟合训练seed。")
     p.add_argument("--out-yaml", default="config/strategy_v4_next.yaml")
     args = p.parse_args()
+
+    # 按 --space 切换搜索空间 (影响 unit_to_cfg / cfg_params_flat / cfg_to_yaml 的模块级读取)
+    if args.space == "taper":
+        SPACE = SPACE_TAPER
+        TAPER_MODE = True
+    else:
+        SPACE = SPACE_ROLLING
+        TAPER_MODE = False
 
     seeds_a = tuple(int(x) for x in args.seeds_a.split(","))
     seeds_b = tuple(int(x) for x in args.seeds_b.split(","))
@@ -197,7 +246,7 @@ def main():
     ev_mod = _load("ev_opt", "scripts/evaluate.py")
 
     # ==================== Stage A ====================
-    print(f"===== Stage A: LHS N={args.n} 6D, seeds={seeds_a}, D_max={args.dmax} =====")
+    print(f"===== Stage A: LHS N={args.n} {len(SPACE)}D ({args.space}), seeds={seeds_a}, D_max={args.dmax} =====")
     U = lhs(args.n, len(SPACE), seed=42)
     stage_a = []; t0 = time.time()
     for i, u in enumerate(U):
@@ -215,7 +264,7 @@ def main():
               flush=True)
         if (i + 1) % 25 == 0:
             save_partial(OUT / "optimize_stageA.json",
-                         {"config": args.config, "dmax": args.dmax, "n": args.n,
+                         {"config": args.config, "space": args.space, "dmax": args.dmax, "n": args.n,
                           "seeds": list(seeds_a), "results": stage_a, "partial": True})
 
     save_partial(OUT / "optimize_stageA.json",
@@ -223,11 +272,12 @@ def main():
                   "seeds": list(seeds_a), "results": stage_a, "partial": False})
 
     # ==================== Stage B ====================
+    obj_key = "realized_sharpe" if args.objective == "sharpe" else "realized_annual"
     cand_all = [(i, s) for i, s in enumerate(stage_a) if stage_a_ok(s, args.dmax)]
-    cand_all.sort(key=lambda x: -x[1].get("realized_annual", 0))
+    cand_all.sort(key=lambda x: -x[1].get(obj_key, 0))
     total_ok = len(cand_all)
     cand = cand_all[:args.k]
-    print(f"\n===== Stage B: 精验 {len(cand)} 候选 (共 {total_ok}/{args.n} 过初筛, 取 realized_annual Top-{args.k}), seeds={seeds_b} =====")
+    print(f"\n===== Stage B: 精验 {len(cand)} 候选 (共 {total_ok}/{args.n} 过初筛, 取 {obj_key} Top-{args.k}), seeds={seeds_b} =====")
     if not cand:
         print(" Stage A 无候选过初筛。请扩大搜索空间/放宽 D_max/放宽 Sharpe margin slack。")
         return
@@ -241,55 +291,81 @@ def main():
         ok = stage_b_ok(s, args.dmax)
         el = time.time() - t0; eta = el / (j + 1) * (len(cand) - j - 1)
         print(f" [{j+1:2d}/{len(cand)}] {'PASS' if ok else 'fail'} "
-              f"ann={s.get('realized_annual',0):+.4f} DDreal={s.get('realized_maxdd',0):.3f} "
-              f"DDadv={s.get('adv_worst_maxdd',0):.3f} "
+              f"Sh={s.get('realized_sharpe',0):.3f} ann={s.get('realized_annual',0):+.4f} "
+              f"DDreal={s.get('realized_maxdd',0):.3f} DDadv={s.get('adv_worst_maxdd',0):.3f} "
               f"vd_m={s.get('mech_margin',{}).get('vol_defense', 0):+.3f} "
               f"cp_m={s.get('mech_margin',{}).get('composite',   0):+.3f}   ETA={eta/60:.1f}min",
               flush=True)
 
     save_partial(OUT / "optimize_stageB.json",
-                 {"config": args.config, "dmax": args.dmax,
-                  "seeds": list(seeds_b), "results": stage_b})
+                 {"config": args.config, "space": args.space, "objective": args.objective,
+                  "dmax": args.dmax, "seeds": list(seeds_b), "results": stage_b})
+
+    passing_b = [s for s in stage_b if stage_b_ok(s, args.dmax)]
+
+    # ==================== Stage C: OOS 泛化门 (防过拟合训练 seed) ====================
+    oos_seeds = tuple(int(x) for x in args.oos_seeds.split(",") if x.strip()) if args.oos_seeds else ()
+    eligible = passing_b
+    if oos_seeds and passing_b:
+        print(f"\n===== Stage C: OOS 泛化门, 独立 seeds={oos_seeds} (Stage-B-PASS 须在此仍 PASS 才入围) =====")
+        survivors = []
+        for j, s in enumerate(passing_b):
+            cfg = unit_to_cfg(base_cfg, U[s["stage_a_idx"]])
+            oos = eval_summary(cfg, ev_mod, oos_seeds, args.dmax)
+            oos_ok = stage_b_ok(oos, args.dmax)
+            s["oos"] = {"adv_worst_maxdd": oos.get("adv_worst_maxdd"),
+                        "mech_margin": oos.get("mech_margin"), "pass": bool(oos_ok)}
+            if oos_ok:
+                survivors.append(s)
+            print(f" [{j+1:2d}/{len(passing_b)}] {'OOS-PASS' if oos_ok else 'OOS-fail'} "
+                  f"Sh={s.get('realized_sharpe',0):.3f} "
+                  f"OOS_DDadv={oos.get('adv_worst_maxdd',0):.3f} "
+                  f"OOS_vd_m={oos.get('mech_margin',{}).get('vol_defense',0):+.3f} "
+                  f"OOS_cp_m={oos.get('mech_margin',{}).get('composite',0):+.3f}", flush=True)
+        eligible = survivors
 
     # ==================== 选优 & 输出 ====================
-    passing = [s for s in stage_b if stage_b_ok(s, args.dmax)]
     print(f"\n===== 结果 =====")
-    print(f" Stage A: {total_ok}/{args.n} 过初筛; 送 Stage B: {len(cand)} (取 realized_annual Top-{args.k})")
-    print(f" Stage B: {len(passing)}/{len(stage_b)} 严格 PASS")
+    print(f" Stage A: {total_ok}/{args.n} 过初筛; 送 Stage B: {len(cand)} (取 {obj_key} Top-{args.k})")
+    print(f" Stage B: {len(passing_b)}/{len(stage_b)} 训练seed严格 PASS")
+    if oos_seeds:
+        print(f" Stage C: {len(eligible)}/{len(passing_b)} 通过 OOS 泛化门 (独立 seed 仍 PASS)")
 
-    if passing:
-        best = max(passing, key=lambda s: s["realized_annual"])
-        print(f"\n>>> 最优严格 PASS:")
-        print(f"    realized_annual  = {best['realized_annual']:.4%}  (v4_1 基线 17.05%)")
+    if eligible:
+        best = max(eligible, key=lambda s: s[obj_key])
+        gate = "B+C(OOS泛化)" if oos_seeds else "B(训练seed)"
+        print(f"\n>>> 最优 (目标={args.objective}, 通过门={gate}):")
+        print(f"    realized_sharpe  = {best['realized_sharpe']:.4f}  (v4.2 基线 1.635)")
+        print(f"    realized_annual  = {best['realized_annual']:.4%}")
         print(f"    realized_maxdd   = {best['realized_maxdd']:.4%}")
         print(f"    adv_worst_maxdd  = {best['adv_worst_maxdd']:.4%}")
-        print(f"    机制 margin      = {best['mech_margin']}")
+        print(f"    机制 margin(训练) = {best['mech_margin']}")
+        if "oos" in best:
+            print(f"    OOS 泛化(独立seed) = DDadv {best['oos']['adv_worst_maxdd']:.4f}, margin {best['oos']['mech_margin']}")
         print(f"    params           = {best['params']}")
         best_cfg = unit_to_cfg(base_cfg, U[best["stage_a_idx"]])
         yaml_path = PROJ / args.out_yaml
-        cfg_to_yaml(best_cfg, yaml_path, PROJ / args.config,
-                    note=f"LHS N={args.n} + 7-seed 严格精验; realized_annual={best['realized_annual']:.4f}")
+        note = (f"LHS N={args.n} {args.space} 目标={args.objective}; realized_sharpe={best['realized_sharpe']:.4f} "
+                f"年化={best['realized_annual']:.4f}; 通过门={gate}")
+        cfg_to_yaml(best_cfg, yaml_path, PROJ / args.config, note=note)
         print(f"\n最优 config 已写: {yaml_path}")
     else:
-        # M1 修: 过滤掉 eval 崩溃的条目(它们没有 mech_margin 键)
         stage_b_clean = [s for s in stage_b if "error" not in s]
-        print(f" 无严格 PASS 候选。展示 Stage B 里 未过约束最少 者 Top-3 (共 {len(stage_b_clean)} 有效, "
-              f"{len(stage_b)-len(stage_b_clean)} 崩溃跳过):")
+        reason = "无候选通过 OOS 泛化门" if oos_seeds else "无严格 PASS 候选"
+        print(f" {reason}。展示 Stage B 里 未过约束最少 者 Top-3 (共 {len(stage_b_clean)} 有效):")
         if not stage_b_clean:
             print("   Stage B 全部崩溃, 无可展示候选。")
             return
         def rank(s):
             fails = sum(1 for m in HARD_MECH if s["mech_margin"][m] <= 0)
             fails += 0 if s["adv_worst_maxdd"] <= args.dmax else 1
-            return (fails, -s.get("realized_annual", 0))
+            return (fails, -s.get(obj_key, 0))
         stage_b_clean.sort(key=rank)
         for s in stage_b_clean[:3]:
-            print(f"  ann={s['realized_annual']:.3%} DDreal={s['realized_maxdd']:.3%} "
-                  f"DDadv={s['adv_worst_maxdd']:.3%} "
-                  f"vd_m={s['mech_margin']['vol_defense']:+.3f} "
-                  f"cp_m={s['mech_margin']['composite']:+.3f} "
-                  f"ds_m={s['mech_margin']['defense_asset']:+.3f} "
-                  f"di_m={s['mech_margin']['dispersion']:+.3f}")
+            print(f"  Sh={s['realized_sharpe']:.3f} ann={s['realized_annual']:.3%} "
+                  f"DDreal={s['realized_maxdd']:.3%} DDadv={s['adv_worst_maxdd']:.3%} "
+                  f"vd_m={s['mech_margin']['vol_defense']:+.3f} cp_m={s['mech_margin']['composite']:+.3f} "
+                  f"ds_m={s['mech_margin']['defense_asset']:+.3f} di_m={s['mech_margin']['dispersion']:+.3f}")
             print(f"    params={s['params']}")
 
 
