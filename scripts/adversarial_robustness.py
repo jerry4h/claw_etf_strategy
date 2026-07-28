@@ -63,6 +63,19 @@ STRESS_SCENARIOS = {
     "decorrelation":     {"c_mult": 0.77},                        # 相关降低(分散噪声化)
     "stagflation":       {"sig_mult": 1.2, "muoff_mult": 0.8},    # 滞胀式组合冲击
 }
+# 情景 → 主控机制映射(不同鲁棒方向由不同机制控制; 分机制门禁而非单一标量)
+#   vol_defense : Layer3 波动择时(nasdaq-vol 三档防御) — 抗波动放大
+#   selection   : Layer1 打分/动量选择 — 抗进攻资产收益退化
+#   defense_asset: DefAlloc 防御标的(红利低波 vs 国债) — 抗债牛结束
+#   dispersion  : inv-vol 加权/轮动 — 抗相关结构变化
+#   composite   : 复合冲击(多机制同时承压)
+SCENARIO_MECHANISM = {
+    "vol_stress":        "vol_defense",
+    "offense_cooldown":  "selection",
+    "bond_bear":         "defense_asset",
+    "decorrelation":     "dispersion",
+    "stagflation":       "composite",
+}
 # 搜索范围(合理边界)
 BOUNDS = {
     "rho_mult": (0.0, 3.0),
@@ -196,11 +209,19 @@ def bisect_axis(axis, direction, mu, A, R, nu, gp, T, real_dates, first_nav, cfg
 
 
 def _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds=(11, 22, 33)):
-    """返回 (策略 Sharpe 中位数, 等权每周再平衡 Sharpe 中位数)——同一合成数据。"""
+    """在同一批合成数据上评估 策略 vs 等权每周再平衡, 返回中位数指标 dict。
+
+    返回: {strat_sharpe, ew_sharpe, strat_maxdd, ew_maxdd, strat_annual, ew_annual}
+    - sharpe: 夏普比率 (原有口径, 向后兼容)
+    - maxdd:  最大回撤 (多目标框架的回撤约束 DD≤D_max 用此)
+    - annual: 年化收益 (收益>等权约束用此)
+    """
     from src.backtest import run_backtest, compute_metrics
     from src.data_loader import ETFS
     import io, contextlib, os
-    s_list, e_list = [], []
+    s_sh, e_sh = [], []
+    s_dd, e_dd = [], []
+    s_an, e_an = [], []
     for seed in seeds:
         r = gen_garch(mu, A, R, nu, gp, params, T, seed)
         nav_df = build_nav_df_local(r, real_dates, first_nav)
@@ -212,7 +233,9 @@ def _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seed
                 res = run_backtest(cfg, start_date=dm.START_DATE, data_path=str(tmp))
             if res.nav_series.empty:
                 continue
-            s_list.append(res.metrics["sharpe_ratio"])
+            s_sh.append(res.metrics["sharpe_ratio"])
+            s_dd.append(res.metrics["max_drawdown"])
+            s_an.append(res.metrics["annual_return"])
             start, end = res.nav_series.index[0], res.nav_series.index[-1]
             cols = [c for c in nav_df.columns if c in ETFS]
             pr = nav_df.loc[start:end, cols].astype(float)
@@ -227,12 +250,19 @@ def _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seed
             import pandas as pd
             df_rb = pd.DataFrame({"nav": rb, "weekly_return": wr, "drawdown": dd,
                                   "def_ratio": 0.0, "turnover": 0.0}, index=idx)
-            e_list.append(compute_metrics(df_rb, cfg.risk_free_rate)["sharpe_ratio"])
+            em = compute_metrics(df_rb, cfg.risk_free_rate)
+            e_sh.append(em["sharpe_ratio"])
+            e_dd.append(em["max_drawdown"])
+            e_an.append(em["annual_return"])
         finally:
             if tmp.exists():
                 os.remove(tmp)
-    return (float(np.median(s_list)) if s_list else float("nan"),
-            float(np.median(e_list)) if e_list else float("nan"))
+    med = lambda xs: float(np.median(xs)) if xs else float("nan")
+    return {
+        "strat_sharpe": med(s_sh), "ew_sharpe": med(e_sh),
+        "strat_maxdd": med(s_dd), "ew_maxdd": med(e_dd),
+        "strat_annual": med(s_an), "ew_annual": med(e_an),
+    }
 
 
 def build_nav_df_local(r, real_dates, first_nav):
@@ -240,12 +270,16 @@ def build_nav_df_local(r, real_dates, first_nav):
 
 
 def robustness_score(cfg, seeds=(11, 22, 33)):
-    """对抗稳定性指标——固定压力情景集下策略 vs 等权。可复现、快(~15s)、可比较。
+    """对抗稳定性指标——固定压力情景集下策略 vs 等权。可复现、快、可比较。
 
-    返回 dict: {pass_rate, worst_sharpe, worst_scenario, baseline_retention, scenarios{...}}
-    - pass_rate: 压力情景(不含baseline)中策略跑赢等权的比例(核心门禁指标)
-    - worst_sharpe/scenario: 最脆弱情景及其策略 Sharpe
-    - baseline_retention: 压力情景平均策略 Sharpe / baseline Sharpe
+    返回 dict (向后兼容原字段 + 多目标/分机制扩展):
+    - pass_rate      : 压力情景中 策略 Sharpe > 等权 的比例 (原口径, 向后兼容)
+    - pass_rate_return: 压力情景中 策略 年化收益 > 等权 的比例 (多目标框架的收益约束口径)
+    - worst_sharpe/scenario : 最脆弱情景及其策略 Sharpe
+    - worst_maxdd    : 全情景(含 baseline)策略最大回撤的最大值 (回撤约束 DD≤D_max 用此)
+    - baseline_sharpe/baseline_retention : baseline Sharpe 与压力情景平均保留率
+    - by_mechanism   : 按主控机制分组的分维门禁(不同鲁棒方向由不同机制控制)
+    - scenarios{...} : 逐情景明细(strategy/ew_rebal/beats_ew + maxdd/annual)
     """
     nav, wk, w_rets = dm.load_real()
     mu, A, Sigma, nu, resid, coords = dm.fit_var_t(w_rets)
@@ -257,22 +291,49 @@ def robustness_score(cfg, seeds=(11, 22, 33)):
     results = {}
     for name, overrides in STRESS_SCENARIOS.items():
         params = dict(REALIZED, **overrides)
-        s_sh, e_sh = _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds)
-        results[name] = {"strategy": s_sh, "ew_rebal": e_sh, "beats_ew": bool(s_sh > e_sh)}
+        m = _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds)
+        results[name] = {
+            "strategy": m["strat_sharpe"], "ew_rebal": m["ew_sharpe"],
+            "beats_ew": bool(m["strat_sharpe"] > m["ew_sharpe"]),
+            "beats_ew_return": bool(m["strat_annual"] > m["ew_annual"]),
+            "strat_maxdd": m["strat_maxdd"], "ew_maxdd": m["ew_maxdd"],
+            "strat_annual": m["strat_annual"], "ew_annual": m["ew_annual"],
+            "mechanism": SCENARIO_MECHANISM.get(name, "baseline"),
+        }
 
     baseline_sh = results["baseline"]["strategy"]
     stress = {k: v for k, v in results.items() if k != "baseline"}
     n_pass = sum(1 for v in stress.values() if v["beats_ew"])
+    n_pass_ret = sum(1 for v in stress.values() if v["beats_ew_return"])
     worst_name = min(stress, key=lambda k: stress[k]["strategy"])
     avg_stress = float(np.mean([v["strategy"] for v in stress.values()]))
+    worst_maxdd = float(np.nanmax([v["strat_maxdd"] for v in results.values()]))
+
+    # --- 分机制门禁 ---
+    by_mechanism = {}
+    for name, v in stress.items():
+        mech = v["mechanism"]
+        by_mechanism.setdefault(mech, {"scenarios": []})["scenarios"].append(name)
+    for mech, d in by_mechanism.items():
+        sc_list = d["scenarios"]
+        d["n"] = len(sc_list)
+        d["pass_rate"] = sum(1 for s in sc_list if stress[s]["beats_ew"]) / len(sc_list)
+        d["pass_rate_return"] = sum(1 for s in sc_list if stress[s]["beats_ew_return"]) / len(sc_list)
+        d["worst_sharpe"] = float(min(stress[s]["strategy"] for s in sc_list))
+        d["worst_maxdd"] = float(np.nanmax([stress[s]["strat_maxdd"] for s in sc_list]))
+
     return {
         "pass_rate": n_pass / len(stress),
+        "pass_rate_return": n_pass_ret / len(stress),
         "n_pass": n_pass,
+        "n_pass_return": n_pass_ret,
         "n_stress": len(stress),
         "worst_sharpe": stress[worst_name]["strategy"],
         "worst_scenario": worst_name,
+        "worst_maxdd": worst_maxdd,
         "baseline_sharpe": baseline_sh,
         "baseline_retention": avg_stress / baseline_sh if baseline_sh else float("nan"),
+        "by_mechanism": by_mechanism,
         "scenarios": results,
     }
 
@@ -297,16 +358,25 @@ def main():
             print(" 对抗稳定性指标 (固定压力情景集)")
             print("=" * 60)
             print(f" baseline Sharpe: {sc['baseline_sharpe']:.3f}")
-            print(f" {'情景':<18s} {'策略':>8s} {'等权':>8s} {'跑赢':>6s}")
-            print("-" * 46)
+            print(f" {'情景':<18s} {'策略Sh':>7s} {'等权Sh':>7s} {'策略DD':>7s} {'胜Sh':>5s} {'胜Ret':>5s}")
+            print("-" * 56)
             for name, v in sc["scenarios"].items():
                 mark = "Y" if v["beats_ew"] else "-"
+                markr = "Y" if v.get("beats_ew_return") else "-"
                 tag = " (baseline)" if name == "baseline" else ""
-                print(f" {name:<18s} {v['strategy']:>8.3f} {v['ew_rebal']:>8.3f} {mark:>6s}{tag}")
-            print("-" * 46)
-            print(f" pass_rate: {sc['n_pass']}/{sc['n_stress']} ({sc['pass_rate']*100:.0f}%)  "
-                  f"最脆弱: {sc['worst_scenario']}({sc['worst_sharpe']:.3f})  "
-                  f"保留率: {sc['baseline_retention']*100:.0f}%")
+                print(f" {name:<18s} {v['strategy']:>7.3f} {v['ew_rebal']:>7.3f} "
+                      f"{v.get('strat_maxdd', float('nan')):>7.2%} {mark:>5s} {markr:>5s}{tag}")
+            print("-" * 56)
+            print(f" pass_rate(Sharpe): {sc['n_pass']}/{sc['n_stress']} ({sc['pass_rate']*100:.0f}%)  "
+                  f"pass_rate(收益): {sc['n_pass_return']}/{sc['n_stress']} ({sc['pass_rate_return']*100:.0f}%)")
+            print(f" 最脆弱: {sc['worst_scenario']}(Sh={sc['worst_sharpe']:.3f})  "
+                  f"全情景最大回撤: {sc['worst_maxdd']:.2%}  保留率: {sc['baseline_retention']*100:.0f}%")
+            print("-" * 56)
+            print(" 分机制门禁 (机制: 胜率Sh/胜率Ret worstSh worstDD):")
+            for mech, d in sc["by_mechanism"].items():
+                print(f"   {mech:<14s} {d['pass_rate']*100:>3.0f}%/{d['pass_rate_return']*100:>3.0f}%  "
+                      f"Sh={d['worst_sharpe']:>6.3f}  DD={d['worst_maxdd']:>6.2%}  "
+                      f"({','.join(d['scenarios'])})")
         return
 
 

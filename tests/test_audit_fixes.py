@@ -102,3 +102,42 @@ def test_robustness_score_distinguishes_taper_vs_rolling():
     assert sc_r["baseline_sharpe"] > 0
     # taper 更鲁棒(压力情景通过率不低于 rolling)
     assert sc_t["pass_rate"] >= sc_r["pass_rate"]
+
+
+def test_robustness_score_mechanism_grouping_and_dual_caliber():
+    """robustness_score 应输出机制分组 + 回撤/收益双口径(多目标框架依赖)。快速 1-seed。"""
+    import warnings
+    warnings.filterwarnings("ignore")
+    adv = _load_module("adv_mech", "scripts/adversarial_robustness.py")
+    cfg = load_config(PROJECT / "config/strategy_v4_1.yaml")
+    sc = adv.robustness_score(cfg, seeds=(11,))
+    # 顶层双口径 + 全情景回撤
+    assert 0.0 <= sc["pass_rate"] <= 1.0
+    assert 0.0 <= sc["pass_rate_return"] <= 1.0
+    assert sc["worst_maxdd"] > 0.0
+    # 5 机制分组齐全
+    expected = {"vol_defense", "selection", "defense_asset", "dispersion", "composite"}
+    assert set(sc["by_mechanism"].keys()) == expected
+    for mech, d in sc["by_mechanism"].items():
+        for key in ("pass_rate", "pass_rate_return", "worst_maxdd", "worst_sharpe"):
+            assert key in d, f"{mech} 缺字段 {key}"
+        assert 0.0 <= d["pass_rate"] <= 1.0
+
+
+def test_evaluate_full_multiobjective_structure():
+    """evaluate_full 应返回 多目标约束判定结构(realized+adversarial+分机制门禁)。快速 1-seed。"""
+    import warnings
+    warnings.filterwarnings("ignore")
+    ev_mod = _load_module("eval_full", "scripts/evaluate.py")
+    cfg = load_config(PROJECT / "config/strategy_v4_1.yaml")
+    ev = ev_mod.evaluate_full(cfg, d_max=0.12, seeds=(11,))
+    for key in ("objective", "verdict", "realized", "adversarial", "constraints"):
+        assert key in ev, f"缺字段 {key}"
+    assert ev["verdict"] in ("PASS", "FAIL")
+    c = ev["constraints"]
+    assert c["d_max"] == 0.12
+    assert "mechanism_gates" in c
+    # selection 为软门禁, 其余为硬门禁
+    assert c["mechanism_gates"]["selection"]["gate"] == "soft"
+    for mech in ("vol_defense", "defense_asset", "dispersion", "composite"):
+        assert c["mechanism_gates"][mech]["gate"] == "hard"
