@@ -84,6 +84,9 @@ def unit_to_cfg(base_cfg, u):
         kw[name] = val
     kw["step_high"] = kw["step_low"] + kw.pop("step_delta_high")
     kw["max_def"]   = min(1.0, kw["def_alloc"] + kw.pop("max_def_extra"))
+    # P1-4 修: inv_vol_window 与 vol_window 语义联动 (二者都是"波动率窗口"),
+    # 让优化器改 vol_window 时 inv_vol_window 同步跟随, 避免静默分裂。
+    kw["inv_vol_window"] = kw["vol_window"]
     return dataclasses.replace(base_cfg, **kw)
 
 
@@ -91,6 +94,7 @@ def cfg_params_flat(cfg):
     """将 cfg 的 6+ 派生字段扁平化, 便于 JSON 存/打印。"""
     return {
         "top_n": int(cfg.top_n), "vol_window": int(cfg.vol_window),
+        "inv_vol_window": int(cfg.inv_vol_window),
         "def_alloc": float(cfg.def_alloc), "step_low": float(cfg.step_low),
         "step_high": float(cfg.step_high), "max_def": float(cfg.max_def),
     }
@@ -155,11 +159,13 @@ def cfg_to_yaml(cfg, out_path, base_yaml_path, note=""):
     """把 6 主控派生字段写回 yaml (其他字段保留 base 内容)。"""
     import yaml
     y = yaml.safe_load(open(base_yaml_path, "r", encoding="utf-8"))
-    y["strategy"] = {"name": "虾池ETF轮动 v4.2 — 鲁棒优化(节点3输出)", "version": "4.2"}
+    y["strategy"] = {"name": "虾池ETF轮动 (v4.0 框架优化候选)", "version": "候选"}
     if note:
         y["strategy"]["note"] = note
     y.setdefault("selection", {})["top_n"] = int(cfg.top_n)
     y.setdefault("factors", {})["vol_window"] = int(cfg.vol_window)
+    # P1-4 修: inv_vol_window 与 vol_window 联动写回, 避免用户看到 yaml 里 vol_window=8 但 inv_vol_window=10 的静默分裂
+    y.setdefault("inv_vol_allocation", {})["window"] = int(cfg.inv_vol_window)
     defense = y.setdefault("defense", {})
     defense["def_alloc"] = round(float(cfg.def_alloc), 4)
     defense["step_low"]  = round(float(cfg.step_low),  4)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-虾池ETF轮动 v3.1 — 实时调仓计算
+虾池ETF轮动 实时调仓计算 (版本跟随 config.version, 当前默认 v4.2 生产 config)
 =================================
 用法:
   python scripts/rebalance_live.py                     # 最新数据 → 下周一调仓
@@ -338,7 +338,7 @@ def print_rebalance(prev_al, curr_al):
             print(f"  {e:<10s} {pw:>6.1f}% {'0.0':>6}% {-pw:>+6.1f}% {'卖出':>8s}")
 
 def main():
-    p = argparse.ArgumentParser(description='虾池ETF轮动 v3.1 实时调仓')
+    p = argparse.ArgumentParser(description=f'{cfg.name} 实时调仓')
     p.add_argument('csv', nargs='?', default=cfg.nav_path, help='CSV路径')
     p.add_argument('--verify', action='store_true', help='全量回测 vs 引擎验证')
     p.add_argument('--week', type=str, default=None, help='指定日期 YYYY-MM-DD')
@@ -462,7 +462,7 @@ def main():
                         force_def_floor=MAX_DEF).alloc
 
     print("=" * 70)
-    print(f" 虾池ETF轮动 v3.1  实时调仓")
+    print(f" {cfg.name}  实时调仓")
     print("=" * 70)
     print(f" 数据: {a.csv} | 基准: {df.index[idx].date()} | 调仓: 下周一")
     print(f" 范围: {df.index[0].date()} ~ {df.index[-1].date()} ({len(df)}周)")

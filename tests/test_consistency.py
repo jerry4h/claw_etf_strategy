@@ -59,9 +59,15 @@ class TestEngineLiveConsistency:
         # 引擎可能因止损覆盖而 >= vol三段式结果
         assert engine_def >= expected_def - 0.005, \
             f'Engine def={engine_def:.4f} < expected={expected_def:.4f} (vol={nasdaq_vol:.4f})'
-        # 防御比例应在合理范围
-        assert cfg.def_alloc - 0.001 <= engine_def <= cfg.max_def + 0.01, \
-            f'Engine def={engine_def:.4f} out of range [{cfg.def_alloc}, {cfg.max_def}]'
+        # 防御比例合理范围: def_alloc ≤ engine_def ≤ max_def + crisis_boost + ashare_boost
+        # P1-5 修: max_def 是 vol-tier 天花板, Layer 3.5 危机相关性 (+crisis_corr_max_boost)
+        # 与 A 股 vol boost (+ashare_vol_max_boost) 会叠加突破。这里把它们都算进 slack 才不会误报。
+        crisis_boost = getattr(cfg, 'crisis_corr_max_boost', 0.0)
+        ashare_boost = getattr(cfg, 'ashare_vol_max_boost', 0.0)
+        upper_bound = cfg.max_def + crisis_boost + ashare_boost + 0.01
+        assert cfg.def_alloc - 0.001 <= engine_def <= upper_bound, \
+            f'Engine def={engine_def:.4f} out of range [{cfg.def_alloc}, {upper_bound:.4f}] ' \
+            f'(max_def={cfg.max_def} + crisis={crisis_boost} + ashare={ashare_boost} + 0.01 slack)'
 
     def test_full_verify_sharpe_gap(self):
         """完整验证：引擎 vs 手动逐周回测的 Sharpe 差距 < 0.05。

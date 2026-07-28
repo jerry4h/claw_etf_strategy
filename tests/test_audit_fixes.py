@@ -149,3 +149,48 @@ def test_evaluate_full_multiobjective_structure():
     assert c["mechanism_gates"]["selection"]["gate"] == "soft"
     for mech in ("vol_defense", "defense_asset", "dispersion", "composite"):
         assert c["mechanism_gates"][mech]["gate"] == "hard"
+
+
+def test_v4_2_production_headline_metrics_pinned():
+    """P0-2 回归: pin 住 v4.2 生产 config 的三个 README 头部承诺数字。
+
+    任何改动打破这个 pin (Sharpe 1.635, 年化 15.84%, MaxDD 6.75%) 都会立刻失败,
+    强制 review 是引擎变了还是 config 漂了。容差 ±0.5% 覆盖浮点噪声 + yaml roundtrip。
+    """
+    import warnings
+    warnings.filterwarnings("ignore")
+    from src.strategy import load_config as _lc
+    from src.backtest import run_backtest as _rb
+    cfg = _lc(PROJECT / "config/strategy_v4_2.yaml")
+    res = _rb(cfg)
+    m = res.metrics
+    # 三个头部承诺数字, 允许 ±0.5% 绝对容差
+    assert abs(m["sharpe_ratio"]   - 1.6350) < 0.01, f"v4.2 Sharpe 漂移: {m['sharpe_ratio']:.4f} 期望 ~1.635"
+    assert abs(m["annual_return"]  - 0.1584) < 0.005, f"v4.2 年化漂移: {m['annual_return']:.4%} 期望 ~15.84%"
+    assert abs(m["max_drawdown"]   - 0.0675) < 0.005, f"v4.2 MaxDD 漂移: {m['max_drawdown']:.4%} 期望 ~6.75%"
+    # 验证 P0-1 修复: defensive_weeks 已跟随 config.def_alloc=0.1447, 不再硬编码 0.25
+    df = res.nav_series
+    reported = int(m["defensive_weeks"])
+    naive_025 = int(df["def_ratio"].gt(0.25).sum())
+    tracks_config = int(df["def_ratio"].gt(cfg.def_alloc).sum())
+    assert reported == tracks_config, f"defensive_weeks 未跟随 config.def_alloc: reported={reported} vs cfg={tracks_config}"
+    # 在 v4.2 下这两应不同 (def_alloc=0.1447 < 0.25), 证明修复真的生效
+    assert reported != naive_025, "defensive_weeks 与旧口径 (def_ratio>0.25) 不应相等, 否则 P0-1 修复未生效"
+
+
+def test_v4_2_multiobjective_pass_verdict():
+    """P0-2 回归: v4.2 config 在 v4.0 多目标约束框架下应给出 PASS verdict (7-seed 严格)。
+
+    这是 v4.0 框架"生产 config 必然是 verdict=PASS"的最直接不变量断言。
+    需要 evaluate.py 端到端跑通, 用中等 seed 数 (3) 平衡稳定性和 CI 速度。
+    """
+    import warnings
+    warnings.filterwarnings("ignore")
+    ev_mod = _load_module("eval_v42", "scripts/evaluate.py")
+    cfg = load_config(PROJECT / "config/strategy_v4_2.yaml")
+    ev = ev_mod.evaluate_full(cfg, d_max=0.12, seeds=(11, 22, 33))
+    # v4.2 是 v4.0 框架 7-seed 严格 PASS 出来的候选,3-seed 也应稳定 PASS
+    assert ev["verdict"] == "PASS", f"v4.2 应 verdict=PASS 但实际 {ev['verdict']}, failed={ev['failed_constraints']}"
+    # 全情景 DD 应 ≤ D_max
+    assert ev["adversarial"]["worst_maxdd"] <= 0.12 + 0.005, \
+        f"v4.2 全情景 DD {ev['adversarial']['worst_maxdd']:.4f} > 12% + 容差"

@@ -567,7 +567,8 @@ def run_backtest(
 
     # === 7. 计算指标 ===
     metrics = compute_metrics(
-        nav_df_result, config.risk_free_rate
+        nav_df_result, config.risk_free_rate,
+        def_baseline=config.def_alloc,  # v4.2 fix: 防御周口径跟随 config.def_alloc, 不再硬编码 0.25
     )
 
     return BacktestResult(
@@ -580,7 +581,8 @@ def run_backtest(
 
 def compute_metrics(
     nav_series: pd.DataFrame,
-    risk_free_rate: float = 0.025
+    risk_free_rate: float = 0.025,
+    def_baseline: float = 0.25,
 ) -> dict:
     """
     从净值序列计算核心指标。
@@ -588,6 +590,9 @@ def compute_metrics(
     Args:
         nav_series: 回测结果 DataFrame（含 nav, weekly_return 等列）
         risk_free_rate: 年化无风险利率
+        def_baseline: 防御周口径基准 (def_ratio > 此值 记为防御周)。
+                      run_backtest 会自动传 config.def_alloc; 直接调用者若不传保持 0.25 兼容。
+                      v4.1 之前生产 def_alloc=0.25 恰等于此默认; v4.2 起改为跟随 config。
 
     Returns:
         {
@@ -620,10 +625,8 @@ def compute_metrics(
     avg_wret = weekly_returns.mean()
     std_wret = weekly_returns.std()
 
-    # 防御周数
-    # 报告口径：def_ratio > 基准防御比(0.25=生产 def_alloc) 记为防御周。
-    # 硬编码于此因 compute_metrics 不持有 config；若改 def_alloc 需同步此阈值。
-    def_weeks = int(nav_series['def_ratio'].gt(0.25).sum())
+    # 防御周数: def_ratio 严格大于 def_baseline (默认 0.25 兼容旧调用; 主路径由 run_backtest 传 config.def_alloc)
+    def_weeks = int(nav_series['def_ratio'].gt(def_baseline).sum())
 
     # 调仓次数
     if 'turnover' in nav_series.columns:

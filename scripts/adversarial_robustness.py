@@ -154,11 +154,13 @@ def gen_garch(mu, A, R, nu, gp, params, T, seed):
 
 def eval_sharpe(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds=(11, 22, 33, 44, 55)):
     """多 seed 生成+回测,返回中位数 Sharpe。"""
+    import os as _os
     sharpes = []
     for s in seeds:
         r = gen_garch(mu, A, R, nu, gp, params, T, s)
         nav_df = dm.build_nav_df(r, real_dates, first_nav)
-        tmp = OUT / f"_synth_{s}.csv"
+        # P1-3 修: 加 pid 后缀防未来并行调用同一 seed 时互相覆盖临时文件
+        tmp = OUT / f"_synth_{s}_{_os.getpid()}.csv"
         nav_df.to_csv(tmp, encoding="utf-8")
         try:
             import io, contextlib
@@ -225,7 +227,8 @@ def _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seed
     for seed in seeds:
         r = gen_garch(mu, A, R, nu, gp, params, T, seed)
         nav_df = build_nav_df_local(r, real_dates, first_nav)
-        tmp = OUT / f"_score_{seed}.csv"
+        # P1-3 修: 加 pid 后缀防未来并行调用同一 seed 时互相覆盖临时文件
+        tmp = OUT / f"_score_{seed}_{os.getpid()}.csv"
         tmp.parent.mkdir(parents=True, exist_ok=True)
         nav_df.to_csv(tmp, encoding="utf-8")
         try:

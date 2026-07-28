@@ -22,6 +22,9 @@ defense:
   def_alloc: 0.1447
   step_low: 0.0954
   step_high: 0.1933
+  # max_def 是 vol-tier 三段式插值的"基线天花板", 非引擎最终硬上界。
+  # 实际上界会因 Layer 3.5 危机相关性(+crisis_corr_max_boost=0.15) 与 A 股 vol boost 突破,
+  # 极端相关时可达 ~0.96 (见 test_consistency.py P1-5 断言)。
   max_def: 0.8114
   hongli_ratio: 0.5
 crisis_correlation:
