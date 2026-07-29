@@ -240,6 +240,11 @@ taper 因子优势是真实的、非方法假象，构成把 v4.3 提升为生�
 活参 8 个 = SPACE_TAPER 7 主控（max_def, def_alloc, top_n, step_low, step_high,
 vol_taper_window, vol_taper_len）+ mom_window。
 
+> **关于 mom_window 的说明**：§5 Morris 敏感度扫描把 mom_window 归入"μ\* 常年≈0"的
+> 不敏感集，故排除出优化搜索空间。§12 的定位不同——**局部** ±3 步扰动敏感度是补充
+> 检验，用于确认它在生产参数点附近**确实**不敏感（实测 |ρ|=0.079 与预期一致）。
+> 两者互补：§5 是全空间统计，§12.1 是最优点邻域验证。
+
 ### 12.2 v4.3 三层结果（首次基线）
 
 **Test 1**：全 8 参 PASS。最大 Sharpe 掉幅 −10.3%（top_n 2→3 离散跳跃），其他 7 参 <6%，

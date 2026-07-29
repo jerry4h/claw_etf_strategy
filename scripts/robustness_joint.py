@@ -98,9 +98,15 @@ def perturb_single(base_cfg, name, lo, hi, is_int, dtype, delta):
     # def_alloc 上穿 max_def → 抬 max_def
     if name == "def_alloc" and new > base_cfg.max_def:
         kw["max_def"] = min(1.0, new + 0.15)
+    # max_def 下穿 def_alloc → 抬 max_def 至 def_alloc + 0.05 (对称保护, 修 A1)
+    if name == "max_def" and new < base_cfg.def_alloc + 1e-6:
+        kw["max_def"] = min(1.0, float(base_cfg.def_alloc) + 0.05)
     # step_low 上穿 step_high → 抬 step_high
     if name == "step_low" and new > base_cfg.step_high:
         kw["step_high"] = min(0.70, new + 0.05)
+    # step_high 下穿 step_low → 抬 step_high 至 step_low + 0.02 (对称保护, 修 A1)
+    if name == "step_high" and new < base_cfg.step_low + 1e-6:
+        kw["step_high"] = min(0.70, float(base_cfg.step_low) + 0.02)
     # vol_taper_len 上穿 window-1 → 收
     if name == "vol_taper_len" and int(new) >= int(base_cfg.vol_taper_window) - 1:
         kw["vol_taper_len"] = max(1, int(base_cfg.vol_taper_window) - 2)
@@ -220,25 +226,39 @@ def judge_test1(base_metrics, rows, sharpe_drop_pct=0.20, maxdd_rise_pp=3.0):
 def run_test2(base_cfg, real_returns, real_dates, first_nav, n_paths, block_len, seed_base):
     print(f"\n===== Test 2: 数据轴 block bootstrap (fix v4.3), n={n_paths}, block={block_len} =====")
     rows = []
+    failed = []  # 修 A5: 记录 backtest 返回 None 的 seed, 不再静默 continue
     t0 = time.time()
     for i in range(n_paths):
-        m = eval_on_bootstrap(base_cfg, real_returns, real_dates, first_nav, block_len, seed_base + i, f"t2_{i}")
+        seed = seed_base + i
+        m = eval_on_bootstrap(base_cfg, real_returns, real_dates, first_nav, block_len, seed, f"t2_{i}")
         if m is None:
+            failed.append(seed)
             continue
-        rows.append({"seed": seed_base + i, **m})
+        rows.append({"seed": seed, **m})
         if (i + 1) % 25 == 0:
             el = time.time() - t0
             eta = el / (i + 1) * (n_paths - i - 1)
             print(f"  [{i+1:3d}/{n_paths}] ETA {eta/60:.1f}min", flush=True)
-    print(f"  Test 2 完成: {len(rows)} 条 bootstrap 路径, 耗时 {(time.time()-t0)/60:.1f}min")
-    return rows
+    print(f"  Test 2 完成: {len(rows)} 条 bootstrap 路径 (失败 {len(failed)}), 耗时 {(time.time()-t0)/60:.1f}min")
+    if failed:
+        print(f"  ⚠ 失败 seed 列表(前10): {failed[:10]}")
+    return rows, failed
 
 
-def judge_test2(rows, base_metrics, sharpe_p10_min=1.0, maxdd_p90_max=0.10):
+def judge_test2(rows, base_metrics, sharpe_p10_min=1.0, maxdd_p90_max=0.10,
+                win_rate_min=0.90):
+    """双判据 (修 D4):
+      pass_absolute: Sharpe P10 ≥ 阈值 AND MaxDD P90 ≤ 阈值 AND 年化 P10 > 0
+        (bootstrap 语境下过严, 对 EW 也可能 FAIL; 仅作绝对参考)
+      pass_relative_alpha: 策略 alpha vs EW 96% 路径为正 AND alpha P10 > 0
+        (真正的过拟合诊断, 剥离 data-inherent 方差)
+      pass_all (兼容旧字段): = pass_absolute
+    """
     sh = np.array([r["sharpe"] for r in rows])
     dd = np.array([r["maxdd"] for r in rows])
     an = np.array([r["annual"] for r in rows])
     ewa = np.array([r["ew_annual"] for r in rows])
+    ews = np.array([r["ew_sharpe"] for r in rows])
     def q(a, p): return float(np.quantile(a, p))
     dist = {
         "sharpe_p10": q(sh, 0.10), "sharpe_p50": q(sh, 0.50), "sharpe_p90": q(sh, 0.90),
@@ -248,11 +268,22 @@ def judge_test2(rows, base_metrics, sharpe_p10_min=1.0, maxdd_p90_max=0.10):
         "maxdd_pass_rate":  float((dd <= 0.10).mean()),
         "beat_ew_annual_rate": float((an > ewa).mean()),
     }
-    dist["pass_all"] = (
+    dist["pass_absolute"] = bool(
         dist["sharpe_p10"] >= sharpe_p10_min and
         dist["maxdd_p90"]  <= maxdd_p90_max and
         dist["annual_p10"] >  0
     )
+    # 相对 alpha 判据 (修 D4): 剥离 data-inherent 方差, 真过拟合探测
+    alpha_sh = sh - ews
+    win_rate = float((alpha_sh > 0).mean())
+    alpha_p10 = q(alpha_sh, 0.10)
+    dist["alpha_sharpe_p10"] = alpha_p10
+    dist["alpha_sharpe_p50"] = q(alpha_sh, 0.50)
+    dist["alpha_sharpe_p90"] = q(alpha_sh, 0.90)
+    dist["win_rate_over_ew"] = win_rate
+    dist["pass_relative_alpha"] = bool(win_rate >= win_rate_min and alpha_p10 > 0)
+    # 兼容旧字段
+    dist["pass_all"] = dist["pass_absolute"]
     return dist
 
 
@@ -273,6 +304,7 @@ def run_test3(base_cfg, real_returns, real_dates, first_nav, n, eps, block_len, 
     print(f"\n===== Test 3: 联合 (参数 ε=±{eps*100:.0f}% × bootstrap seed), n={n} =====")
     U = lhs_signed(n, len(ACTIVE_PARAMS), seed=2026)
     rows = []
+    failed = []  # 修 A5: 显式记录失败, 不再静默 continue
     t0 = time.time()
     for i in range(n):
         deltas = {}
@@ -284,53 +316,103 @@ def run_test3(base_cfg, real_returns, real_dates, first_nav, n, eps, block_len, 
                 # 映射 [-1,+1] → 整数 ±3 步 (含 0 视为无扰动)
                 deltas[name] = int(round(u * 3))
         cfg_p, applied = perturb_joint(base_cfg, deltas)
-        m = eval_on_bootstrap(cfg_p, real_returns, real_dates, first_nav, block_len, seed_base + i, f"t3_{i}")
+        seed = seed_base + i
+        m = eval_on_bootstrap(cfg_p, real_returns, real_dates, first_nav, block_len, seed, f"t3_{i}")
         if m is None:
+            failed.append({"i": i, "seed": seed, "deltas": deltas})
             continue
-        rows.append({"i": i, "seed": seed_base + i, "deltas": deltas, "applied": applied, **m})
+        rows.append({"i": i, "seed": seed, "deltas": deltas, "applied": applied, **m})
         if (i + 1) % 25 == 0:
             el = time.time() - t0
             eta = el / (i + 1) * (n - i - 1)
             print(f"  [{i+1:3d}/{n}] Sh={m['sharpe']:.2f} DD={m['maxdd']*100:.1f}% ETA {eta/60:.1f}min", flush=True)
-    print(f"  Test 3 完成: {len(rows)} 组, 耗时 {(time.time()-t0)/60:.1f}min")
-    return rows
+    print(f"  Test 3 完成: {len(rows)} 组 (失败 {len(failed)}), 耗时 {(time.time()-t0)/60:.1f}min")
+    if failed:
+        print(f"  ⚠ 失败样本(前3): {failed[:3]}")
+    return rows, failed
 
 
-def judge_test3(rows, base_metrics, sharpe_min=1.0, maxdd_max=0.10, pass_rate_min=0.70):
+def judge_test3(rows, base_metrics, sharpe_min=1.0, maxdd_max=0.10, pass_rate_min=0.70,
+                win_rate_min=0.90):
+    """联合判据 (修 D4):
+      pass_absolute: 联合 PASS 率 ≥ 70% (Sharpe≥1.0 AND MaxDD≤10%; 绝对参考)
+      pass_relative_alpha: 联合下策略 vs EW 96%+ 胜率 & alpha P10 > 0 (真判据)
+      pass_all (兼容旧字段): = pass_absolute
+    "无薄峰" 判据由 compare_marginal_vs_joint 单独输出 (方差比 + drop 比 双口径).
+    """
     sh = np.array([r["sharpe"] for r in rows])
     dd = np.array([r["maxdd"] for r in rows])
     an = np.array([r["annual"] for r in rows])
+    ews = np.array([r["ew_sharpe"] for r in rows])
     pass_mask = (sh >= sharpe_min) & (dd <= maxdd_max)
-    return {
+    pass_rate = float(pass_mask.mean())
+
+    # 相对 alpha 判据 (修 D4)
+    alpha_sh = sh - ews
+    win_rate = float((alpha_sh > 0).mean())
+    alpha_p10 = float(np.quantile(alpha_sh, 0.10))
+
+    out = {
         "n": len(rows),
         "sharpe_p10": float(np.quantile(sh, 0.10)),
         "sharpe_p50": float(np.quantile(sh, 0.50)),
         "maxdd_p90":  float(np.quantile(dd, 0.90)),
         "annual_p10": float(np.quantile(an, 0.10)),
-        "pass_rate":  float(pass_mask.mean()),
-        "pass_all":   float(pass_mask.mean()) >= pass_rate_min,
+        "pass_rate":  pass_rate,
+        "pass_absolute": bool(pass_rate >= pass_rate_min),
+        "alpha_sharpe_p10": alpha_p10,
+        "alpha_sharpe_p50": float(np.quantile(alpha_sh, 0.50)),
+        "win_rate_over_ew": win_rate,
+        "pass_relative_alpha": bool(win_rate >= win_rate_min and alpha_p10 > 0),
     }
+    out["pass_all"] = out["pass_absolute"]  # 兼容旧字段
+    return out
 
 
 def compare_marginal_vs_joint(t1_rows, t2_rows, t3_rows, base_metrics):
-    """粗略比较 (a) 参数边缘最大 Sharpe 掉幅 (b) 数据边缘 P10 Sharpe 掉幅 (c) 联合 P10 Sharpe 掉幅
-    如果联合损失 > (t1+t2) × 1.3 说明有强交互(薄峰)."""
+    """双口径"无薄峰"检测 (修 D1: 显式区分两个比率):
+      1. VARIANCE 比 (方法学 §12.4 A 硬判据主口径):
+         Var(Test 3) / (Var(Test 1) + Var(Test 2))
+         若 ≤ 1.30 表示参数×数据交互项 ≈ 0
+      2. SHARPE-DROP 比 (辅助口径):
+         (base - Test3 P10) / [Test1 max drop + (base - Test2 P10)]
+         若 ≤ 1.30 表示 P10 层面无非线性放大
+    两个口径的语义不同 (方差 vs 分位数), 都用同一阈值 1.30 作直觉门槛.
+    """
     base_sh = base_metrics["sharpe"]
-    t1_max_drop = -min(r["d_sharpe_rel"] for r in t1_rows) * base_sh  # abs Sharpe drop
-    t2_p10 = float(np.quantile([r["sharpe"] for r in t2_rows], 0.10))
-    t2_drop = max(0.0, base_sh - t2_p10)
-    t3_p10 = float(np.quantile([r["sharpe"] for r in t3_rows], 0.10))
-    t3_drop = max(0.0, base_sh - t3_p10)
-    lin_predict = t1_max_drop + t2_drop
-    ratio = t3_drop / lin_predict if lin_predict > 1e-6 else float("nan")
+    sh1 = np.array([r["sharpe"] for r in t1_rows])
+    sh2 = np.array([r["sharpe"] for r in t2_rows])
+    sh3 = np.array([r["sharpe"] for r in t3_rows])
+    var1, var2, var3 = float(np.var(sh1)), float(np.var(sh2)), float(np.var(sh3))
+    var_lin = var1 + var2
+    var_ratio = var3 / var_lin if var_lin > 1e-9 else float("nan")
+
+    t1_max_drop = -min(r["d_sharpe_rel"] for r in t1_rows) * base_sh
+    t2_drop = max(0.0, base_sh - float(np.quantile(sh2, 0.10)))
+    t3_drop = max(0.0, base_sh - float(np.quantile(sh3, 0.10)))
+    lin_drop = t1_max_drop + t2_drop
+    drop_ratio = t3_drop / lin_drop if lin_drop > 1e-6 else float("nan")
+
     return {
         "base_sharpe": base_sh,
+        # 主口径: variance 分解 (与 methodology §12.4 A 硬判据一致)
+        "var_test1": var1, "var_test2": var2, "var_test3": var3,
+        "var_linear_sum":       var_lin,
+        "var_interaction":      var3 - var_lin,
+        "var_ratio":            var_ratio,
+        # 辅口径: Sharpe P10 drop
         "t1_max_param_drop":    t1_max_drop,
         "t2_data_p10_drop":     t2_drop,
         "t3_joint_p10_drop":    t3_drop,
-        "linear_predict_drop":  lin_predict,
-        "joint_over_linear_ratio": ratio,
-        "no_thin_ridge": (not math.isnan(ratio)) and ratio <= 1.30,
+        "linear_predict_drop":  lin_drop,
+        "drop_ratio":           drop_ratio,
+        # 兼容旧字段名 (drop_ratio 别名)
+        "joint_over_linear_ratio": drop_ratio,
+        # 判据: 两个口径都 ≤ 1.30 才算无薄峰
+        "no_thin_ridge_var":    (not math.isnan(var_ratio))  and var_ratio  <= 1.30,
+        "no_thin_ridge_drop":   (not math.isnan(drop_ratio)) and drop_ratio <= 1.30,
+        "no_thin_ridge":        (not math.isnan(var_ratio))  and var_ratio  <= 1.30
+                             and (not math.isnan(drop_ratio)) and drop_ratio <= 1.30,
     }
 
 
@@ -370,39 +452,50 @@ def main():
                   f"cliff={v['cliff_detected']}  → {'PASS' if v['pass_all'] else 'FAIL'}")
 
     if args.test in ("all", "t2"):
-        t2 = run_test2(base_cfg, real_returns, real_dates, first_nav, args.n, args.block, args.seed_base)
+        t2, t2_failed = run_test2(base_cfg, real_returns, real_dates, first_nav, args.n, args.block, args.seed_base)
         t2_verdict = judge_test2(t2, base_m)
         out["test2_rows"] = t2
+        out["test2_failed_seeds"] = t2_failed  # 修 A5: 显式落盘失败列表
         out["test2_verdict"] = t2_verdict
         print("\n--- Test 2 数据轴分布 ---")
         v = t2_verdict
         print(f"  Sharpe P10/P50/P90 = {v['sharpe_p10']:.3f} / {v['sharpe_p50']:.3f} / {v['sharpe_p90']:.3f}")
         print(f"  MaxDD  P10/P50/P90 = {v['maxdd_p10']*100:.2f}% / {v['maxdd_p50']*100:.2f}% / {v['maxdd_p90']*100:.2f}%")
         print(f"  Annual P10/P50/P90 = {v['annual_p10']*100:.2f}% / {v['annual_p50']*100:.2f}% / {v['annual_p90']*100:.2f}%")
-        print(f"  → 判据: Sh_p10 ≥ 1.0 [{v['sharpe_p10']>=1.0}], DD_p90 ≤ 10% [{v['maxdd_p90']<=0.10}], ann_p10>0 [{v['annual_p10']>0}] → {'PASS' if v['pass_all'] else 'FAIL'}")
+        print(f"  绝对判据 (Sh_p10≥1.0 & DD_p90≤10% & ann_p10>0) → {'PASS' if v['pass_absolute'] else 'FAIL'}")
+        print(f"  相对 alpha 判据 (胜率≥90% & alpha_p10>0) → {'PASS' if v['pass_relative_alpha'] else 'FAIL'}")
+        print(f"    胜率 = {v['win_rate_over_ew']*100:.1f}%, alpha P10 = {v['alpha_sharpe_p10']:+.3f}, P50 = {v['alpha_sharpe_p50']:+.3f}")
 
     if args.test in ("all", "t3"):
-        t3 = run_test3(base_cfg, real_returns, real_dates, first_nav, args.n, args.eps, args.block, args.seed_base + 10000)
+        t3, t3_failed = run_test3(base_cfg, real_returns, real_dates, first_nav, args.n, args.eps, args.block, args.seed_base + 10000)
         t3_verdict = judge_test3(t3, base_m)
         out["test3_rows"] = t3
+        out["test3_failed_seeds"] = t3_failed
         out["test3_verdict"] = t3_verdict
         v = t3_verdict
         print("\n--- Test 3 联合 ---")
         print(f"  n={v['n']}  Sharpe P10/P50 = {v['sharpe_p10']:.3f} / {v['sharpe_p50']:.3f}")
         print(f"  MaxDD P90 = {v['maxdd_p90']*100:.2f}%   Annual P10 = {v['annual_p10']*100:.2f}%")
-        print(f"  PASS 率 = {v['pass_rate']*100:.1f}%  (阈值 70%) → {'PASS' if v['pass_all'] else 'FAIL'}")
+        print(f"  绝对 PASS 率 = {v['pass_rate']*100:.1f}% (阈值 70%) → {'PASS' if v['pass_absolute'] else 'FAIL'}")
+        print(f"  相对 alpha 判据 (胜率≥90% & alpha_p10>0) → {'PASS' if v['pass_relative_alpha'] else 'FAIL'}")
+        print(f"    胜率 = {v['win_rate_over_ew']*100:.1f}%, alpha P10 = {v['alpha_sharpe_p10']:+.3f}")
 
     if args.test == "all":
         cmp = compare_marginal_vs_joint(out["test1_rows"], out["test2_rows"], out["test3_rows"], base_m)
         out["marginal_vs_joint"] = cmp
-        print("\n--- 边缘 vs 联合损失(Sharpe) ---")
+        print("\n--- 边缘 vs 联合 (双口径, 修 D1) ---")
         print(f"  base Sharpe                  = {cmp['base_sharpe']:.3f}")
-        print(f"  Test 1 最大参数掉幅            = {cmp['t1_max_param_drop']:.3f}")
-        print(f"  Test 2 数据 P10 掉幅          = {cmp['t2_data_p10_drop']:.3f}")
-        print(f"  线性预测(边缘和)             = {cmp['linear_predict_drop']:.3f}")
-        print(f"  Test 3 联合 P10 掉幅          = {cmp['t3_joint_p10_drop']:.3f}")
-        print(f"  联合/线性 比率                = {cmp['joint_over_linear_ratio']:.2f}   "
-              f"→ 无薄峰 [{cmp['no_thin_ridge']}]")
+        print(f"  [方差口径 - 主]")
+        print(f"    Var(T1)/Var(T2)/Var(T3)    = {cmp['var_test1']:.4f} / {cmp['var_test2']:.4f} / {cmp['var_test3']:.4f}")
+        print(f"    交互项 = Var(T3) - (T1+T2) = {cmp['var_interaction']:+.4f}")
+        print(f"    方差比 Var(T3)/(T1+T2)     = {cmp['var_ratio']:.3f}   → 无薄峰 [{cmp['no_thin_ridge_var']}]")
+        print(f"  [Sharpe P10 drop 口径 - 辅]")
+        print(f"    Test 1 最大参数掉幅         = {cmp['t1_max_param_drop']:.3f}")
+        print(f"    Test 2 数据 P10 掉幅        = {cmp['t2_data_p10_drop']:.3f}")
+        print(f"    线性预测(边缘和)           = {cmp['linear_predict_drop']:.3f}")
+        print(f"    Test 3 联合 P10 掉幅        = {cmp['t3_joint_p10_drop']:.3f}")
+        print(f"    Drop 比 T3/(T1+T2)         = {cmp['drop_ratio']:.3f}   → 无薄峰 [{cmp['no_thin_ridge_drop']}]")
+        print(f"  综合(两口径均 ≤ 1.30)         → {'无薄峰 PASS' if cmp['no_thin_ridge'] else 'FAIL'}")
 
     ts = time.strftime("%Y%m%d_%H%M%S")
     fp = OUT / f"robustness_joint_{args.test}_{ts}.json"

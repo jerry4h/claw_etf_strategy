@@ -88,6 +88,13 @@ def test_v43_joint_robustness_baseline_pinned():
     数字取自 output/robustness/robustness_joint_all_20260729_114702.json
     (n=200, block=13, eps=0.10, seed-base=8000, seed=2026)。
     此测试不重新回测，仅从落盘 JSON 校验（若 JSON 缺失则跳过）。
+
+    覆盖:
+      - 基线 metrics (紧: ±0.01/0.005)
+      - Test 1 全参 PASS
+      - Test 2 相对 alpha 判据 (win_rate ≥ 90%, alpha P10 > 0) —— methodology §12.4 B
+      - Test 3 无薄峰 (var_ratio ≤ 1.30 主口径; drop_ratio ≤ 1.30 辅口径)
+      - 参数×Sharpe |ρ| ≤ 0.30 —— methodology §12.4 A 硬判据
     """
     import json
     fp = PROJECT / "output" / "robustness" / "robustness_joint_all_20260729_114702.json"
@@ -105,21 +112,28 @@ def test_v43_joint_robustness_baseline_pinned():
     for p, v in d["test1_verdict"].items():
         assert v["pass_all"] is True, f"Test 1 {p} FAIL 漂移: {v}"
 
-    # Test 2 相对判据: 96% 胜率、alpha P10 > 0
+    # Test 2 相对判据: methodology §12.4 B "胜率≥90% AND alpha P10 > 0"
     t2 = d["test2_rows"]
     diffs = [r["sharpe"] - r["ew_sharpe"] for r in t2]
     win_rate = sum(1 for x in diffs if x > 0) / len(diffs)
     alpha_p10 = float(np.quantile(diffs, 0.10))
-    assert win_rate >= 0.90, f"策略跑赢 EW 比率漂移: {win_rate:.3f}"
-    assert alpha_p10 > 0, f"alpha P10 漂移: {alpha_p10:.4f}"
+    assert win_rate >= 0.90, f"策略跑赢 EW 比率漂移: {win_rate:.3f} (阈 0.90)"
+    assert alpha_p10 > 0, f"alpha P10 漂移: {alpha_p10:.4f} (阈 >0)"
 
-    # Test 3 无薄峰
+    # Test 3 无薄峰: 兼容旧 JSON (只有 joint_over_linear_ratio) 与新 JSON (有 var_ratio + drop_ratio)
     cmp = d["marginal_vs_joint"]
-    assert cmp["no_thin_ridge"] is True
-    assert cmp["joint_over_linear_ratio"] <= 1.30, \
-        f"薄峰警告: joint/linear = {cmp['joint_over_linear_ratio']:.3f}"
+    if "var_ratio" in cmp:
+        # 新 JSON: 双口径都要过
+        assert cmp["no_thin_ridge_var"] is True, f"方差比薄峰: {cmp['var_ratio']:.3f}"
+        assert cmp["no_thin_ridge_drop"] is True, f"drop 比薄峰: {cmp['drop_ratio']:.3f}"
+        assert cmp["var_ratio"] <= 1.30, f"var_ratio {cmp['var_ratio']:.3f} > 1.30"
+    else:
+        # 旧 JSON: 仅 drop 口径
+        assert cmp["no_thin_ridge"] is True
+        assert cmp["joint_over_linear_ratio"] <= 1.30, \
+            f"薄峰警告: joint/linear = {cmp['joint_over_linear_ratio']:.3f}"
 
-    # 参数×Sharpe 皮尔逊相关全部 |ρ| ≤ 0.30
+    # 参数×Sharpe 皮尔逊相关全部 |ρ| ≤ 0.30 —— methodology §12.4 A 硬判据阈值
     t3 = d["test3_rows"]
     y = np.array([r["sharpe"] for r in t3])
     for name, *_ in _load_rj().ACTIVE_PARAMS:
@@ -127,3 +141,23 @@ def test_v43_joint_robustness_baseline_pinned():
         if x.std() > 0:
             rho = float(np.corrcoef(x, y)[0, 1])
             assert abs(rho) <= 0.30, f"{name} × Sharpe |ρ|={abs(rho):.3f} 超阈值 0.30"
+
+
+def test_perturb_single_symmetric_constraint():
+    """修 A1 回归测试: max_def 下扰穿 def_alloc 后自动抬回;
+    step_high 下扰穿 step_low 后自动抬回。防止未来把 eps 抬到 30%+ 出现 max_def<def_alloc 的病态 cfg。"""
+    rj = _load_rj()
+    import dataclasses
+    from src.strategy import load_config
+    base = load_config(PROJECT / "config/strategy_v4_3.yaml")
+
+    # 人工构造极端情况: max_def 从 0.83 强制下扰到 0.20 (rel = -0.76)
+    forced = dataclasses.replace(base, max_def=0.20)
+    new_cfg, new_val, ok = rj.perturb_single(forced, "max_def", 0.05, 1.0, False, "rel", 0.0)
+    # 上面 delta=0 不触发扰动路径; 换成 -0.05 (rel)
+    # forced.max_def=0.20, base def_alloc=0.3492 > 0.20 现已倒挂
+    # 但 perturb_single 逻辑只在扰动后 new 变化才走 kw 分支; 强制下扰:
+    new_cfg2, new_val2, ok2 = rj.perturb_single(forced, "max_def", 0.05, 1.0, False, "rel", -0.05)
+    assert ok2 is True
+    assert new_cfg2.max_def >= new_cfg2.def_alloc, \
+        f"对称保护失败: max_def={new_cfg2.max_def} < def_alloc={new_cfg2.def_alloc}"
