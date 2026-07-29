@@ -15,7 +15,7 @@ v4.3 由 **v4.0 对抗鲁棒性框架 + max-Sharpe 目标 + OOS 泛化门** 产�
 Sharpe 1.635/更高年化但 vol 有跳变）保留为**已验证替代配置**；如需切回：
 `python scripts/rebalance_live.py --config config/strategy_v4_2.yaml`。
 
-## v4.3 相对 v4.2 (前代生产) 的取舍
+## 版本演进（一）：v4.1（历史基线）→ v4.2（前代生产）
 
 针对"realized 高 Sharpe 只代表历史这一条路径通过"的结构性风险，v4.0 框架把
 "另一条路径下也不崩"变成可优化、可门禁的量化指标。**v4.1 → v4.2 是这个框架
@@ -48,7 +48,7 @@ Sharpe 1.635/更高年化但 vol 有跳变）保留为**已验证替代配置**�
 **前代已验证配置**（对抗 OOS 对照 + 回归 pin 保留）；`config/strategy_v4_1.yaml` 仍作**历史基线**
 （对抗 OOS 验证的对照组、回归测试的历史行为参照）。当前默认生产 = v4.3（见顶部）。
 
-## v4.3 — tapered-vol 生产版的由来（消除窗口跳变）
+## 版本演进（二）：v4.2 → v4.3（当前生产）
 
 rolling `vol_window` 有一个**设计层面的固有缺陷**：当最老一周滚出窗口时波动率会阶跃跳变。
 v4.3 用 **tapered vol**（窗口内最老若干周线性降权）替代硬截断窗口，实测把纳指 vol 的
@@ -61,7 +61,7 @@ OOS 泛化门** 优化得到。方法学上有两个关键教训（详见 method
 2. **OOS 入环门修复**：改用 max-Sharpe 目标 + Stage C（独立 seed 泛化门），5 个 in-sample
    PASS 候选里**拒掉 4 个过拟合**，只留 1 个在独立 seed 上仍 PASS 的。
 
-**v4.2 与 v4.3 互不支配**（都已验证、都归档为生产配置）：
+**v4.2（前代） vs v4.3（当前生产）**：
 
 | 指标 | v4.2 (rolling10) | v4.3 (taper14+7) |
 |---|---|---|
@@ -90,48 +90,48 @@ OOS 泛化门** 优化得到。方法学上有两个关键教训（详见 method
 
 ### 四层架构
 
-| 层次 | 决策 | 方法 |
+| 层次 | 决策 | 方法（v4.3 生产） |
 |------|------|------|
-| **Layer 1** 买什么 | 进攻层选 TOP2 | `score = mom6 − 1.10×vol10`（mom_w=1 固定，vol_w=1.10, vol_window=**10**；v4.1 是 11） |
-| **Layer 2** 买多少 | 进攻层权重分配 | inv-vol10（波动率倒数加权，ddof=0，窗口 10 周） |
-| **Layer 3** 防多少 | 进攻 vs 防御比例 | 纳指 vol10 ∈ [**0.095**, **0.193**] → 防御 [**0.145**, **0.811**] 线性插值（v4.2；v4.1 是 [0.15, 0.35]→[0.25, 0.95]） |
-| **DefAlloc** 防什么 | 红利低波 vs 国债 | `hl_ratio = clip(0.80 − 2.67 × vol10_红利低波, 0, 0.80)` — T=0.30（vol>30%→全国债） |
+| **Layer 1** 买什么 | 进攻层选 TOP2 | `score = mom6 − 1.10×tapered_vol`（mom_w=1 固定，vol_w=1.10；vol 用 tapered14+7 无跳变） |
+| **Layer 2** 买多少 | 进攻层权重分配 | inv-vol14（波动率倒数加权，ddof=0，窗口 14 周，与 taper 窗口一致） |
+| **Layer 3** 防多少 | 进攻 vs 防御比例 | 纳指 tapered_vol ∈ [**0.076**, **0.384**] → 防御 [**0.349**, **0.830**] 线性插值 |
+| **DefAlloc** 防什么 | 红利低波 vs 国债 | `hl_ratio = clip(0.80 − 2.67 × tapered_vol_红利低波, 0, 0.80)` — T=0.30（vol>30%→全国债） |
 
-### 最终参数（v4.2 生产）
+### 最终参数（v4.3 生产，附前代对照）
 
-| 参数 | v4.2 值 | v4.1 (历史) | 说明 |
-|------|:--:|:--:|------|
-| `mom_w` | **1.0** | 1.0 | 动量权重（Morris μ*≈0，不敏感） |
-| `vol_w` | **1.10** | 1.10 | 波动率惩罚权重（Morris μ*≈0，不敏感） |
-| `mom_window` | **6** | 6 | 动量计算窗口 |
-| `vol_window` | **10** | 11 | 波动率计算窗口（v4.2 更快，节点 3 优化） |
-| `inv_vol_window` | **10** | 10 | 波动率倒数平滑窗口 |
-| `step_low` | **0.095** | 0.15 | 防御起效 vol 下限（v4.2 更早触发） |
-| `step_high` | **0.193** | 0.35 | 极限防御 vol 上限（v4.2 档距更紧） |
-| `def_alloc` | **0.145** | 0.25 | 基准防御比例（v4.2 更低） |
-| `max_def` | **0.811** | 0.95 | 峰值防御比例（v4.2 更低，保留 upside 参与） |
-| `top_n` | **2** | 2 | 进攻资产数 |
-| `max_single_alloc` | **0.40** | 0.40 | 单只进攻 ETF 权重上限 |
-| `rebalance_threshold` | **2.5%** | 2.5% | 调仓触发阈值 |
-| `score_margin` | **0.02** | 0.02 | TOP_N 分数差距门槛(防噪声换仓) |
-| `dynamic_margin_sensitivity` | **1.0** | 1.0 | 动态 margin 对 score gap 波动率敏感度 |
-| `dynamic_margin_window` | **3** | 3 | 动态 margin 的 score gap 回看窗口(周) |
-| `fee_rate` | **0.005%** | 0.005% | 交易费率（单边） |
-| `T` (DefAlloc) | **0.30** | 0.30 | 红利低波 vol 红线（领域选择，非调优） |
+| 参数 | v4.3（当前生产） | v4.2（前代） | v4.1（基线） | 说明 |
+|------|:--:|:--:|:--:|------|
+| `mom_w` | **1.0** | 1.0 | 1.0 | 动量权重（Morris μ*≈0，不敏感） |
+| `vol_w` | **1.10** | 1.10 | 1.10 | 波动率惩罚权重（Morris μ*≈0，不敏感） |
+| `mom_window` | **6** | 6 | 6 | 动量计算窗口 |
+| vol 估计器 | **tapered 14+7** | rolling 10 | rolling 11 | v4.3 用 tapered 消除窗口跳变 |
+| `inv_vol_window` | **14** | 10 | 10 | 波动率倒数平滑窗口（随 vol 有效窗口联动） |
+| `step_low` | **0.076** | 0.095 | 0.15 | 防御起效 vol 下限 |
+| `step_high` | **0.384** | 0.193 | 0.35 | 极限防御 vol 上限 |
+| `def_alloc` | **0.349** | 0.145 | 0.25 | 基准防御比例（v4.3 更高，配宽档距） |
+| `max_def` | **0.830** | 0.811 | 0.95 | 峰值防御比例（vol-tier 天花板，crisis boost 可突破） |
+| `top_n` | **2** | 2 | 2 | 进攻资产数 |
+| `max_single_alloc` | **0.40** | 0.40 | 0.40 | 单只进攻 ETF 权重上限 |
+| `rebalance_threshold` | **2.5%** | 2.5% | 2.5% | 调仓触发阈值 |
+| `score_margin` | **0.02** | 0.02 | 0.02 | TOP_N 分数差距门槛(防噪声换仓) |
+| `dynamic_margin_sensitivity` | **1.0** | 1.0 | 1.0 | 动态 margin 对 score gap 波动率敏感度 |
+| `dynamic_margin_window` | **3** | 3 | 3 | 动态 margin 的 score gap 回看窗口(周) |
+| `fee_rate` | **0.005%** | 0.005% | 0.005% | 交易费率（单边） |
+| `T` (DefAlloc) | **0.30** | 0.30 | 0.30 | 红利低波 vol 红线（领域选择，非调优） |
 
-**v4.2 参数演化的机制归因**（节点 2 Morris + 节点 3 优化）：Layer1 打分权重（`vol_w`/`mom_w`）
-对对抗鲁棒 μ*≈0（Layer1 与鲁棒性正交），鲁棒性只由 Layer3 防御参数决定。v4.2 选出的
-"轻&快防御"（更早触发 + 更低峰值 + 更快 vol 信号）在同一 realized MaxDD 约束下比 v4.1
-的"重&深防御"保留更多 upside，因此 Sharpe 反涨、对抗全线通过。
+**参数演化的机制归因**（节点 2 Morris + 节点 3 优化 + 消融）：Layer1 打分权重（`vol_w`/`mom_w`）
+对对抗鲁棒 μ*≈0（Layer1 与鲁棒性正交），鲁棒性只由 Layer3 防御参数 + vol 估计器决定。消融
+证明 tapered vol 是**因子级真实优势**——同方法下 rolling 找不到可泛化鲁棒配置，唯 taper 能。
+v4.3 的"高 def_alloc + 宽档距"配 tapered 平滑 vol，实现无跳变 + 更低 realized 回撤（5.84%）。
 
 ### DefAlloc 逻辑
 
 ```
-hl_ratio = clip(0.80 − 2.67 × vol10(红利低波), 0, 0.80)
+hl_ratio = clip(0.80 − 2.67 × tapered_vol(红利低波), 0, 0.80)
 T = 0.30: vol ≥ 30% → hl_ratio = 0 → 全国债
 
 T 是领域选择，非超参数：
-  · 红利低波 vol10 的历史 p90 ≈ 26.89%，取整到 0.30
+  · 红利低波 vol 的历史 p90 ≈ 26.89%，取整到 0.30（tapered 与 rolling 分布差 <0.6pp）
   · vol > 30% 的周仅占 ~5%，均为股灾级行情
   · T 在 0.25~0.35 区间 Sharpe 变化 < 0.007，不敏感
 ```
@@ -189,8 +189,9 @@ T 是领域选择，非超参数：
 claw_etf_strategy/
 ├── README.md
 ├── config/
-│   ├── strategy_v4_2.yaml               # 当前生产配置 (v4.0 框架产出, 对抗鲁棒)
-│   ├── strategy_v4_1.yaml               # 历史基线 (v4.0 框架的对照组, 回归测试参照)
+│   ├── strategy_v4_3.yaml               # 当前生产配置 (tapered-vol, 无跳变/低回撤)
+│   ├── strategy_v4_2.yaml               # 前代已验证配置 (rolling, 高 Sharpe)
+│   ├── strategy_v4_1.yaml               # 历史基线 (对抗 OOS 对照, 回归测试参照)
 │   └── strategy_v3_1.yaml               # 更早历史版本
 ├── docs/
 │   └── adversarial_robustness_methodology.md   # v4.0 完整方法学
@@ -284,8 +285,8 @@ python scripts/update_etf_data_tushare.py
 ### v4.0 对抗鲁棒框架运行入口
 
 ```bash
-# 统一评估: realized + adversarial 双维度 + 多目标约束判定 (默认已切换到 v4_2)
-python scripts/evaluate.py --dmax 0.12                                     # 默认 = v4_2 生产 config
+# 统一评估: realized + adversarial 双维度 + 多目标约束判定 (默认已切换到 v4_3)
+python scripts/evaluate.py --dmax 0.12                                     # 默认 = v4_3 生产 config
 python scripts/evaluate.py --config config/strategy_v4_1.yaml --dmax 0.12  # 历史基线复现
 python scripts/evaluate.py --save-baseline                                 # 覆盖 baseline_metrics.json
 python scripts/evaluate.py --config <某新yaml> --vs-baseline               # 与基线快照对比
@@ -308,7 +309,8 @@ python scripts/oos_validation.py
 ## 注意事项
 
 - 数据列顺序：`日期,纳指ETF,红利低波ETF,中证500ETF,黄金ETF,国债ETF`
-- **v4.2 生产 config 继承 v4.1 的 EWMA 开关**（`ewma_factors_enabled: false`），即当前生产走 rolling(vol_window=10) 而非 EWMA；v4.1 相同（rolling vol_window=11）。EWMA 实验分支在 `config` 里保留但默认关闭
+- **v4.3 生产用 tapered vol**（`vol_taper_enabled: true`, window14+len7），非 rolling、非 EWMA。
+  三种 vol 估计器互斥，引擎优先级 ewma > taper > rolling；v4.3 关 ewma、开 taper。前代 v4.2 用 rolling(10)、v4.1 用 rolling(11)，EWMA 分支保留但默认关闭
 - 阈值基准使用状态文件 `data/.last_alloc.json`（上次实仓），首次无状态文件时降级到上周理论仓位
 - 确认调仓后请带 `--save-state` 参数保存仓位状态，下次阈值判断更准
 - 如有多日频分析需求，日频 DD 比周频高约 0.3~2pp
@@ -317,4 +319,4 @@ python scripts/oos_validation.py
 - 数据更新脚本基线为 `data/all_etfs_nav_latest.csv`(可用 `ETF_BASE_FILE` 覆盖)，勿指向已弃用的 h20269_scaled 文件
 - 策略基于历史回测，**不保证未来收益**
 - **v4.0 对抗鲁棒框架**基于 CCC-GARCH 合成 + block bootstrap 的重采样评估，覆盖同分布下的路径不确定性；不能内生地产生 regime switching / DCC / 非对称尾相依（详见 methodology 文档第 8 节）。σ×1.4 类极端复合冲击处于策略族架构上界，需资产池/杠杆结构层面解决而非超参调整
-- **v4.2 是当前生产 config**：所有默认路径已切换；如需临时用 v4.1 历史基线，请显式 `--config config/strategy_v4_1.yaml`。v4.2 相对 v4.1 的完整对比见上方章节
+- **v4.3 是当前生产 config**：所有默认路径已切换（实盘脚本已支持 tapered vol 并经 `--verify` 与引擎对齐）。回退前代 v4.2：`--config config/strategy_v4_2.yaml`；用历史基线 v4.1：`--config config/strategy_v4_1.yaml`。完整取向对比见上方版本演进章节
