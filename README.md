@@ -185,10 +185,31 @@ T 是领域选择，非超参数：
 | **5 机制 Sharpe 门禁** | **全 PASS**：vol_defense 11.03% / defense_asset 11.11% / dispersion 8.24% / composite 11.41% / selection 11.95%（worstDD，Sharpe 胜率均 100%） |
 | **3 通道 OOS（vs 前代 v4.2）** | 通过率**全 ≥ v4.2**：A(held-out 幅度) 80%>70%、B(独立 seed) 100%=、C(block bootstrap) 93%>90% |
 | **因子级优势（消融）** | 同 max-Sharpe+OOS 门方法下 rolling 0/3 泛化、taper 1/5 泛化 → tapered vol 是真实因子优势非方法假象 |
-| **综合结论** | **可上生产**：realized 达标 + 对抗全情景 DD 达标 + 5 机制门禁全过 + OOS 不劣化于前代 |
+| **联合鲁棒性（参数×数据）** | **A + B 全 PASS** — 详见下文 |
+| **综合结论** | **可上生产**：realized 达标 + 对抗全情景 DD 达标 + 5 机制门禁全过 + OOS 不劣化于前代 + 联合鲁棒 A+B 全过 |
 
-方法学（多目标约束、机制分维门禁、OOS core/envelope 判定、对抗空间局限、消融）详见
+方法学（多目标约束、机制分维门禁、OOS core/envelope 判定、对抗空间局限、消融、**联合鲁棒性 §12**）详见
 [`docs/adversarial_robustness_methodology.md`](docs/adversarial_robustness_methodology.md)。
+
+### 联合鲁棒性检验（v4.3 首次基线）
+
+回答一个更本质的问题：**参数邻域 + 数据邻域 + 联合曲面**是否都光滑？(`scripts/robustness_joint.py`)
+
+| 层次 | 设计 | v4.3 结果 | 判据 |
+|------|------|:---:|:---:|
+| **Test 1** 参数轴 | 8 活参 × ±15% 单参扫描（45 次回测） | 最大 Sharpe 掉幅 −10.3%（top_n 离散跳跃），其他 <6%；无断崖；参数×Sharpe \|ρ\| < 0.13 | **PASS** |
+| **Test 2** 数据轴 | 200 次 block bootstrap（block=13w） | 绝对 P10 Sharpe=0.886 但 **EW baseline 自己 P10=0.564**；策略 alpha vs EW 96% 路径为正、alpha P10 = +0.078 | **相对 PASS** |
+| **Test 3** 联合 | LHS 200 组 (Δparams ±10%, seed) | 联合方差 0.0774 < 边缘和 0.0970；**交互项 ≈ 0**（QQ 图沿 y=x）；无薄峰 | **PASS** |
+
+**关键判据**（诊断过拟合的正确工具）：
+
+- **联合/边缘方差比 = 0.80 ≤ 1.30**（无薄峰，参数扰动与数据扰动几乎正交）
+- **策略跑赢 EW 的 bootstrap 路径 = 96.0%**（真正的策略 alpha 稳健性）
+- **参数轴单独方差 = 0.0021**（σ ≈ 0.046，参数最优点位于扁平谷底而非针尖山峰）
+
+绝对分位数（Sharpe P10、MaxDD P90）不区分"策略脆弱"与"历史路径本身的方差"——EW 自己在 bootstrap 下 P10 都掉到 0.564。真正的过拟合诊断是**同一 bootstrap 路径下策略 vs EW 的 alpha**，v4.3 alpha P10=+0.078 / P50=+0.350 / P90=+0.606，96% 胜率。
+
+完整报告（含 445 次回测原始数据、可视化 3 图）：[`output/robustness/report.md`](output/robustness/report.md)。
 
 > **历史评估（v4.1 lineage，仅存档参考，非 v4.3 口径）**：早期用 DSR≈0.999 / MC 生存率 /
 > PSS 分位 / 9 窗 Walk-Forward（7/9 vs 再平衡、55.6% reoptimize）评估 v4.1。这套静态指标已被
