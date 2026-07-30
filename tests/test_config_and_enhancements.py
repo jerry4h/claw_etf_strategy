@@ -209,6 +209,9 @@ class TestFieldCompleteness:
             # M3: 中证500 vol crisis boost — 默认关；YAML 段 ashare_vol 可启用
             'ashare_vol_boost_enabled', 'ashare_vol_crisis_threshold', 'ashare_vol_max_boost',
             'ashare_vol_slope', 'ashare_vol_pct_window',
+            # v4.4: Layer 3.5 EWMA 相关估计 — 默认关；YAML 段 crisis_correlation_ewma 可启用
+            # (v4_1 YAML 无此段 → 默认值；load_config 接线在 test_v44_crisis_corr 验证)
+            'crisis_corr_ewma_enabled', 'crisis_corr_ewma_halflife',
         }
 
         mismatches = []
@@ -360,3 +363,20 @@ class TestDefenseRatioOverride:
     def test_nan_vol_returns_base(self, config):
         assert calculate_defense_ratio(float('nan'), config) == 0.25
         assert calculate_defense_ratio(float('nan'), config, base_def_alloc=0.40) == 0.40
+
+
+# ── v4.4: 配置加载回归 ────────────────────────────────────────────────────────
+
+class TestV44ConfigLoad:
+    """v4.4 配置加载回归（与 tests/test_v44_crisis_corr.py 的深度覆盖形成双保险）。"""
+
+    def test_v4_4_config_loads(self):
+        cfg = load_config(
+            Path(__file__).resolve().parent.parent / "config" / "strategy_v4_4.yaml"
+        )
+        assert cfg.def_alloc == 0.35
+        assert cfg.step_low == 0.075
+        assert cfg.step_high == 0.38
+        assert cfg.max_def == 0.83
+        assert cfg.crisis_corr_ewma_enabled is True
+        assert cfg.crisis_corr_ewma_halflife == 8

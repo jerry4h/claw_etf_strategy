@@ -63,6 +63,12 @@ STRESS_SCENARIOS = {
     "decorrelation":     {"c_mult": 0.77},                        # 相关降低(分散噪声化)
     "stagflation":       {"sig_mult": 1.2, "muoff_mult": 0.8},    # 滞胀式组合冲击
 }
+# v4.4 相关性危机情景(独立注册,经 include_corr_scenarios 显式并入评估)
+CORR_STRESS_SCENARIOS = {
+    "corr_regime_shift": {"dgp": "regime_corr", "rho_crisis": 0.85},
+    "corr_crisis_combo": {"dgp": "regime_corr", "rho_crisis": 0.85,
+                           "sig_mult": 1.2, "muoff_mult": 0.8},
+}
 # 情景 → 主控机制映射(不同鲁棒方向由不同机制控制; 分机制门禁而非单一标量)
 #   vol_defense : Layer3 波动择时(nasdaq-vol 三档防御) — 抗波动放大
 #   selection   : Layer1 打分/动量选择 — 抗进攻资产收益退化
@@ -75,6 +81,8 @@ SCENARIO_MECHANISM = {
     "bond_bear":         "defense_asset",
     "decorrelation":     "dispersion",
     "stagflation":       "composite",
+    "corr_regime_shift": "corr_crisis",
+    "corr_crisis_combo": "corr_crisis",
 }
 # 搜索范围(合理边界)
 BOUNDS = {
@@ -141,6 +149,73 @@ def gen_garch(mu, A, R, nu, gp, params, T, seed):
     unit = np.sqrt(max(nu - 2, 0.5) / nu)
     r = np.zeros((T, k)); r_prev = np.zeros(k)
     for t in range(T):
+        h = omega + alpha * eps2 + beta * h
+        zc = rng.standard_normal(k) @ L.T
+        g = rng.chisquare(nu)
+        z = zc * np.sqrt(nu / g) * unit
+        eps = np.sqrt(h) * z
+        r[t] = mu2 + A2 @ r_prev + eps
+        eps2 = eps ** 2
+        r_prev = r[t]
+    return r
+
+
+def gen_regime_corr(mu, A, R, nu, gp, params, T, seed):
+    """两状态 Markov 相关切换 CCC-GARCH 变体(v4.4)。
+    危机态将进攻对相关抬升到 rho_crisis(默认0.85),补 CCC 常相关无法生成
+    相关性飙升情景的缺口。c_mult 在此 DGP 中被忽略(相关由状态机控制);
+    其余 4 轴旋钮(rho_mult/sig_mult/mudef_mult/muoff_mult)行为与 gen_garch 一致。
+    Markov: p_enter=0.03(平常→危机/周), p_stay=0.92(危机停留,均期~12周)——固定常数。
+    """
+    rng = np.random.default_rng(seed)
+    A2, *_ = dm._stationary_A(A, params.get("rho_mult", 1.0))
+    rho_crisis = params.get("rho_crisis", 0.85)
+    p_enter = params.get("p_enter", 0.03)
+    p_stay = params.get("p_stay", 0.92)
+    # 危机相关阵: 进攻对两两相关抬到 rho_crisis, 再做 PSD 修复+相关阵归一化
+    R_normal = R
+    M = R.copy()
+    for i in OFF_IDX:
+        for j in OFF_IDX:
+            if i != j:
+                M[i, j] = rho_crisis
+    M = (M + M.T) / 2
+    ev = np.linalg.eigvalsh(M)
+    if ev.min() < 1e-9:
+        M += np.eye(len(R)) * (1e-9 - ev.min())
+    d = np.sqrt(np.diag(M))
+    R_crisis = M / np.outer(d, d)
+
+    def _chol(Rc):
+        try:
+            return np.linalg.cholesky(Rc)
+        except np.linalg.LinAlgError:
+            return np.linalg.cholesky(Rc + np.eye(len(Rc)) * 1e-9)
+
+    L_normal = _chol(R_normal)
+    L_crisis = _chol(R_crisis)
+    mu2 = mu.copy()
+    mu2[DEF_IDX] = mu[DEF_IDX] * params.get("mudef_mult", 1.0)
+    mu2[OFF_IDX] = mu[OFF_IDX] * params.get("muoff_mult", 1.0)
+    k = len(mu)
+    sm2 = params.get("sig_mult", 1.0) ** 2
+    omega = np.array([g["omega"] for g in gp]) * sm2
+    alpha = np.array([g["alpha"] for g in gp])
+    beta = np.array([g["beta"] for g in gp])
+    uncond = omega / np.maximum(1e-6, 1 - alpha - beta)
+    h = uncond.copy()
+    eps2 = uncond.copy()
+    unit = np.sqrt(max(nu - 2, 0.5) / nu)
+    r = np.zeros((T, k)); r_prev = np.zeros(k)
+    state = 0  # 0=平常, 1=危机
+    for t in range(T):
+        # 先抽状态转移随机数, 再抽收益随机数(顺序固定保证可复现)
+        u = rng.random()
+        if state == 0:
+            state = 1 if u < p_enter else 0
+        else:
+            state = 1 if u < p_stay else 0
+        L = L_crisis if state == 1 else L_normal
         h = omega + alpha * eps2 + beta * h
         zc = rng.standard_normal(k) @ L.T
         g = rng.chisquare(nu)
@@ -224,8 +299,9 @@ def _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seed
     s_sh, e_sh = [], []
     s_dd, e_dd = [], []
     s_an, e_an = [], []
+    gen = gen_regime_corr if params.get("dgp") == "regime_corr" else gen_garch
     for seed in seeds:
-        r = gen_garch(mu, A, R, nu, gp, params, T, seed)
+        r = gen(mu, A, R, nu, gp, params, T, seed)
         nav_df = build_nav_df_local(r, real_dates, first_nav)
         # P1-3 修: 加 pid 后缀防未来并行调用同一 seed 时互相覆盖临时文件
         tmp = OUT / f"_score_{seed}_{os.getpid()}.csv"
@@ -272,8 +348,11 @@ def build_nav_df_local(r, real_dates, first_nav):
     return dm.build_nav_df(r, real_dates, first_nav)
 
 
-def robustness_score(cfg, seeds=(11, 22, 33)):
+def robustness_score(cfg, seeds=(11, 22, 33), include_corr_scenarios=False):
     """对抗稳定性指标——固定压力情景集下策略 vs 等权。可复现、快、可比较。
+
+    include_corr_scenarios=True 时额外并入 CORR_STRESS_SCENARIOS(v4.4 相关性危机情景);
+    默认 False, 行为与输出与 v4.3 逐位一致。
 
     返回 dict (向后兼容原字段 + 多目标/分机制扩展):
     - pass_rate      : 压力情景中 策略 Sharpe > 等权 的比例 (原口径, 向后兼容)
@@ -291,8 +370,12 @@ def robustness_score(cfg, seeds=(11, 22, 33)):
     first_nav = wk.iloc[0].values
     T = len(w_rets)
 
+    scenario_set = dict(STRESS_SCENARIOS)
+    if include_corr_scenarios:
+        scenario_set.update(CORR_STRESS_SCENARIOS)
+
     results = {}
-    for name, overrides in STRESS_SCENARIOS.items():
+    for name, overrides in scenario_set.items():
         params = dict(REALIZED, **overrides)
         m = _eval_strat_ew(mu, A, R, nu, gp, params, T, real_dates, first_nav, cfg, seeds)
         results[name] = {

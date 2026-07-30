@@ -77,6 +77,32 @@ OOS 泛化门** 优化得到。方法学上有两个关键教训（详见 method
 若更偏好风险调整收益（更高 Sharpe/年化），可切回前代 v4.2：
 `python scripts/rebalance_live.py --config config/strategy_v4_2.yaml`。
 
+## 版本演进（三）：v4.3 → v4.4（相关性危机轴闭环，已就绪待切换）
+
+v4.3 的 Layer 3.5（危机相关性加成）存在一个**方法论缺口**：CCC-GARCH 常相关框架的正定性上限
+（cap≈1.69）内，c_mult 只能把进攻对相关推到 ≈0.31，远低于 0.6 触发阈值——Layer 3.5 的参数
+13 年从未被定向压测（真实触发率仅 5.7%）；旧 c_mult 版 corr_crisis_combo 情景中位 MaxDD
+13.78% 穿破 12% 红线。v4.4 闭环该轴：**regime-switching 相关 DGP 压测 + 无状态 EWMA 加权相关
+（halflife=8）+ corr_crisis 硬门禁 + 防御四参数圆整**。EWMA 默认关闭时 v4.3 配置在新代码上
+**逐位复现**。
+
+| 维度 | v4.3（当前默认生产） | v4.4（已就绪） |
+|---|---|---|
+| realized Sharpe / 年化 / MaxDD | 1.488 / 14.52% / 5.84% | **1.498 / 14.51% / 5.85%** |
+| 防御参数 | 0.3492 / 0.0764 / 0.384 / 0.8299 | **圆整 0.35 / 0.075 / 0.38 / 0.83**（三轴校验无损） |
+| Layer 3.5 相关估计 | 等权 Pearson（26 周） | **EWMA 半衰期加权（hl=8，无状态，同窗口/阈值/斜率）** |
+| Layer 3.5 触发率（真实历史） | 5.59% | 8.76%（< 15% 红线） |
+| corr_crisis 硬门禁（7-seed，regime DGP） | —（无此压测轴） | **corr_regime_shift 1.297/7.87%、corr_crisis_combo 1.027/9.66%** |
+| evaluate verdict（7-seed，8 情景） | PASS | **PASS**（worst MaxDD 11.28% ≤ 12%） |
+| 三通道 OOS（vs v4.3） | 基线 | **TRUE_ROBUST**（core 全 PASS；rho 0.75/0.90 未见变体 worst 8.69%） |
+| 联合鲁棒性 Test1/2/3 | 全 PASS | **全 PASS**（胜率 96.5%、α P10 +0.086、方差比 0.793） |
+| 测试套件 | 全绿 | **171 passed 全绿** |
+
+**生产状态**：`config/strategy_v4_4.yaml` 已通过全链路校验（影子对照、全管线、一致性终检），
+**v4.4 已就绪，生产默认切换待人工确认**——`run_backtest.py` / `rebalance_live.py` 等脚本默认
+仍为 v4.3，试用 v4.4：`--config config/strategy_v4_4.yaml`。完整动机、选型、实现与验收记录见
+[`docs/v4_4_crisis_correlation_closure.md`](docs/v4_4_crisis_correlation_closure.md)。
+
 ## v4.0 对抗鲁棒性框架
 
 四节点 + 收尾，实现"realized + adversarial 双维度评估 + 多目标约束优化"：
@@ -222,12 +248,14 @@ T 是领域选择，非超参数：
 claw_etf_strategy/
 ├── README.md
 ├── config/
+│   ├── strategy_v4_4.yaml               # 已就绪待切换 (EWMA Layer3.5 + 圆整参数, 全链路校验通过)
 │   ├── strategy_v4_3.yaml               # 当前生产配置 (tapered-vol, 无跳变/低回撤)
 │   ├── strategy_v4_2.yaml               # 前代已验证配置 (rolling, 高 Sharpe)
 │   ├── strategy_v4_1.yaml               # 历史基线 (对抗 OOS 对照, 回归测试参照)
 │   └── strategy_v3_1.yaml               # 更早历史版本
 ├── docs/
-│   └── adversarial_robustness_methodology.md   # v4.0 完整方法学
+│   ├── adversarial_robustness_methodology.md   # v4.0 完整方法学
+│   └── v4_4_crisis_correlation_closure.md      # v4.4 相关性危机轴闭环 (动机/选型/实现/验收)
 ├── src/
 │   ├── backtest.py                      # 回测引擎
 │   ├── strategy.py                      # 策略逻辑 + 配置加载
@@ -280,8 +308,11 @@ claw_etf_strategy/
 ### 单次回测
 ```bash
 cd /home/ubuntu/claw_etf_strategy
-python scripts/run_backtest.py
+python scripts/run_backtest.py                                        # 默认 = v4.3 生产 config
+python scripts/run_backtest.py --config config/strategy_v4_4.yaml    # v4.4（EWMA Layer3.5，已就绪待切换）
 ```
+> `config/strategy_v4_4.yaml` 已通过全链路校验可用；各脚本**默认仍为 v4.3**，
+> v4.4 的生产默认切换待人工确认（见上方版本演进（三））。
 
 ### 绩效对比（当年/近1年/当前回撤）
 ```bash
@@ -353,3 +384,4 @@ python scripts/oos_validation.py
 - 策略基于历史回测，**不保证未来收益**
 - **v4.0 对抗鲁棒框架**基于 CCC-GARCH 合成 + block bootstrap 的重采样评估，覆盖同分布下的路径不确定性；不能内生地产生 regime switching / DCC / 非对称尾相依（详见 methodology 文档第 8 节）。σ×1.4 类极端复合冲击处于策略族架构上界，需资产池/杠杆结构层面解决而非超参调整
 - **v4.3 是当前生产 config**：所有默认路径已切换（实盘脚本已支持 tapered vol 并经 `--verify` 与引擎对齐）。回退前代 v4.2：`--config config/strategy_v4_2.yaml`；用历史基线 v4.1：`--config config/strategy_v4_1.yaml`。完整取向对比见上方版本演进章节
+- **v4.4 已就绪待切换**：`config/strategy_v4_4.yaml`（EWMA Layer3.5 + 圆整参数）已通过全链路校验（evaluate PASS / OOS TRUE_ROBUST / 171 测试全绿），生产默认切换待人工确认；EWMA 默认关，v4.3 配置在新代码上逐位复现。新增压测入口：`evaluate.py --corr-scenarios`（corr_crisis 硬门禁）、`oos_validation.py --corr-variants`。详见 `docs/v4_4_crisis_correlation_closure.md`

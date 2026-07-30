@@ -1,0 +1,72 @@
+strategy:
+  name: 虾池ETF轮动 v4.4 — 相关性危机轴闭环生产版
+  version: '4.4-hl10'
+  note: "相关性危机轴闭环: EWMA Layer3.5 + regime-corr 压测 + 圆整参数。基于 v4.3 (taper 无跳变/低回撤): Layer 3.5 改用半衰期加权相关(halflife=10周)快速捕捉相关性飙升; defense 四参数圆整降过拟合表面积。"
+scoring:
+  mom_w: 1.0
+  vol_w: 1.1
+selection:
+  top_n: 2
+  score_margin: 0.02
+  dynamic_margin_sensitivity: 1.0
+  dynamic_margin_window: 3
+  trend_confirm_weeks: 0
+factors:
+  mom_window: 6
+  vol_window: 10          # taper 开启时此硬窗口不生效(仅历史占位; 有效窗口见 vol_taper_window)
+  pe_window_years: 5
+  ewma_factors_enabled: false
+  ewma_mom_halflife: 16
+  ewma_vol_halflife: 6
+  vol_taper_enabled: true
+  vol_taper_window: 14
+  vol_taper_len: 7
+defense:
+  def_alloc: 0.35
+  step_low: 0.075
+  step_high: 0.38
+  max_def: 0.83
+  hongli_ratio: 0.5
+crisis_correlation:
+  window: 26
+  corr_threshold: 0.6
+  boost_slope: 1.875
+  max_boost: 0.15
+# v4.4: Layer 3.5 EWMA 相关估计(半衰期加权,快速捕捉相关性飙升)
+crisis_correlation_ewma:
+  ewma_enabled: true
+  ewma_halflife: 10
+hongli_formula:
+  intercept: 0.8
+  vol_coeff: 2.67
+rebalance:
+  threshold: 0.025
+  fee_rate: 5.0e-05
+  anchor: W-MON
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+allocation:
+  max_single_alloc: 0.4
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+inv_vol_allocation:
+  enabled: true
+  window: 14
+d4_individual_filter:
+  enabled: false
+softmax_allocation:
+  enabled: false
+dynamic_weighting:
+  enabled: false
+constituent_signals:
+  enabled: false
+regime_classifier:
+  enabled: false
+data:
+  nav_path: data/all_etfs_nav_latest.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: 2013-05-17
+  end_date: null
+reporting:
+  risk_free_rate: 0.025

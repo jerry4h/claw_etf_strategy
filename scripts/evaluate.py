@@ -52,14 +52,16 @@ MECHANISM_GATE = {
     "defense_asset": "hard",
     "dispersion":    "hard",
     "composite":     "hard",
+    "corr_crisis":   "hard",
     "selection":     "soft",
 }
 
 
-def evaluate_full(cfg, d_max=0.12, seeds=(11, 22, 33, 44, 55, 66, 77)):
+def evaluate_full(cfg, d_max=0.12, seeds=(11, 22, 33, 44, 55, 66, 77), include_corr_scenarios=False):
     """双维度评估 + 约束判定。返回结构化 dict。
 
     d_max: 全情景最大回撤上限(回撤约束)。
+    include_corr_scenarios: True 时额外评估 v4.4 相关性危机情景(corr_crisis 硬门禁)。
     """
     # --- 维度 1: realized 历史 (真实数据, 同口径三方基准) ---
     bench = _bench.compute_benchmarks(cfg)
@@ -75,7 +77,7 @@ def evaluate_full(cfg, d_max=0.12, seeds=(11, 22, 33, 44, 55, 66, 77)):
     }
 
     # --- 维度 2: adversarial 压力情景 (CCC-GARCH 合成) ---
-    adv = _adv.robustness_score(cfg, seeds=seeds)
+    adv = _adv.robustness_score(cfg, seeds=seeds, include_corr_scenarios=include_corr_scenarios)
 
     # --- 约束判定 ---
     realized_dd_ok = bool(realized["max_drawdown"] <= d_max)
@@ -150,13 +152,15 @@ def main():
     p.add_argument("--dmax", type=float, default=0.12, help="全情景最大回撤上限")
     p.add_argument("--seeds", default="11,22,33,44,55,66,77")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--corr-scenarios", action="store_true",
+                   help="额外评估 v4.4 相关性危机情景(corr_regime_shift/corr_crisis_combo)")
     p.add_argument("--save-baseline", action="store_true")
     p.add_argument("--vs-baseline", action="store_true")
     args = p.parse_args()
 
     seeds = tuple(int(x) for x in args.seeds.split(","))
     cfg = load_config(PROJ / args.config)
-    ev = evaluate_full(cfg, d_max=args.dmax, seeds=seeds)
+    ev = evaluate_full(cfg, d_max=args.dmax, seeds=seeds, include_corr_scenarios=args.corr_scenarios)
 
     if args.json:
         print(json.dumps(ev, ensure_ascii=False, indent=2, default=str))

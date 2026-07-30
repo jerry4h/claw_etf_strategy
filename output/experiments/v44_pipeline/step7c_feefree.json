@@ -1,0 +1,19 @@
+{
+  "v4_3": {
+    "engine_sharpe_fee": 1.4878019225442454,
+    "engine_sharpe_nofee": 1.4911807268811323,
+    "script_sharpe_nofee_replay": 1.4977042442003994,
+    "delta_fee_vs_script": 0.009902321656154012,
+    "delta_nofee_vs_script": 0.006523517319267036
+  },
+  "v4_4": {
+    "engine_sharpe_fee": 1.4984554869975593,
+    "engine_sharpe_nofee": 1.5019090628050789,
+    "script_sharpe_nofee_replay": 1.5084710339704044,
+    "delta_fee_vs_script": 0.010015546972845124,
+    "delta_nofee_vs_script": 0.006561971165325531
+  },
+  "hypothesis_confirmed_nofee_lt_0_002": false,
+  "v44_minus_v43_fee_delta_increment": 0.00011322531669111235,
+  "increment_le_0_001": true
+}

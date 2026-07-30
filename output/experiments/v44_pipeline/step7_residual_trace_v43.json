@@ -1,0 +1,12 @@
+{
+  "config": "v4_3",
+  "aligned_weeks": 662,
+  "n_divergent": 1,
+  "divergent_weeks": [
+    [
+      "2013-08-30",
+      0.4
+    ]
+  ],
+  "max_ret_diff_when_weights_identical": 8.933825901280557e-17
+}

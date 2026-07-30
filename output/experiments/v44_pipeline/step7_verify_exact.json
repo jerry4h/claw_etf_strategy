@@ -1,0 +1,12 @@
+{
+  "engine_sharpe": 1.4984554869975593,
+  "script_sharpe": 1.5084710339704044,
+  "delta_sharpe": 0.010015546972845124,
+  "gate_lt_0_01": false,
+  "engine_annual": 0.1451499435594903,
+  "script_annual": 0.14609193956210142,
+  "delta_annual_pp": 0.0941996002611134,
+  "engine_maxdd": 0.05847189732050016,
+  "script_maxdd": 0.05841917146060787,
+  "stop_loss_count": 0
+}

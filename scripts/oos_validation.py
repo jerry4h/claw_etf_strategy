@@ -70,6 +70,13 @@ OOS_MAGNITUDE_SCENARIOS = {
                         "mudef_mult": 0.5, "c_mult": 0.7},
 }
 
+# v4.4 通道A 追加: regime_corr 幅度变体(--corr-variants 显式开启; 默认不跑,
+# 既有 10 情景与三通道判定行为不变; 训练只见 rho_crisis=0.85)
+OOS_CORR_VARIANTS = {
+    "corr_shift_075": {"dgp": "regime_corr", "rho_crisis": 0.75},  # rho 未见: 更温和
+    "corr_shift_090": {"dgp": "regime_corr", "rho_crisis": 0.90},  # rho 未见: 更极端
+}
+
 
 # =========== 通道 C: block bootstrap 辅助 ============
 def block_bootstrap(returns, block_len, seed):
@@ -126,9 +133,11 @@ def run_channel_ab(cfg_name, cfg, dgp, scenarios, seeds, label):
     results = {}
     for name, params_over in scenarios.items():
         params = dict(adv.REALIZED, **params_over)
+        # v4.4: 支持 params 里的 dgp=regime_corr 分支(与 adv._eval_strat_ew 同口径)
+        gen = adv.gen_regime_corr if params.get("dgp") == "regime_corr" else adv.gen_garch
         s_sh_l, e_sh_l, s_dd_l, s_an_l, e_an_l = [], [], [], [], []
         for seed in seeds:
-            r = adv.gen_garch(mu, A, R, nu, gp, params, T, seed)
+            r = gen(mu, A, R, nu, gp, params, T, seed)
             m = eval_strat_ew_on_returns(r, real_dates, first_nav, cfg, f"{label}_{name}_{seed}")
             if m is None: continue
             s_sh_l.append(m["strat_sharpe"]); e_sh_l.append(m["ew_sharpe"])
@@ -219,6 +228,8 @@ def main():
     p.add_argument("--block-len",     type=int, default=8)
     p.add_argument("--n-paths",       type=int, default=30)
     p.add_argument("--boot-seed",     type=int, default=9000)
+    p.add_argument("--corr-variants", action="store_true",
+                   help="通道A 追加 2 个 regime_corr 幅度变体(独立 A2 段, 不参与三通道 core 判定)")
     p.add_argument("--out",           default=str(OUT / "oos_validation.json"))
     args = p.parse_args()
 
@@ -256,6 +267,16 @@ def main():
         outs["channels"].setdefault("A_held_out_magnitudes", {})[label] = res
         print(f"  pass_rate={res['pass_rate']:.0%}  worst_DD={res['worst_maxdd']:.2%}  "
               f"avg_margin={res['avg_margin']:+.3f}  ({time.time()-t0:.0f}s)")
+
+    # ======== 通道 A2 (可选): regime_corr 幅度变体, 独立记录不入 core 判定 ========
+    if args.corr_variants:
+        for label, cfg in (("v4_1", cfg_a), ("v4_2", cfg_b)):
+            print(f"\n[通道A2 regime_corr 变体] {label} ...", flush=True)
+            t0 = time.time()
+            res = run_channel_ab(label, cfg, dgp, OOS_CORR_VARIANTS, TRAINING_SEEDS, f"A2_{label}")
+            outs["channels"].setdefault("A2_regime_corr_variants", {})[label] = res
+            print(f"  pass_rate={res['pass_rate']:.0%}  worst_DD={res['worst_maxdd']:.2%}  "
+                  f"avg_margin={res['avg_margin']:+.3f}  ({time.time()-t0:.0f}s)")
 
     # ======== 通道 B ========
     train_scen = {k: adv.STRESS_SCENARIOS[k] for k in TRAINING_SCENARIOS}

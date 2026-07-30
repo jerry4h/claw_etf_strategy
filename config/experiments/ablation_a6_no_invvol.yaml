@@ -1,0 +1,68 @@
+strategy:
+  name: 消融A6 — 完整 v4.3 减 inv_vol（进攻等权，其余不动）
+  version: '4.3-ablation-A6'
+  note: "基于 v4.3 复制, 唯一改动: inv_vol_allocation.enabled=false(引擎回退 allocate() 等权路径: off_weights=None → 进攻仓位均分)。其余与生产 v4.3 逐字段一致, 含 40% 上限与防御层。v4.3 vs A6 之差 = Layer2 倒数波动率进攻权重的边际贡献。"
+scoring:
+  mom_w: 1.0
+  vol_w: 1.1
+selection:
+  top_n: 2
+  score_margin: 0.02
+  dynamic_margin_sensitivity: 1.0
+  dynamic_margin_window: 3
+  trend_confirm_weeks: 0
+factors:
+  mom_window: 6
+  vol_window: 10          # taper 开启时此硬窗口不生效(仅历史占位; 有效窗口见 vol_taper_window)
+  pe_window_years: 5
+  ewma_factors_enabled: false
+  ewma_mom_halflife: 16
+  ewma_vol_halflife: 6
+  vol_taper_enabled: true
+  vol_taper_window: 14
+  vol_taper_len: 7
+defense:
+  def_alloc: 0.3492
+  step_low: 0.0764
+  step_high: 0.384
+  max_def: 0.8299
+  hongli_ratio: 0.5
+crisis_correlation:
+  window: 26
+  corr_threshold: 0.6
+  boost_slope: 1.875
+  max_boost: 0.15
+hongli_formula:
+  intercept: 0.8
+  vol_coeff: 2.67
+rebalance:
+  threshold: 0.025
+  fee_rate: 5.0e-05
+  anchor: W-MON
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+allocation:
+  max_single_alloc: 0.4
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+inv_vol_allocation:
+  enabled: false
+  window: 14
+d4_individual_filter:
+  enabled: false
+softmax_allocation:
+  enabled: false
+dynamic_weighting:
+  enabled: false
+constituent_signals:
+  enabled: false
+regime_classifier:
+  enabled: false
+data:
+  nav_path: data/all_etfs_nav_latest.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: 2013-05-17
+  end_date: null
+reporting:
+  risk_free_rate: 0.025

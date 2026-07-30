@@ -1,0 +1,68 @@
+{
+  "config": "config/strategy_v4_4.yaml",
+  "diagnostics": {
+    "raw_csv_rows": 677,
+    "engine_weekly_rows_after_resample_and_start_filter": 677,
+    "replay_rows_no_resample_no_start_filter": 677,
+    "raw_index_equals_engine_weekly_index": true,
+    "replay_index_equals_engine_weekly_index": true,
+    "raw_first_date": "2013-05-17",
+    "raw_last_date": "2026-07-24",
+    "engine_weekly_first_date": "2013-05-17",
+    "engine_first_record_date": "2013-08-30",
+    "replay_first_record_date": "2013-08-30",
+    "engine_n_records": 662,
+    "replay_n_records": 662
+  },
+  "aligned_weeks": 662,
+  "weeks_only_in_engine": [],
+  "weeks_only_in_replay": [],
+  "n_weight_divergent_weeks": 1,
+  "max_weight_diff_overall": 0.4,
+  "first_weight_divergence": {
+    "date": "2013-08-30",
+    "max_w_diff": 0.4,
+    "engine_w": {
+      "纳指ETF": 0.4,
+      "红利低波ETF": 0.192255,
+      "中证500ETF": 0.215491,
+      "黄金ETF": 0.0,
+      "国债ETF": 0.192255
+    },
+    "replay_w": {
+      "纳指ETF": 0.0,
+      "红利低波ETF": 0.5,
+      "中证500ETF": 0.0,
+      "黄金ETF": 0.0,
+      "国债ETF": 0.5
+    }
+  },
+  "weight_divergent_weeks_head": [
+    {
+      "date": "2013-08-30",
+      "max_w_diff": 0.4,
+      "engine_w": {
+        "纳指ETF": 0.4,
+        "红利低波ETF": 0.192255,
+        "中证500ETF": 0.215491,
+        "黄金ETF": 0.0,
+        "国债ETF": 0.192255
+      },
+      "replay_w": {
+        "纳指ETF": 0.0,
+        "红利低波ETF": 0.5,
+        "中证500ETF": 0.0,
+        "黄金ETF": 0.0,
+        "国债ETF": 0.5
+      }
+    }
+  ],
+  "return_diff_on_common": {
+    "mean_abs": 1.0948678078387497e-05,
+    "max_abs": 0.007248024887877013,
+    "max_abs_date": "2013-08-30",
+    "mean_abs_when_weights_identical": 2.3465985488531717e-17,
+    "max_abs_when_weights_identical": 9.107298248878237e-17,
+    "n_weeks_weights_identical": 661
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "seeds": [
+    11,
+    22,
+    33
+  ],
+  "include_corr_scenarios": true,
+  "d_max": 0.12,
+  "results": {
+    "6": {
+      "config": "config/experiments/v4_4_hl6.yaml",
+      "verdict": "PASS",
+      "failed_constraints": [],
+      "worst_maxdd": 0.09694927656539243,
+      "worst_scenario": "stagflation",
+      "corr_crisis_gate": {
+        "pass_rate_sharpe": 1.0,
+        "worst_sharpe": 1.2460992184478477,
+        "worst_maxdd": 0.09694927656539243
+      },
+      "corr_regime_shift": {
+        "sharpe": 1.6392710395941352,
+        "maxdd": 0.07871509131953792
+      },
+      "corr_crisis_combo": {
+        "sharpe": 1.2460992184478477,
+        "maxdd": 0.09694927656539243
+      },
+      "realized_sharpe": 1.4986059300062518,
+      "elapsed_s": 17.9
+    },
+    "8": {
+      "config": "config/strategy_v4_4.yaml",
+      "verdict": "PASS",
+      "failed_constraints": [],
+      "worst_maxdd": 0.09663339709965532,
+      "worst_scenario": "stagflation",
+      "corr_crisis_gate": {
+        "pass_rate_sharpe": 1.0,
+        "worst_sharpe": 1.2510637387027672,
+        "worst_maxdd": 0.09663339709965532
+      },
+      "corr_regime_shift": {
+        "sharpe": 1.6439507640821107,
+        "maxdd": 0.07871509131953802
+      },
+      "corr_crisis_combo": {
+        "sharpe": 1.2510637387027672,
+        "maxdd": 0.09663339709965532
+      },
+      "realized_sharpe": 1.4984554869975593,
+      "elapsed_s": 14.4
+    },
+    "10": {
+      "config": "config/experiments/v4_4_hl10.yaml",
+      "verdict": "PASS",
+      "failed_constraints": [],
+      "worst_maxdd": 0.09624308117224943,
+      "worst_scenario": "stagflation",
+      "corr_crisis_gate": {
+        "pass_rate_sharpe": 1.0,
+        "worst_sharpe": 1.253214616539257,
+        "worst_maxdd": 0.09624308117224943
+      },
+      "corr_regime_shift": {
+        "sharpe": 1.6474642471987035,
+        "maxdd": 0.07871509131953784
+      },
+      "corr_crisis_combo": {
+        "sharpe": 1.253214616539257,
+        "maxdd": 0.09624308117224943
+      },
+      "realized_sharpe": 1.500719888752819,
+      "elapsed_s": 14.4
+    },
+    "13": {
+      "config": "config/experiments/v4_4_hl13.yaml",
+      "verdict": "PASS",
+      "failed_constraints": [],
+      "worst_maxdd": 0.09592252878629103,
+      "worst_scenario": "stagflation",
+      "corr_crisis_gate": {
+        "pass_rate_sharpe": 1.0,
+        "worst_sharpe": 1.2619467630157408,
+        "worst_maxdd": 0.09592252878629103
+      },
+      "corr_regime_shift": {
+        "sharpe": 1.6529109329464933,
+        "maxdd": 0.07871509131953792
+      },
+      "corr_crisis_combo": {
+        "sharpe": 1.2619467630157408,
+        "maxdd": 0.09592252878629103
+      },
+      "realized_sharpe": 1.499537617753492,
+      "elapsed_s": 14.2
+    }
+  },
+  "summary": {
+    "worst_maxdd_range_pp": 0.10267477791014029,
+    "corr_gate_maxdd_range_pp": 0.10267477791014029,
+    "corr_gate_sharpe_range": 0.015847544567893168,
+    "all_pass": true,
+    "judgement": "halflife_not_dominant_lock_8"
+  }
+}

@@ -1,0 +1,68 @@
+strategy:
+  name: 消融A5 — 完整 v4.3 减止损（仅关止损）
+  version: '4.3-ablation-A5'
+  note: "基于 v4.3 复制, 唯一改动: risk_control.stop_loss=1.0(事实禁用——check_stop_loss 要求回撤 >= 100% 才触发, NAV 不可能归零)。其余与生产 v4.3 逐字段一致。若结果与 v4.3 完全相同, 则证实止损在全期从未触发(基线 MaxDD 5.84% < 8% 阈值也从数学上蕴含此结论)。"
+scoring:
+  mom_w: 1.0
+  vol_w: 1.1
+selection:
+  top_n: 2
+  score_margin: 0.02
+  dynamic_margin_sensitivity: 1.0
+  dynamic_margin_window: 3
+  trend_confirm_weeks: 0
+factors:
+  mom_window: 6
+  vol_window: 10          # taper 开启时此硬窗口不生效(仅历史占位; 有效窗口见 vol_taper_window)
+  pe_window_years: 5
+  ewma_factors_enabled: false
+  ewma_mom_halflife: 16
+  ewma_vol_halflife: 6
+  vol_taper_enabled: true
+  vol_taper_window: 14
+  vol_taper_len: 7
+defense:
+  def_alloc: 0.3492
+  step_low: 0.0764
+  step_high: 0.384
+  max_def: 0.8299
+  hongli_ratio: 0.5
+crisis_correlation:
+  window: 26
+  corr_threshold: 0.6
+  boost_slope: 1.875
+  max_boost: 0.15
+hongli_formula:
+  intercept: 0.8
+  vol_coeff: 2.67
+rebalance:
+  threshold: 0.025
+  fee_rate: 5.0e-05
+  anchor: W-MON
+risk_control:
+  stop_loss: 1.0
+  recovery_weeks: 4
+allocation:
+  max_single_alloc: 0.4
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+inv_vol_allocation:
+  enabled: true
+  window: 14
+d4_individual_filter:
+  enabled: false
+softmax_allocation:
+  enabled: false
+dynamic_weighting:
+  enabled: false
+constituent_signals:
+  enabled: false
+regime_classifier:
+  enabled: false
+data:
+  nav_path: data/all_etfs_nav_latest.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: 2013-05-17
+  end_date: null
+reporting:
+  risk_free_rate: 0.025

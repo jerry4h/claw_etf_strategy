@@ -1,0 +1,85 @@
+{
+  "identical": true,
+  "pre": {
+    "config": "v4_3",
+    "scenarios": {
+      "vol_small": {
+        "strat_sharpe": 1.3577639439522133,
+        "ew_sharpe": 1.1553979809384693,
+        "strat_maxdd": 0.057056595100885774,
+        "strat_annual": 0.1215458626931154,
+        "ew_annual": 0.13367025083800566,
+        "margin": 0.202365963013744,
+        "beats_ew": true
+      },
+      "def_deep_bear": {
+        "strat_sharpe": 0.7444153731979997,
+        "ew_sharpe": 0.7332214325894786,
+        "strat_maxdd": 0.08225226779940174,
+        "strat_annual": 0.08006173599483657,
+        "ew_annual": 0.10133176025930046,
+        "margin": 0.01119394060852108,
+        "beats_ew": true
+      },
+      "quad_shock": {
+        "strat_sharpe": 0.539010679145058,
+        "ew_sharpe": 0.5780302550743943,
+        "strat_maxdd": 0.09759845698371905,
+        "strat_annual": 0.06874921138213086,
+        "ew_annual": 0.09615023038073178,
+        "margin": -0.03901957592933636,
+        "beats_ew": false
+      }
+    },
+    "pass_rate": 0.6666666666666666,
+    "worst_maxdd": 0.09759845698371905,
+    "avg_margin": 0.05818010923097624,
+    "n": 3
+  },
+  "post": {
+    "config": "v4_3",
+    "scenarios": {
+      "vol_small": {
+        "strat_sharpe": 1.3577639439522133,
+        "ew_sharpe": 1.1553979809384693,
+        "strat_maxdd": 0.057056595100885774,
+        "strat_annual": 0.1215458626931154,
+        "ew_annual": 0.13367025083800566,
+        "margin": 0.202365963013744,
+        "beats_ew": true
+      },
+      "def_deep_bear": {
+        "strat_sharpe": 0.7444153731979997,
+        "ew_sharpe": 0.7332214325894786,
+        "strat_maxdd": 0.08225226779940174,
+        "strat_annual": 0.08006173599483657,
+        "ew_annual": 0.10133176025930046,
+        "margin": 0.01119394060852108,
+        "beats_ew": true
+      },
+      "quad_shock": {
+        "strat_sharpe": 0.539010679145058,
+        "ew_sharpe": 0.5780302550743943,
+        "strat_maxdd": 0.09759845698371905,
+        "strat_annual": 0.06874921138213086,
+        "ew_annual": 0.09615023038073178,
+        "margin": -0.03901957592933636,
+        "beats_ew": false
+      }
+    },
+    "pass_rate": 0.6666666666666666,
+    "worst_maxdd": 0.09759845698371905,
+    "avg_margin": 0.05818010923097624,
+    "n": 3
+  },
+  "scenarios": [
+    "vol_small",
+    "def_deep_bear",
+    "quad_shock"
+  ],
+  "seeds": [
+    11,
+    22,
+    33
+  ]
+}

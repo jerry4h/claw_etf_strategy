@@ -3,6 +3,7 @@ backtest engine (backtest.py) and live rebalance script (rebalance_live.py).
 
 Contains: Layer 3.5 crisis correlation boost, dynamic hongli ratio,
 inv-vol weighting, dynamic score margin, and trend confirmation.
+v4.4: Layer 3.5 adds an EWMA-weighted correlation variant (crisis_corr_ewma_enabled).
 
 All functions are pure (no side effects) and operate on numpy arrays.
 """
@@ -41,6 +42,18 @@ def compute_crisis_boost(
     Returns:
         Defense ratio boost (0 to crisis_corr_max_boost).
     """
+    if getattr(config, "crisis_corr_ewma_enabled", False):
+        return _compute_crisis_boost_ewma(w_rets, i, off_idx, config)
+    return _compute_crisis_boost_classic(w_rets, i, off_idx, config)
+
+
+def _compute_crisis_boost_classic(
+    w_rets: np.ndarray,
+    i: int,
+    off_idx: list[int],
+    config: StrategyConfig,
+) -> float:
+    """Classic Layer 3.5: equal-weight Pearson correlation (v4.3 behavior)."""
     window = config.crisis_corr_window
     threshold = config.crisis_corr_threshold
     slope = config.crisis_corr_slope
@@ -59,6 +72,65 @@ def compute_crisis_boost(
             mask = ~(np.isnan(off_ret_win[:, a]) | np.isnan(off_ret_win[:, b]))
             if mask.sum() >= 5:
                 c = np.corrcoef(off_ret_win[mask, a], off_ret_win[mask, b])[0, 1]
+                if not np.isnan(c):
+                    max_pair_corr = max(max_pair_corr, abs(c))
+
+    if max_pair_corr > threshold:
+        return min((max_pair_corr - threshold) * slope, max_boost)
+    return 0.0
+
+
+def _compute_crisis_boost_ewma(
+    w_rets: np.ndarray,
+    i: int,
+    off_idx: list[int],
+    config: StrategyConfig,
+) -> float:
+    """v4.4 Layer 3.5: stateless EWMA-weighted correlation variant.
+
+    Same window/early-exit conditions as the classic path, but each week in
+    the window is weighted by w_t = 0.5 ** ((window-1-t)/halflife), where
+    t=0 is the oldest week (newest week weight = 1, decaying into the past).
+    Weights are re-normalized over each pair's NaN mask before computing the
+    weighted correlation.
+
+    Math self-check: as halflife -> inf, weights converge to equal weights
+    and the weighted correlation converges to the Pearson correlation, i.e.
+    this function converges to _compute_crisis_boost_classic.
+    """
+    window = config.crisis_corr_window
+    threshold = config.crisis_corr_threshold
+    slope = config.crisis_corr_slope
+    max_boost = config.crisis_corr_max_boost
+
+    if i < window or not off_idx or len(off_idx) < 2:
+        return 0.0
+
+    halflife = max(config.crisis_corr_ewma_halflife, 1)
+
+    # Returns [i-window, i): the `window` completed returns before week i.
+    off_ret_win = w_rets[i - window:i, off_idx]
+    max_pair_corr = 0.0
+    n_off = off_ret_win.shape[1]
+
+    # t=0 is the oldest week in the window; newest week gets weight 1.
+    t = np.arange(window)
+    weights = 0.5 ** ((window - 1 - t) / halflife)
+
+    for a in range(n_off):
+        for b in range(a + 1, n_off):
+            mask = ~(np.isnan(off_ret_win[:, a]) | np.isnan(off_ret_win[:, b]))
+            if mask.sum() >= 5:
+                x = off_ret_win[mask, a]
+                y = off_ret_win[mask, b]
+                w = weights[mask]
+                w = w / w.sum()
+                x_bar = float(np.sum(w * x))
+                y_bar = float(np.sum(w * y))
+                cov = float(np.sum(w * (x - x_bar) * (y - y_bar)))
+                var_x = float(np.sum(w * (x - x_bar) ** 2))
+                var_y = float(np.sum(w * (y - y_bar) ** 2))
+                c = cov / (np.sqrt(var_x * var_y) + 1e-12)
                 if not np.isnan(c):
                     max_pair_corr = max(max_pair_corr, abs(c))
 

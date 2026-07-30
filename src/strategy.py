@@ -69,6 +69,8 @@ class StrategyConfig:
     crisis_corr_threshold: float = 0.60  # 相关性触发阈值
     crisis_corr_slope: float = 1.875     # 线性斜率
     crisis_corr_max_boost: float = 0.15  # 最大防御加成(pp)
+    crisis_corr_ewma_enabled: bool = False   # v4.4: Layer 3.5 EWMA 相关估计(默认关=v4.3行为)
+    crisis_corr_ewma_halflife: int = 8       # EWMA 半衰期(周)
     ashare_vol_boost_enabled: bool = False   # M3: 中证500 vol 危机加成(默认关)
     ashare_vol_crisis_threshold: float = 0.90  # 中证500 vol 过去2年百分位触发阈值
     ashare_vol_max_boost: float = 0.15         # 最大防御加成
@@ -302,6 +304,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     factors_cfg = raw.get('factors', {})
     defense = raw.get('defense', {})
     crisis_corr = raw.get('crisis_correlation', {})
+    crisis_corr_ewma_cfg = raw.get('crisis_correlation_ewma', {})
     hongli_formula = raw.get('hongli_formula', {})
     rebalance = raw.get('rebalance', {})
     risk = raw.get('risk_control', {})
@@ -361,6 +364,9 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         crisis_corr_threshold=crisis_corr.get('corr_threshold', 0.60),
         crisis_corr_slope=crisis_corr.get('boost_slope', 1.875),
         crisis_corr_max_boost=crisis_corr.get('max_boost', 0.15),
+        # v4.4: Layer 3.5 EWMA 相关估计(crisis_correlation_ewma 段，缺失时默认关)
+        crisis_corr_ewma_enabled=crisis_corr_ewma_cfg.get('ewma_enabled', False),
+        crisis_corr_ewma_halflife=crisis_corr_ewma_cfg.get('ewma_halflife', 8),
         # 动态红利低波公式
         hongli_intercept=hongli_formula.get('intercept', 0.80),
         hongli_vol_coeff=hongli_formula.get('vol_coeff', 2.67),

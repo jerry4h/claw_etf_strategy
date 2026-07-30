@@ -1,0 +1,241 @@
+{
+  "objective": 0.1451499435594903,
+  "verdict": "PASS",
+  "failed_constraints": [],
+  "realized": {
+    "annual_return": 0.1451499435594903,
+    "max_drawdown": 0.05847189732050016,
+    "sharpe": 1.4984554869975593,
+    "ew_annual_return": 0.11718269909313306,
+    "ew_max_drawdown": 0.20198315146528836,
+    "ew_sharpe": 0.9055765841738279,
+    "window": {
+      "start": "2013-08-30",
+      "end": "2026-07-24",
+      "weeks": 662,
+      "n_valid_etf": 5
+    }
+  },
+  "adversarial": {
+    "pass_rate": 1.0,
+    "pass_rate_return": 0.2857142857142857,
+    "n_pass": 7,
+    "n_pass_return": 2,
+    "n_stress": 7,
+    "worst_sharpe": 0.8216601676851497,
+    "worst_scenario": "stagflation",
+    "worst_maxdd": 0.09663339709965532,
+    "baseline_sharpe": 1.1448678647292152,
+    "baseline_retention": 0.9754074368023709,
+    "by_mechanism": {
+      "vol_defense": {
+        "scenarios": [
+          "vol_stress"
+        ],
+        "n": 1,
+        "pass_rate": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_sharpe": 0.9814389954368999,
+        "worst_maxdd": 0.08032582712933922
+      },
+      "selection": {
+        "scenarios": [
+          "offense_cooldown"
+        ],
+        "n": 1,
+        "pass_rate": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_sharpe": 0.99048684784054,
+        "worst_maxdd": 0.08869833213026607
+      },
+      "defense_asset": {
+        "scenarios": [
+          "bond_bear"
+        ],
+        "n": 1,
+        "pass_rate": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_sharpe": 0.8757187519545596,
+        "worst_maxdd": 0.07395112829130832
+      },
+      "dispersion": {
+        "scenarios": [
+          "decorrelation"
+        ],
+        "n": 1,
+        "pass_rate": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_sharpe": 1.2526691401884644,
+        "worst_maxdd": 0.06338752013569218
+      },
+      "composite": {
+        "scenarios": [
+          "stagflation"
+        ],
+        "n": 1,
+        "pass_rate": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_sharpe": 0.8216601676851497,
+        "worst_maxdd": 0.08603449325174789
+      },
+      "corr_crisis": {
+        "scenarios": [
+          "corr_regime_shift",
+          "corr_crisis_combo"
+        ],
+        "n": 2,
+        "pass_rate": 1.0,
+        "pass_rate_return": 1.0,
+        "worst_sharpe": 1.2510637387027672,
+        "worst_maxdd": 0.09663339709965532
+      }
+    },
+    "scenarios": {
+      "baseline": {
+        "strategy": 1.1448678647292152,
+        "ew_rebal": 1.0440175744104023,
+        "beats_ew": true,
+        "beats_ew_return": false,
+        "strat_maxdd": 0.08326861818340599,
+        "ew_maxdd": 0.09994942941871189,
+        "strat_annual": 0.11219088693773949,
+        "ew_annual": 0.13459537825410317,
+        "mechanism": "baseline"
+      },
+      "vol_stress": {
+        "strategy": 0.9814389954368999,
+        "ew_rebal": 0.8769435539495466,
+        "beats_ew": true,
+        "beats_ew_return": false,
+        "strat_maxdd": 0.08032582712933922,
+        "ew_maxdd": 0.13678163403898166,
+        "strat_annual": 0.10779102562444032,
+        "ew_annual": 0.1360856866503497,
+        "mechanism": "vol_defense"
+      },
+      "offense_cooldown": {
+        "strategy": 0.99048684784054,
+        "ew_rebal": 0.8834274454034062,
+        "beats_ew": true,
+        "beats_ew_return": false,
+        "strat_maxdd": 0.08869833213026607,
+        "ew_maxdd": 0.10909767293725321,
+        "strat_annual": 0.10029909076947563,
+        "ew_annual": 0.11867344814940939,
+        "mechanism": "selection"
+      },
+      "bond_bear": {
+        "strategy": 0.8757187519545596,
+        "ew_rebal": 0.8142963261207173,
+        "beats_ew": true,
+        "beats_ew_return": false,
+        "strat_maxdd": 0.07395112829130832,
+        "ew_maxdd": 0.11691300228733346,
+        "strat_annual": 0.09034359563159833,
+        "ew_annual": 0.11073680159637256,
+        "mechanism": "defense_asset"
+      },
+      "decorrelation": {
+        "strategy": 1.2526691401884644,
+        "ew_rebal": 1.114574485985622,
+        "beats_ew": true,
+        "beats_ew_return": false,
+        "strat_maxdd": 0.06338752013569218,
+        "ew_maxdd": 0.09946947447084604,
+        "strat_annual": 0.11994181437725082,
+        "ew_annual": 0.13863619953904238,
+        "mechanism": "dispersion"
+      },
+      "stagflation": {
+        "strategy": 0.8216601676851497,
+        "ew_rebal": 0.7644214371928807,
+        "beats_ew": true,
+        "beats_ew_return": false,
+        "strat_maxdd": 0.08603449325174789,
+        "ew_maxdd": 0.1517593512082489,
+        "strat_annual": 0.0932291535341414,
+        "ew_annual": 0.12014253091833571,
+        "mechanism": "composite"
+      },
+      "corr_regime_shift": {
+        "strategy": 1.6439507640821107,
+        "ew_rebal": 0.9756386440897826,
+        "beats_ew": true,
+        "beats_ew_return": true,
+        "strat_maxdd": 0.07871509131953802,
+        "ew_maxdd": 0.2592632947087411,
+        "strat_annual": 0.14467734303918434,
+        "ew_annual": 0.13413744923164206,
+        "mechanism": "corr_crisis"
+      },
+      "corr_crisis_combo": {
+        "strategy": 1.2510637387027672,
+        "ew_rebal": 0.6580127178177071,
+        "beats_ew": true,
+        "beats_ew_return": true,
+        "strat_maxdd": 0.09663339709965532,
+        "ew_maxdd": 0.33458242905866453,
+        "strat_annual": 0.1299276752717382,
+        "ew_annual": 0.1182505789329431,
+        "mechanism": "corr_crisis"
+      }
+    }
+  },
+  "constraints": {
+    "d_max": 0.12,
+    "realized_dd_ok": true,
+    "realized_beats_ew": true,
+    "adv_dd_ok": true,
+    "adv_return_pass_rate": 0.2857142857142857,
+    "mechanism_gates": {
+      "vol_defense": {
+        "gate": "hard",
+        "passed": true,
+        "pass_rate_sharpe": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_maxdd": 0.08032582712933922,
+        "worst_sharpe": 0.9814389954368999
+      },
+      "selection": {
+        "gate": "soft",
+        "passed": true,
+        "pass_rate_sharpe": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_maxdd": 0.08869833213026607,
+        "worst_sharpe": 0.99048684784054
+      },
+      "defense_asset": {
+        "gate": "hard",
+        "passed": true,
+        "pass_rate_sharpe": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_maxdd": 0.07395112829130832,
+        "worst_sharpe": 0.8757187519545596
+      },
+      "dispersion": {
+        "gate": "hard",
+        "passed": true,
+        "pass_rate_sharpe": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_maxdd": 0.06338752013569218,
+        "worst_sharpe": 1.2526691401884644
+      },
+      "composite": {
+        "gate": "hard",
+        "passed": true,
+        "pass_rate_sharpe": 1.0,
+        "pass_rate_return": 0.0,
+        "worst_maxdd": 0.08603449325174789,
+        "worst_sharpe": 0.8216601676851497
+      },
+      "corr_crisis": {
+        "gate": "hard",
+        "passed": true,
+        "pass_rate_sharpe": 1.0,
+        "pass_rate_return": 1.0,
+        "worst_maxdd": 0.09663339709965532,
+        "worst_sharpe": 1.2510637387027672
+      }
+    }
+  }
+}

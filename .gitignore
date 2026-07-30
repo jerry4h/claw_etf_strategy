@@ -12,6 +12,11 @@ __pycache__/
 .hermes/
 test_venv/
 scripts/_*.py
+# 例外: _exp_*.py 为 v4.4 验收实验复现脚本, 需纳入版本控制
+!scripts/_exp_*.py
+
+# IDE wiki 缓存
+/.qoder/
 
 # Generated output artifacts
 output/*.html
@@ -19,6 +24,8 @@ output/*.jpeg
 output/*.png
 output/*.pdf
 output/tmp_*
+# output 下的过程脚本 (备份/追踪用临时 py), 不提交
+output/**/*.py
 
 # Robustness evaluation temp files
 robustness_results.json
