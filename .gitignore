@@ -41,3 +41,6 @@ data/*.csv
 
 # Manifold analysis caches (regenerable)
 output/manifold/*.json
+
+# 防止外部工具误生成的嵌套工作区目录再次进入仓库
+/Users/
