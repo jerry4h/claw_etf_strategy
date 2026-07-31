@@ -1,0 +1,90 @@
+{
+  "task": "E2 场外联接基金 T+lag 滞后成本 + 费率差",
+  "config": "config/strategy_v4_4.yaml",
+  "baseline": {
+    "annual_return": 0.1451499435594903,
+    "sharpe_ratio": 1.4984554869975593,
+    "max_drawdown": 0.05847189732050016,
+    "annual_volatility": 0.07578988886259386,
+    "total_weeks": 662,
+    "final_nav": 5.615172091065821
+  },
+  "nasdaq_leg": {
+    "avg_weight": 0.1707035329977536,
+    "n_trades": 286,
+    "sum_abs_dw": 15.165695771472832,
+    "n_weeks": 662
+  },
+  "fee_diff_annual": 0.004,
+  "fee_diff_portfolio_pp_per_year": 0.06828141319910144,
+  "scenarios": {
+    "fee_only": {
+      "annual_return": 0.14437065329876075,
+      "sharpe_ratio": 1.4895332576982938,
+      "max_drawdown": 0.058539992405622104
+    },
+    "lag1": {
+      "lag_only": {
+        "annual_return": 0.14354659882654985,
+        "sharpe_ratio": 1.479729958179182,
+        "max_drawdown": 0.06327235068567359
+      },
+      "lag_plus_fee": {
+        "annual_return": 0.14276836468627496,
+        "sharpe_ratio": 1.470804652511319,
+        "max_drawdown": 0.06334008379990562
+      },
+      "cost_sum": 0.017874237985219588,
+      "cost_pp_per_year_arith": 0.14040186937030494,
+      "cost_mean_bp_per_trade": 0.624973356126559,
+      "cost_positive_share": 0.479020979020979
+    },
+    "lag2": {
+      "lag_only": {
+        "annual_return": 0.1445436143613683,
+        "sharpe_ratio": 1.4845442779735123,
+        "max_drawdown": 0.0617097613419947
+      },
+      "lag_plus_fee": {
+        "annual_return": 0.14376472526990436,
+        "sharpe_ratio": 1.4756638291076618,
+        "max_drawdown": 0.061777610596899714
+      },
+      "cost_sum": 0.006402844196095971,
+      "cost_pp_per_year_arith": 0.050294244440633004,
+      "cost_mean_bp_per_trade": 0.22387567119216692,
+      "cost_positive_share": 0.5174825174825175
+    },
+    "lag3": {
+      "lag_only": {
+        "annual_return": 0.14495253020328036,
+        "sharpe_ratio": 1.486541423145786,
+        "max_drawdown": 0.0657575269996434
+      },
+      "lag_plus_fee": {
+        "annual_return": 0.14417335537128673,
+        "sharpe_ratio": 1.4776749541668972,
+        "max_drawdown": 0.06582511501704269
+      },
+      "cost_sum": 0.0016976680616700539,
+      "cost_pp_per_year_arith": 0.013335156979885621,
+      "cost_mean_bp_per_trade": 0.05935902313531657,
+      "cost_positive_share": 0.5629370629370629
+    }
+  },
+  "random_lag_1_2": {
+    "n_draws": 100,
+    "seed": 20260731,
+    "annual_return_mean": 0.144030556289098,
+    "annual_return_std": 0.0008959985515961678,
+    "annual_return_p5": 0.14285462349437017,
+    "annual_return_p50": 0.143997967576998,
+    "annual_return_p95": 0.14560570965209588,
+    "sharpe_mean": 1.4823414386545164,
+    "sharpe_std": 0.00992815007864805,
+    "lag_cost_pp_mean": 0.09679513197064143,
+    "lag_cost_pp_std": 0.07884179563092483,
+    "lag_cost_pp_p5": -0.04231404882778988,
+    "lag_cost_pp_p95": 0.1994342996930025
+  }
+}

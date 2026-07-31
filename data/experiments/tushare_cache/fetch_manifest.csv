@@ -1,0 +1,42 @@
+item,status,detail,file
+fund_daily/513100.SH,ok,3211行 20130515~20260730,fund_daily_513100SH.csv
+fund_nav/513100.SH,ok,3187行 20130425~20260729,fund_nav_513100SH.csv
+fund_daily/513300.SH,ok,1391行 20201105~20260730,fund_daily_513300SH.csv
+fund_nav/513300.SH,ok,1400行 20201022~20260729,fund_nav_513300SH.csv
+fund_daily/159941.SZ,ok,2685行 20150713~20260730,fund_daily_159941SZ.csv
+fund_nav/159941.SZ,ok,2687行 20150610~20260729,fund_nav_159941SZ.csv
+fund_daily/513390.SH,ok,785行 20230508~20260730,fund_daily_513390SH.csv
+fund_nav/513390.SH,ok,793行 20230419~20260729,fund_nav_513390SH.csv
+fund_daily/159632.SZ,ok,967行 20220803~20260730,fund_daily_159632SZ.csv
+fund_nav/159632.SZ,ok,977行 20220721~20260729,fund_nav_159632SZ.csv
+fund_daily/159509.SZ,ok,721行 20230808~20260730,fund_daily_159509SZ.csv
+fund_nav/159509.SZ,ok,730行 20230719~20260729,fund_nav_159509SZ.csv
+fund_daily/513500.SH,ok,3047行 20140115~20260730,fund_daily_513500SH.csv
+fund_nav/513500.SH,ok,3009行 20131205~20260729,fund_nav_513500SH.csv
+fund_daily/513650.SH,ok,805行 20230404~20260730,fund_daily_513650SH.csv
+fund_nav/513650.SH,ok,813行 20230323~20260729,fund_nav_513650SH.csv
+fund_daily/510500.SH,ok,3248行 20130315~20260730,fund_daily_510500SH.csv
+fund_nav/510500.SH,ok,3271行 20130206~20260730,fund_nav_510500SH.csv
+fund_daily/518880.SH,ok,3162行 20130729~20260730,fund_daily_518880SH.csv
+fund_nav/518880.SH,ok,3181行 20130718~20260730,fund_nav_518880SH.csv
+fund_daily/512890.SH,ok,1824行 20190118~20260730,fund_daily_512890SH.csv
+fund_nav/512890.SH,ok,1840行 20181219~20260730,fund_nav_512890SH.csv
+fund_daily/511010.SH,ok,3244行 20130325~20260730,fund_daily_511010SH.csv
+fund_nav/511010.SH,ok,3264行 20130305~20260730,fund_nav_511010SH.csv
+index_global/SPX,ok,用SPX: 24811行 19271230~20260730,index_global_SPX.csv
+fx_daily/USDCNY,ok,用USDCNH.FXCM: 4382行 20120218~20260730,fx_daily_USDCNH.csv
+fund_share/513100.SH,ok,2863行 20130425~20260730,fund_share_513100SH.csv
+fund_share/513300.SH,ok,1398行 20201022~20260730,fund_share_513300SH.csv
+fund_share/159941.SZ,ok,2704行 20150610~20260731,fund_share_159941SZ.csv
+fund_share/513390.SH,ok,790行 20230505~20260730,fund_share_513390SH.csv
+fund_share/159632.SZ,ok,975行 20220721~20260731,fund_share_159632SZ.csv
+fund_share/159509.SZ,ok,728行 20230719~20260731,fund_share_159509SZ.csv
+fund_share/513500.SH,ok,2878行 20131205~20260730,fund_share_513500SH.csv
+fund_share/513650.SH,ok,811行 20230323~20260730,fund_share_513650SH.csv
+fund_share/510500.SH,ok,3173行 20130206~20260730,fund_share_510500SH.csv
+fund_share/518880.SH,ok,3003行 20130718~20260730,fund_share_518880SH.csv
+fund_share/512890.SH,ok,1835行 20181219~20260730,fund_share_512890SH.csv
+fund_share/511010.SH,ok,2818行 20130305~20260730,fund_share_511010SH.csv
+fund_basic/candidates,ok,命中 12/12 只候选（全场内共2878只）,fund_basic_candidates.csv
+prod_refresh_preview,ok,12周（重叠11周，新增1周），重叠周最大偏差 1.8411%,prod_refresh_preview.csv
+index_global/NDX,ok,用IXIC: 10530行 19841011~20260730,index_global_IXIC.csv

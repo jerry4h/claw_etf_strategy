@@ -255,7 +255,8 @@ claw_etf_strategy/
 │   └── strategy_v3_1.yaml               # 更早历史版本
 ├── docs/
 │   ├── adversarial_robustness_methodology.md   # v4.0 完整方法学
-│   └── v4_4_crisis_correlation_closure.md      # v4.4 相关性危机轴闭环 (动机/选型/实现/验收)
+│   ├── v4_4_crisis_correlation_closure.md      # v4.4 相关性危机轴闭环 (动机/选型/实现/验收)
+│   └── premium_management_sop.md               # QDII 溢价管理 SOP (每周运维, 任务23)
 ├── src/
 │   ├── backtest.py                      # 回测引擎
 │   ├── strategy.py                      # 策略逻辑 + 配置加载
@@ -272,6 +273,7 @@ claw_etf_strategy/
 │   ├── run_walkforward.py               # Walk-Forward（--reoptimize/--benchmark）
 │   ├── cost_sensitivity.py              # 交易成本敏感性分析
 │   ├── update_etf_data_tushare.py       # Tushare 数据更新
+│   ├── premium_sentinel.py              # 调仓日溢价哨兵 (只提示不切换, rebalance_live --premium-check 调用)
 │   ├── # ---- v4.0 对抗鲁棒框架 ----
 │   ├── data_manifold.py                 # 真实数据流形拟合(VAR+GARCH), 供合成对抗共享
 │   ├── adversarial_robustness.py        # 对抗评估内核(robustness_score + 机制分组)
@@ -369,6 +371,35 @@ python scripts/oos_validation.py
 ```
 
 方法学与设计边界（对抗空间局限、机制分组、决策依据）详见 [`docs/adversarial_robustness_methodology.md`](docs/adversarial_robustness_methodology.md)。
+
+## 运维：QDII 溢价管理（哨兵 + SOP，任务 #19~#23）
+
+### 溢价哨兵（每周调仓日例行）
+```bash
+python scripts/rebalance_live.py --premium-check   # 调仓计算 + 拉取 513100 及 6 只候选最新溢价
+python scripts/premium_sentinel.py                 # 手工诊断入口（仅溢价，直接运行时才联网）
+```
+哨兵**只提示、不自动切换**，数据获取失败自动降级、不中断调仓主流程。读输出时以**溢价数值**
+对照 SOP 纪律表执行（哨兵 2.0%/2.5% 双阈值仅是告警分层，运营纪律线为 **1.5%**，详见下）。
+
+### 操作纪律与 SOP
+完整每周流程、纪律表（溢价区间 × 新增/存量 × 动作）、场外联接申赎要点（T+2 时序/对账/限购）、
+异常预案见 [`docs/premium_management_sop.md`](docs/premium_management_sop.md)。核心纪律一句话：
+**纳指腿新增/加仓在溢价 >1.5% 时走场外联接申购；卖出照常场内；存量只监控不自动动**
+（依据与完整决策链见 [`output/experiments/premium_decision.md`](output/experiments/premium_decision.md)，
+其中含 E3 对自动开关机制的否决、p*≈2.1% 旧框架的证伪记录、以及存量高溢价仓位"轮换变现"
+的人工决策账目）。本节纪律取代早前"溢价 >2% 延迟买入"的旧提示口径。
+
+### 月度复评提示
+每月首个调仓日按 SOP §5 清单复评：溢价水平与存量回吐敞口、QDII 额度/限购政策、候选溢价对比、
+（若溢价持续 ≥5%）存量变现议题。
+
+### 回测口径披露（重要）
+生产数据的纳指列为**含溢价的场内市价**（非净值），因此**所有历史回测业绩含溢价 beta
+≈ +1.2pp/年**（E1 口径A，2013-08~2026-07；2024 年后窗口更高）——这部分是 QDII 溢价单边扩张的
+红利而非策略 alpha，与"无溢价世界"（NAV 反事实年化 13.30%）或外部基准对比时须先扣除；
+各版本（v4.1~v4.4）同口径互比不受影响。详见 `output/experiments/premium_e1_erosion.md` §6
+与 `premium_decision.md` §6。
 
 ## 注意事项
 

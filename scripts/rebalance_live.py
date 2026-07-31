@@ -360,6 +360,8 @@ def main():
     p.add_argument('--week', type=str, default=None, help='指定日期 YYYY-MM-DD')
     p.add_argument('--amount', type=float, default=500000, help='总资金(元)')
     p.add_argument('--save-state', action='store_true', help='确认调仓并保存状态')
+    p.add_argument('--premium-check', action='store_true',
+                   help='调仓日溢价哨兵: 拉取QDII最新溢价并提示(只提示不自动切换, 任务22)')
     a = p.parse_args()
 
     # P0-3: 按 --config 切换生产配置 (重派生模块常量 + taper-aware 预热)
@@ -541,6 +543,16 @@ def main():
         print(f"     - 溢价 1~2%: 谨慎，可分批买入")
         print(f"     - 溢价 > 2%: 建议延迟买入或减少仓位")
         print(f"     溢价买入的收益需覆盖溢价回落风险。")
+
+    # 调仓日溢价哨兵 (--premium-check): 惰性导入, 默认路径/模块导入期零网络依赖
+    if a.premium_check:
+        try:
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location('premium_sentinel', Path(__file__).parent / 'premium_sentinel.py')
+            _ps = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_ps)
+            print('\n' + _ps.advise(_ps.fetch_premiums()))
+        except Exception as _e:
+            print(f"\n  ⚠️ 溢价哨兵降级: 获取/判定失败({str(_e)[:80]}), 不影响以上调仓建议")
 
     if a.save_state:
         save_state(alloc)
