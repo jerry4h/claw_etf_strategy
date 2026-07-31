@@ -551,6 +551,7 @@ def main():
             _spec = _ilu.spec_from_file_location('premium_sentinel', Path(__file__).parent / 'premium_sentinel.py')
             _ps = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_ps)
             print('\n' + _ps.advise(_ps.fetch_premiums()))
+            print(_ps.collapse_report())  # v2 回落防线 (任务28), 自身兜底不抛
         except Exception as _e:
             print(f"\n  ⚠️ 溢价哨兵降级: 获取/判定失败({str(_e)[:80]}), 不影响以上调仓建议")
 
