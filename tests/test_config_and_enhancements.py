@@ -380,3 +380,29 @@ class TestV44ConfigLoad:
         assert cfg.max_def == 0.83
         assert cfg.crisis_corr_ewma_enabled is True
         assert cfg.crisis_corr_ewma_halflife == 8
+
+
+# ── grey_corr_combo 监控情景注册（v4.5 立项评估后保留） ────────────────────────
+
+class TestGreyCorrComboMonitoring:
+    """grey_corr_combo 情景注册回归（灰区已知风险监控项）。
+
+    出处: output/experiments/exp_v45_grey_corr.md (任务#29 预研);
+    v4.5 M-C/M-D 机制经 36 格实验证实结构性不可行，立项中止，
+    但 grey_corr_combo 情景保留为对抗评估监控情景。
+    """
+
+    def test_grey_corr_combo_scenario_registered(self):
+        """grey_corr_combo 在 CORR_STRESS_SCENARIOS 注册且映射 corr_crisis 门禁。"""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "arm_v45",
+            Path(__file__).resolve().parent.parent
+            / "scripts" / "adversarial_robustness.py",
+        )
+        arm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(arm)
+        sc = arm.CORR_STRESS_SCENARIOS["grey_corr_combo"]
+        assert sc == {"dgp": "regime_corr", "rho_crisis": 0.50,
+                      "p_enter": 1.0, "p_stay": 1.0, "sig_mult": 1.5}
+        assert arm.SCENARIO_MECHANISM["grey_corr_combo"] == "corr_crisis"

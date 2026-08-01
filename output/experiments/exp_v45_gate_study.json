@@ -1,0 +1,969 @@
+{
+  "gate_baselines": {
+    "A": {
+      "n_total": 650,
+      "n_closed": 54,
+      "close_rate": 0.08307692307692308
+    },
+    "B": {
+      "n_total": 650,
+      "n_closed": 128,
+      "close_rate": 0.19692307692307692
+    },
+    "C": {
+      "n_total": 650,
+      "n_closed": 202,
+      "close_rate": 0.31076923076923074
+    },
+    "D": {
+      "n_total": 650,
+      "n_closed": 72,
+      "close_rate": 0.11076923076923077
+    }
+  },
+  "grid_results": {
+    "thr0.45|slope0.6|gateA": {
+      "thr": 0.45,
+      "slope": 0.6,
+      "gate": "A",
+      "grey_maxdd": 0.11866010682617356,
+      "bond_maxdd": 0.12314365642960665,
+      "stag_maxdd": 0.11803024980287355,
+      "passes_fast": false
+    },
+    "thr0.45|slope0.6|gateB": {
+      "thr": 0.45,
+      "slope": 0.6,
+      "gate": "B",
+      "grey_maxdd": 0.11506533215195108,
+      "bond_maxdd": 0.10607373357874442,
+      "stag_maxdd": 0.10933888239662018,
+      "passes_fast": true
+    },
+    "thr0.45|slope0.6|gateC": {
+      "thr": 0.45,
+      "slope": 0.6,
+      "gate": "C",
+      "grey_maxdd": 0.11506533215195121,
+      "bond_maxdd": 0.12314365642960676,
+      "stag_maxdd": 0.1092564349317404,
+      "passes_fast": false
+    },
+    "thr0.45|slope0.6|gateD": {
+      "thr": 0.45,
+      "slope": 0.6,
+      "gate": "D",
+      "grey_maxdd": 0.11528193722130309,
+      "bond_maxdd": 0.12314365642960666,
+      "stag_maxdd": 0.11803024980287417,
+      "passes_fast": false
+    },
+    "thr0.45|slope0.75|gateA": {
+      "thr": 0.45,
+      "slope": 0.75,
+      "gate": "A",
+      "grey_maxdd": 0.1198465238242334,
+      "bond_maxdd": 0.12314365642960674,
+      "stag_maxdd": 0.11964759137068119,
+      "passes_fast": false
+    },
+    "thr0.45|slope0.75|gateB": {
+      "thr": 0.45,
+      "slope": 0.75,
+      "gate": "B",
+      "grey_maxdd": 0.11193023623185827,
+      "bond_maxdd": 0.10605015965537262,
+      "stag_maxdd": 0.10922416991527593,
+      "passes_fast": true
+    },
+    "thr0.45|slope0.75|gateC": {
+      "thr": 0.45,
+      "slope": 0.75,
+      "gate": "C",
+      "grey_maxdd": 0.1119302362318586,
+      "bond_maxdd": 0.1231436564296065,
+      "stag_maxdd": 0.10912355352889339,
+      "passes_fast": false
+    },
+    "thr0.45|slope0.75|gateD": {
+      "thr": 0.45,
+      "slope": 0.75,
+      "gate": "D",
+      "grey_maxdd": 0.11966097706481656,
+      "bond_maxdd": 0.12314365642960694,
+      "stag_maxdd": 0.11964759137068065,
+      "passes_fast": false
+    },
+    "thr0.475|slope0.6|gateA": {
+      "thr": 0.475,
+      "slope": 0.6,
+      "gate": "A",
+      "grey_maxdd": 0.12138857965430087,
+      "bond_maxdd": 0.12314365642960684,
+      "stag_maxdd": 0.11714674879716294,
+      "passes_fast": false
+    },
+    "thr0.475|slope0.6|gateB": {
+      "thr": 0.475,
+      "slope": 0.6,
+      "gate": "B",
+      "grey_maxdd": 0.11780493376829942,
+      "bond_maxdd": 0.10911625104445638,
+      "stag_maxdd": 0.10961555259097668,
+      "passes_fast": true
+    },
+    "thr0.475|slope0.6|gateC": {
+      "thr": 0.475,
+      "slope": 0.6,
+      "gate": "C",
+      "grey_maxdd": 0.11780493376829922,
+      "bond_maxdd": 0.12314365642960656,
+      "stag_maxdd": 0.10954469194767134,
+      "passes_fast": false
+    },
+    "thr0.475|slope0.6|gateD": {
+      "thr": 0.475,
+      "slope": 0.6,
+      "gate": "D",
+      "grey_maxdd": 0.11409093801490956,
+      "bond_maxdd": 0.12314365642960659,
+      "stag_maxdd": 0.11714674879716258,
+      "passes_fast": false
+    },
+    "thr0.475|slope0.75|gateA": {
+      "thr": 0.475,
+      "slope": 0.75,
+      "gate": "A",
+      "grey_maxdd": 0.11894911826040684,
+      "bond_maxdd": 0.1231436564296067,
+      "stag_maxdd": 0.11844189689342285,
+      "passes_fast": false
+    },
+    "thr0.475|slope0.75|gateB": {
+      "thr": 0.475,
+      "slope": 0.75,
+      "gate": "B",
+      "grey_maxdd": 0.11535552239471486,
+      "bond_maxdd": 0.10624865540327474,
+      "stag_maxdd": 0.10946767193386246,
+      "passes_fast": true
+    },
+    "thr0.475|slope0.75|gateC": {
+      "thr": 0.475,
+      "slope": 0.75,
+      "gate": "C",
+      "grey_maxdd": 0.11535552239471472,
+      "bond_maxdd": 0.12314365642960672,
+      "stag_maxdd": 0.10938086190536253,
+      "passes_fast": false
+    },
+    "thr0.475|slope0.75|gateD": {
+      "thr": 0.475,
+      "slope": 0.75,
+      "gate": "D",
+      "grey_maxdd": 0.11725683912268829,
+      "bond_maxdd": 0.12314365642960669,
+      "stag_maxdd": 0.11844189689342242,
+      "passes_fast": false
+    },
+    "thr0.5|slope0.6|gateA": {
+      "thr": 0.5,
+      "slope": 0.6,
+      "gate": "A",
+      "grey_maxdd": 0.12411338318291251,
+      "bond_maxdd": 0.11156549378909454,
+      "stag_maxdd": 0.11606994958526198,
+      "passes_fast": false
+    },
+    "thr0.5|slope0.6|gateB": {
+      "thr": 0.5,
+      "slope": 0.6,
+      "gate": "B",
+      "grey_maxdd": 0.1205408511189369,
+      "bond_maxdd": 0.10705219850421174,
+      "stag_maxdd": 0.10969748060633826,
+      "passes_fast": false
+    },
+    "thr0.5|slope0.6|gateC": {
+      "thr": 0.5,
+      "slope": 0.6,
+      "gate": "C",
+      "grey_maxdd": 0.12054085111893727,
+      "bond_maxdd": 0.1070517551758732,
+      "stag_maxdd": 0.10963899763482868,
+      "passes_fast": false
+    },
+    "thr0.5|slope0.6|gateD": {
+      "thr": 0.5,
+      "slope": 0.6,
+      "gate": "D",
+      "grey_maxdd": 0.11352389832230164,
+      "bond_maxdd": 0.11156549378909472,
+      "stag_maxdd": 0.11606994958526239,
+      "passes_fast": false
+    },
+    "thr0.5|slope0.75|gateA": {
+      "thr": 0.5,
+      "slope": 0.75,
+      "gate": "A",
+      "grey_maxdd": 0.12235626973851449,
+      "bond_maxdd": 0.12314365642960673,
+      "stag_maxdd": 0.1170767418886694,
+      "passes_fast": false
+    },
+    "thr0.5|slope0.75|gateB": {
+      "thr": 0.5,
+      "slope": 0.75,
+      "gate": "B",
+      "grey_maxdd": 0.11877657082896803,
+      "bond_maxdd": 0.10622850575124827,
+      "stag_maxdd": 0.10955017111243862,
+      "passes_fast": true
+    },
+    "thr0.5|slope0.75|gateC": {
+      "thr": 0.5,
+      "slope": 0.75,
+      "gate": "C",
+      "grey_maxdd": 0.11877657082896827,
+      "bond_maxdd": 0.12314365642960673,
+      "stag_maxdd": 0.10947748828667105,
+      "passes_fast": false
+    },
+    "thr0.5|slope0.75|gateD": {
+      "thr": 0.5,
+      "slope": 0.75,
+      "gate": "D",
+      "grey_maxdd": 0.11403176448193225,
+      "bond_maxdd": 0.1231436564296067,
+      "stag_maxdd": 0.11707674188866891,
+      "passes_fast": false
+    }
+  },
+  "grid_fast_detail": {
+    "thr0.45|slope0.6|gateA": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960665,
+        "strat_sharpe": 0.8235748081939678,
+        "strat_annual": 0.07931660889628711
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11866010682617356,
+        "strat_sharpe": 0.7532976501631039,
+        "strat_annual": 0.11405387058947025
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11803024980287355,
+        "strat_sharpe": 0.8193234155551012,
+        "strat_annual": 0.09104165848993606
+      }
+    },
+    "thr0.45|slope0.6|gateB": {
+      "bond_bear": {
+        "strat_maxdd": 0.10607373357874442,
+        "strat_sharpe": 0.8832993171579169,
+        "strat_annual": 0.09059680047297336
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11506533215195108,
+        "strat_sharpe": 0.6730309490720077,
+        "strat_annual": 0.10484790057758864
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10933888239662018,
+        "strat_sharpe": 0.8184054248881099,
+        "strat_annual": 0.09111245890444897
+      }
+    },
+    "thr0.45|slope0.6|gateC": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960676,
+        "strat_sharpe": 0.825387682435013,
+        "strat_annual": 0.08727643554511966
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11506533215195121,
+        "strat_sharpe": 0.7019188022292895,
+        "strat_annual": 0.10808777734659425
+      },
+      "stagflation": {
+        "strat_maxdd": 0.1092564349317404,
+        "strat_sharpe": 0.8204166258534266,
+        "strat_annual": 0.0916938291400391
+      }
+    },
+    "thr0.45|slope0.6|gateD": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960666,
+        "strat_sharpe": 0.8248334197312015,
+        "strat_annual": 0.08152217281342367
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11528193722130309,
+        "strat_sharpe": 0.6712681610560393,
+        "strat_annual": 0.10477434895240778
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11803024980287417,
+        "strat_sharpe": 0.8328383967989254,
+        "strat_annual": 0.09104881279351873
+      }
+    },
+    "thr0.45|slope0.75|gateA": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960674,
+        "strat_sharpe": 0.8175281840750717,
+        "strat_annual": 0.08604357311961408
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.1198465238242334,
+        "strat_sharpe": 0.7381838543934283,
+        "strat_annual": 0.11269900695252111
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11964759137068119,
+        "strat_sharpe": 0.81712500974787,
+        "strat_annual": 0.09113391971260398
+      }
+    },
+    "thr0.45|slope0.75|gateB": {
+      "bond_bear": {
+        "strat_maxdd": 0.10605015965537262,
+        "strat_sharpe": 0.8786105204092881,
+        "strat_annual": 0.09014941463717752
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11193023623185827,
+        "strat_sharpe": 0.6632791938517244,
+        "strat_annual": 0.10344395082607494
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10922416991527593,
+        "strat_sharpe": 0.8138538383142793,
+        "strat_annual": 0.09085230687281753
+      }
+    },
+    "thr0.45|slope0.75|gateC": {
+      "bond_bear": {
+        "strat_maxdd": 0.1231436564296065,
+        "strat_sharpe": 0.8190302194438003,
+        "strat_annual": 0.08676054258711696
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.1119302362318586,
+        "strat_sharpe": 0.7052084443841556,
+        "strat_annual": 0.1084610830798387
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10912355352889339,
+        "strat_sharpe": 0.8160928099969914,
+        "strat_annual": 0.09159961214697043
+      }
+    },
+    "thr0.45|slope0.75|gateD": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960694,
+        "strat_sharpe": 0.8194839788091897,
+        "strat_annual": 0.08619277716438956
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11966097706481656,
+        "strat_sharpe": 0.663019359239034,
+        "strat_annual": 0.10370104423777993
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11964759137068065,
+        "strat_sharpe": 0.8322294460109082,
+        "strat_annual": 0.09126426429135504
+      }
+    },
+    "thr0.475|slope0.6|gateA": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960684,
+        "strat_sharpe": 0.8281924629047096,
+        "strat_annual": 0.08146570899302108
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.12138857965430087,
+        "strat_sharpe": 0.7149334233929556,
+        "strat_annual": 0.1110155498987655
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11714674879716294,
+        "strat_sharpe": 0.8240162369569928,
+        "strat_annual": 0.09067552915534183
+      }
+    },
+    "thr0.475|slope0.6|gateB": {
+      "bond_bear": {
+        "strat_maxdd": 0.10911625104445638,
+        "strat_sharpe": 0.8708282154962773,
+        "strat_annual": 0.08156986016990242
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11780493376829942,
+        "strat_sharpe": 0.6752216406522704,
+        "strat_annual": 0.10533339836781996
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10961555259097668,
+        "strat_sharpe": 0.8235265973711056,
+        "strat_annual": 0.09041146977028403
+      }
+    },
+    "thr0.475|slope0.6|gateC": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960656,
+        "strat_sharpe": 0.8337701478737801,
+        "strat_annual": 0.0880486240497329
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11780493376829922,
+        "strat_sharpe": 0.6873499572472188,
+        "strat_annual": 0.1059703080992882
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10954469194767134,
+        "strat_sharpe": 0.8259786744261491,
+        "strat_annual": 0.09115761597695826
+      }
+    },
+    "thr0.475|slope0.6|gateD": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960659,
+        "strat_sharpe": 0.8304592405701058,
+        "strat_annual": 0.08150540275927409
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11409093801490956,
+        "strat_sharpe": 0.7063120624218067,
+        "strat_annual": 0.11059881926655923
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11714674879716258,
+        "strat_sharpe": 0.8340966511441328,
+        "strat_annual": 0.0906440394040604
+      }
+    },
+    "thr0.475|slope0.75|gateA": {
+      "bond_bear": {
+        "strat_maxdd": 0.1231436564296067,
+        "strat_sharpe": 0.8242746020413024,
+        "strat_annual": 0.08595458923517163
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11894911826040684,
+        "strat_sharpe": 0.7275572475593991,
+        "strat_annual": 0.11274816688710643
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11844189689342285,
+        "strat_sharpe": 0.8188359991415394,
+        "strat_annual": 0.09059521754596078
+      }
+    },
+    "thr0.475|slope0.75|gateB": {
+      "bond_bear": {
+        "strat_maxdd": 0.10624865540327474,
+        "strat_sharpe": 0.88256277342815,
+        "strat_annual": 0.09046944382464606
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11535552239471486,
+        "strat_sharpe": 0.6737218802673395,
+        "strat_annual": 0.10504385246577264
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10946767193386246,
+        "strat_sharpe": 0.8178535914935452,
+        "strat_annual": 0.09077085936773566
+      }
+    },
+    "thr0.475|slope0.75|gateC": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960672,
+        "strat_sharpe": 0.829320743492942,
+        "strat_annual": 0.08768817353834435
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11535552239471472,
+        "strat_sharpe": 0.698742305618985,
+        "strat_annual": 0.10774222920110721
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10938086190536253,
+        "strat_sharpe": 0.8207327680476453,
+        "strat_annual": 0.091436279474302
+      }
+    },
+    "thr0.475|slope0.75|gateD": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960669,
+        "strat_sharpe": 0.8303603844839251,
+        "strat_annual": 0.08603239284302666
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11725683912268829,
+        "strat_sharpe": 0.6733504856867568,
+        "strat_annual": 0.10528029023464947
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11844189689342242,
+        "strat_sharpe": 0.8323217066331032,
+        "strat_annual": 0.09061903469048493
+      }
+    },
+    "thr0.5|slope0.6|gateA": {
+      "bond_bear": {
+        "strat_maxdd": 0.11156549378909454,
+        "strat_sharpe": 0.8828887857719657,
+        "strat_annual": 0.08645661888888889
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.12411338318291251,
+        "strat_sharpe": 0.703776811246923,
+        "strat_annual": 0.1099416498711161
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11606994958526198,
+        "strat_sharpe": 0.8238417574302869,
+        "strat_annual": 0.09163085685488515
+      }
+    },
+    "thr0.5|slope0.6|gateB": {
+      "bond_bear": {
+        "strat_maxdd": 0.10705219850421174,
+        "strat_sharpe": 0.8852516566130764,
+        "strat_annual": 0.09058874923783611
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.1205408511189369,
+        "strat_sharpe": 0.6718951250137385,
+        "strat_annual": 0.1050628225213528
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10969748060633826,
+        "strat_sharpe": 0.8231597220858348,
+        "strat_annual": 0.09052764981415162
+      }
+    },
+    "thr0.5|slope0.6|gateC": {
+      "bond_bear": {
+        "strat_maxdd": 0.1070517551758732,
+        "strat_sharpe": 0.8816323197719245,
+        "strat_annual": 0.0906248166573802
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.12054085111893727,
+        "strat_sharpe": 0.6871969730987253,
+        "strat_annual": 0.10617276626658723
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10963899763482868,
+        "strat_sharpe": 0.827449257251111,
+        "strat_annual": 0.09088968722341462
+      }
+    },
+    "thr0.5|slope0.6|gateD": {
+      "bond_bear": {
+        "strat_maxdd": 0.11156549378909472,
+        "strat_sharpe": 0.8866702638246791,
+        "strat_annual": 0.08634157753017724
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11352389832230164,
+        "strat_sharpe": 0.7153298782020951,
+        "strat_annual": 0.11197576993387459
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11606994958526239,
+        "strat_sharpe": 0.8314578574237518,
+        "strat_annual": 0.0916423338904826
+      }
+    },
+    "thr0.5|slope0.75|gateA": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960673,
+        "strat_sharpe": 0.82542783358322,
+        "strat_annual": 0.08083282038221196
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.12235626973851449,
+        "strat_sharpe": 0.723164646834588,
+        "strat_annual": 0.11235306981428539
+      },
+      "stagflation": {
+        "strat_maxdd": 0.1170767418886694,
+        "strat_sharpe": 0.8184297161705991,
+        "strat_annual": 0.09150302419504408
+      }
+    },
+    "thr0.5|slope0.75|gateB": {
+      "bond_bear": {
+        "strat_maxdd": 0.10622850575124827,
+        "strat_sharpe": 0.8836625618315712,
+        "strat_annual": 0.09056442178402402
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11877657082896803,
+        "strat_sharpe": 0.6793415617704326,
+        "strat_annual": 0.10596628821979315
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10955017111243862,
+        "strat_sharpe": 0.81835653163953,
+        "strat_annual": 0.09075644863427734
+      }
+    },
+    "thr0.5|slope0.75|gateC": {
+      "bond_bear": {
+        "strat_maxdd": 0.12314365642960673,
+        "strat_sharpe": 0.8341885570744265,
+        "strat_annual": 0.08812376220749352
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11877657082896827,
+        "strat_sharpe": 0.702982317432366,
+        "strat_annual": 0.1085179189978247
+      },
+      "stagflation": {
+        "strat_maxdd": 0.10947748828667105,
+        "strat_sharpe": 0.8214907677025673,
+        "strat_annual": 0.09129272178719883
+      }
+    },
+    "thr0.5|slope0.75|gateD": {
+      "bond_bear": {
+        "strat_maxdd": 0.1231436564296067,
+        "strat_sharpe": 0.8270339325622513,
+        "strat_annual": 0.08151239495646734
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11403176448193225,
+        "strat_sharpe": 0.6847428870818697,
+        "strat_annual": 0.10686973167074276
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11707674188866891,
+        "strat_sharpe": 0.8286945749074094,
+        "strat_annual": 0.0914358656559302
+      }
+    }
+  },
+  "survivors": [
+    "thr0.45|slope0.6|gateB",
+    "thr0.45|slope0.75|gateB",
+    "thr0.475|slope0.6|gateB",
+    "thr0.475|slope0.75|gateB",
+    "thr0.5|slope0.75|gateB"
+  ],
+  "full_results": {
+    "thr0.45|slope0.6|gateB": {
+      "thr": 0.45,
+      "slope": 0.6,
+      "gate": "B",
+      "scenarios": {
+        "bond_bear": {
+          "strat_maxdd": 0.10607373357874442,
+          "strat_sharpe": 0.8832993171579169,
+          "strat_annual": 0.09059680047297336
+        },
+        "stagflation": {
+          "strat_maxdd": 0.10933888239662018,
+          "strat_sharpe": 0.8184054248881099,
+          "strat_annual": 0.09111245890444897
+        },
+        "grey_corr_combo": {
+          "strat_maxdd": 0.11506533215195108,
+          "strat_sharpe": 0.6730309490720077,
+          "strat_annual": 0.10484790057758864
+        },
+        "vol_stress": {
+          "strat_maxdd": 0.11210129970756642,
+          "strat_sharpe": 0.9771698155128464,
+          "strat_annual": 0.09532715939963943
+        },
+        "offense_cooldown": {
+          "strat_maxdd": 0.11855491462746527,
+          "strat_sharpe": 0.9962165805538081,
+          "strat_annual": 0.09991717474331008
+        },
+        "decorrelation": {
+          "strat_maxdd": 0.0815268968226853,
+          "strat_sharpe": 1.2614372753536551,
+          "strat_annual": 0.11583853221170148
+        },
+        "corr_regime_shift": {
+          "strat_maxdd": 0.07871509131953787,
+          "strat_sharpe": 1.3053927783335606,
+          "strat_annual": 0.13536570523071023
+        },
+        "corr_crisis_combo": {
+          "strat_maxdd": 0.09242335073904122,
+          "strat_sharpe": 1.0310766722917735,
+          "strat_annual": 0.11482781478861481
+        }
+      },
+      "realized": {
+        "sharpe": 1.5004245948745345,
+        "maxdd": 0.05847189732050022,
+        "annual": 0.14469667640861927
+      },
+      "all_dd_ok": true,
+      "degrad_issues": [
+        "grey_corr_combo: Sharpe -0.0541",
+        "offense_cooldown: MaxDD +1.9935%"
+      ],
+      "realized_ok": true,
+      "gate_baseline_close_rate": 0.19692307692307692,
+      "gate_baseline_ok": false,
+      "verdict": false
+    },
+    "thr0.45|slope0.75|gateB": {
+      "thr": 0.45,
+      "slope": 0.75,
+      "gate": "B",
+      "scenarios": {
+        "bond_bear": {
+          "strat_maxdd": 0.10605015965537262,
+          "strat_sharpe": 0.8786105204092881,
+          "strat_annual": 0.09014941463717752
+        },
+        "stagflation": {
+          "strat_maxdd": 0.10922416991527593,
+          "strat_sharpe": 0.8138538383142793,
+          "strat_annual": 0.09085230687281753
+        },
+        "grey_corr_combo": {
+          "strat_maxdd": 0.11193023623185827,
+          "strat_sharpe": 0.6632791938517244,
+          "strat_annual": 0.10344395082607494
+        },
+        "vol_stress": {
+          "strat_maxdd": 0.11199546347945916,
+          "strat_sharpe": 0.9720741907892796,
+          "strat_annual": 0.10088441874001308
+        },
+        "offense_cooldown": {
+          "strat_maxdd": 0.11894790212502568,
+          "strat_sharpe": 1.0067072609960015,
+          "strat_annual": 0.09968180567574803
+        },
+        "decorrelation": {
+          "strat_maxdd": 0.08156792660561003,
+          "strat_sharpe": 1.2614093100348884,
+          "strat_annual": 0.11542233511084543
+        },
+        "corr_regime_shift": {
+          "strat_maxdd": 0.07871509131953774,
+          "strat_sharpe": 1.301544359946596,
+          "strat_annual": 0.13479990578708767
+        },
+        "corr_crisis_combo": {
+          "strat_maxdd": 0.09230786120221271,
+          "strat_sharpe": 1.027273558094701,
+          "strat_annual": 0.11401678687278993
+        }
+      },
+      "realized": {
+        "sharpe": 1.5000381206656508,
+        "maxdd": 0.05847189732050007,
+        "annual": 0.14445291929548087
+      },
+      "all_dd_ok": true,
+      "degrad_issues": [
+        "grey_corr_combo: Sharpe -0.0638",
+        "offense_cooldown: MaxDD +2.0328%"
+      ],
+      "realized_ok": true,
+      "gate_baseline_close_rate": 0.19692307692307692,
+      "gate_baseline_ok": false,
+      "verdict": false
+    },
+    "thr0.475|slope0.6|gateB": {
+      "thr": 0.475,
+      "slope": 0.6,
+      "gate": "B",
+      "scenarios": {
+        "bond_bear": {
+          "strat_maxdd": 0.10911625104445638,
+          "strat_sharpe": 0.8708282154962773,
+          "strat_annual": 0.08156986016990242
+        },
+        "stagflation": {
+          "strat_maxdd": 0.10961555259097668,
+          "strat_sharpe": 0.8235265973711056,
+          "strat_annual": 0.09041146977028403
+        },
+        "grey_corr_combo": {
+          "strat_maxdd": 0.11780493376829942,
+          "strat_sharpe": 0.6752216406522704,
+          "strat_annual": 0.10533339836781996
+        },
+        "vol_stress": {
+          "strat_maxdd": 0.1123613124227095,
+          "strat_sharpe": 0.9699850486527903,
+          "strat_annual": 0.09477125864022629
+        },
+        "offense_cooldown": {
+          "strat_maxdd": 0.11865103610135139,
+          "strat_sharpe": 0.995618036986768,
+          "strat_annual": 0.09974387765104087
+        },
+        "decorrelation": {
+          "strat_maxdd": 0.07946798650684764,
+          "strat_sharpe": 1.2675529416580122,
+          "strat_annual": 0.1165000973317456
+        },
+        "corr_regime_shift": {
+          "strat_maxdd": 0.07871509131953787,
+          "strat_sharpe": 1.3071729339646403,
+          "strat_annual": 0.13577206211253756
+        },
+        "corr_crisis_combo": {
+          "strat_maxdd": 0.0936041187191819,
+          "strat_sharpe": 1.0358029503557205,
+          "strat_annual": 0.11579866110485182
+        }
+      },
+      "realized": {
+        "sharpe": 1.4957708112689263,
+        "maxdd": 0.0584718973205002,
+        "annual": 0.14449607534835485
+      },
+      "all_dd_ok": true,
+      "degrad_issues": [
+        "grey_corr_combo: Sharpe -0.0519",
+        "offense_cooldown: MaxDD +2.0031%"
+      ],
+      "realized_ok": true,
+      "gate_baseline_close_rate": 0.19692307692307692,
+      "gate_baseline_ok": false,
+      "verdict": false
+    },
+    "thr0.475|slope0.75|gateB": {
+      "thr": 0.475,
+      "slope": 0.75,
+      "gate": "B",
+      "scenarios": {
+        "bond_bear": {
+          "strat_maxdd": 0.10624865540327474,
+          "strat_sharpe": 0.88256277342815,
+          "strat_annual": 0.09046944382464606
+        },
+        "stagflation": {
+          "strat_maxdd": 0.10946767193386246,
+          "strat_sharpe": 0.8178535914935452,
+          "strat_annual": 0.09077085936773566
+        },
+        "grey_corr_combo": {
+          "strat_maxdd": 0.11535552239471486,
+          "strat_sharpe": 0.6737218802673395,
+          "strat_annual": 0.10504385246577264
+        },
+        "vol_stress": {
+          "strat_maxdd": 0.11223521224566313,
+          "strat_sharpe": 0.9742998535899199,
+          "strat_annual": 0.0949931375127635
+        },
+        "offense_cooldown": {
+          "strat_maxdd": 0.1189613589627425,
+          "strat_sharpe": 0.99607200277023,
+          "strat_annual": 0.09957323464189582
+        },
+        "decorrelation": {
+          "strat_maxdd": 0.07950767169802318,
+          "strat_sharpe": 1.2608128105650254,
+          "strat_annual": 0.11634427398595881
+        },
+        "corr_regime_shift": {
+          "strat_maxdd": 0.07871509131953783,
+          "strat_sharpe": 1.3020426986349822,
+          "strat_annual": 0.1353685096280648
+        },
+        "corr_crisis_combo": {
+          "strat_maxdd": 0.09413196787577296,
+          "strat_sharpe": 1.0285890867370084,
+          "strat_annual": 0.11461308136124759
+        }
+      },
+      "realized": {
+        "sharpe": 1.4965225014266852,
+        "maxdd": 0.05847189732050024,
+        "annual": 0.14441930946313364
+      },
+      "all_dd_ok": true,
+      "degrad_issues": [
+        "grey_corr_combo: Sharpe -0.0534",
+        "offense_cooldown: MaxDD +2.0341%"
+      ],
+      "realized_ok": true,
+      "gate_baseline_close_rate": 0.19692307692307692,
+      "gate_baseline_ok": false,
+      "verdict": false
+    },
+    "thr0.5|slope0.75|gateB": {
+      "thr": 0.5,
+      "slope": 0.75,
+      "gate": "B",
+      "scenarios": {
+        "bond_bear": {
+          "strat_maxdd": 0.10622850575124827,
+          "strat_sharpe": 0.8836625618315712,
+          "strat_annual": 0.09056442178402402
+        },
+        "stagflation": {
+          "strat_maxdd": 0.10955017111243862,
+          "strat_sharpe": 0.81835653163953,
+          "strat_annual": 0.09075644863427734
+        },
+        "grey_corr_combo": {
+          "strat_maxdd": 0.11877657082896803,
+          "strat_sharpe": 0.6793415617704326,
+          "strat_annual": 0.10596628821979315
+        },
+        "vol_stress": {
+          "strat_maxdd": 0.11230755692309367,
+          "strat_sharpe": 0.9575794672950556,
+          "strat_annual": 0.09376990335928448
+        },
+        "offense_cooldown": {
+          "strat_maxdd": 0.09798520258224566,
+          "strat_sharpe": 0.9959929585918255,
+          "strat_annual": 0.09959955650037533
+        },
+        "decorrelation": {
+          "strat_maxdd": 0.07950462135358233,
+          "strat_sharpe": 1.2604973263773351,
+          "strat_annual": 0.11646879669387866
+        },
+        "corr_regime_shift": {
+          "strat_maxdd": 0.07871509131953801,
+          "strat_sharpe": 1.307122203818948,
+          "strat_annual": 0.13385368939320363
+        },
+        "corr_crisis_combo": {
+          "strat_maxdd": 0.09429526560112003,
+          "strat_sharpe": 1.0339603719121442,
+          "strat_annual": 0.1156059730985024
+        }
+      },
+      "realized": {
+        "sharpe": 1.493325426046652,
+        "maxdd": 0.05847189732050016,
+        "annual": 0.14434273212215576
+      },
+      "all_dd_ok": true,
+      "degrad_issues": [
+        "grey_corr_combo: Sharpe -0.0478",
+        "vol_stress: Sharpe -0.0238"
+      ],
+      "realized_ok": true,
+      "gate_baseline_close_rate": 0.19692307692307692,
+      "gate_baseline_ok": false,
+      "verdict": false
+    }
+  },
+  "winners": [],
+  "best": null,
+  "elapsed_s": 423.7385401725769
+}

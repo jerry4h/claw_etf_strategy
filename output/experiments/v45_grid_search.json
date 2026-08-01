@@ -1,0 +1,861 @@
+{
+  "thr0.4|slope0.6": {
+    "thr": 0.4,
+    "slope": 0.6,
+    "realized_sharpe": 1.5103287141396646,
+    "realized_maxdd": 0.058471897320500114,
+    "grey_maxdd": 0.11549096375994262,
+    "bond_bear_maxdd": 0.12320040187527537,
+    "stagflation_maxdd": 0.12054592872452749,
+    "vol_stress_maxdd": 0.1171267619102179,
+    "decorrelation_maxdd": 0.08861660246642354,
+    "offense_cool_maxdd": 0.10329270359194584,
+    "corr_shift_maxdd": 0.07871509131953823,
+    "corr_combo_maxdd": 0.09100441042763165,
+    "grey_sharpe": 0.7375879822770119,
+    "bond_bear_sharpe": 0.8098137270814046,
+    "stagflation_sharpe": 0.8493474966695149,
+    "worst_maxdd": 0.12320040187527537,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0659",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +1.0509%",
+      "vol_stress: Sharpe -0.0251",
+      "vol_stress: MaxDD +0.4309%",
+      "decorrelation: MaxDD +0.9186%",
+      "offense_cooldown: MaxDD +0.4676%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527537,
+        "strat_sharpe": 0.8098137270814046,
+        "strat_annual": 0.08531297635373747
+      },
+      "stagflation": {
+        "strat_maxdd": 0.12054592872452749,
+        "strat_sharpe": 0.8493474966695149,
+        "strat_annual": 0.09112087019348758
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11549096375994262,
+        "strat_sharpe": 0.7375879822770119,
+        "strat_annual": 0.10781463467655206
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.1171267619102179,
+        "strat_sharpe": 0.9563595682993737,
+        "strat_annual": 0.10267131634834992
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08861660246642354,
+        "strat_sharpe": 1.251925553944866,
+        "strat_annual": 0.11399053571952233
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10329270359194584,
+        "strat_sharpe": 1.004072486639268,
+        "strat_annual": 0.09812096731235309
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953823,
+        "strat_sharpe": 1.3025140985736148,
+        "strat_annual": 0.12799029466222955
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09100441042763165,
+        "strat_sharpe": 1.033056316733409,
+        "strat_annual": 0.11268848021009581
+      }
+    }
+  },
+  "thr0.4|slope0.75": {
+    "thr": 0.4,
+    "slope": 0.75,
+    "realized_sharpe": 1.5038596749688733,
+    "realized_maxdd": 0.05847189732050031,
+    "grey_maxdd": 0.11624566826871456,
+    "bond_bear_maxdd": 0.12320040187527552,
+    "stagflation_maxdd": 0.12094911574936087,
+    "vol_stress_maxdd": 0.11762921326887973,
+    "decorrelation_maxdd": 0.09069263179991771,
+    "offense_cool_maxdd": 0.10454272580806556,
+    "corr_shift_maxdd": 0.07871509131953794,
+    "corr_combo_maxdd": 0.09136529690890818,
+    "grey_sharpe": 0.7335605523192761,
+    "bond_bear_sharpe": 0.7953029533478826,
+    "stagflation_sharpe": 0.8465212878874783,
+    "worst_maxdd": 0.12320040187527552,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0804",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +1.0912%",
+      "vol_stress: Sharpe -0.0271",
+      "vol_stress: MaxDD +0.4812%",
+      "decorrelation: MaxDD +1.1262%",
+      "offense_cooldown: MaxDD +0.5926%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527552,
+        "strat_sharpe": 0.7953029533478826,
+        "strat_annual": 0.07789093526004875
+      },
+      "stagflation": {
+        "strat_maxdd": 0.12094911574936087,
+        "strat_sharpe": 0.8465212878874783,
+        "strat_annual": 0.09072814728514755
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11624566826871456,
+        "strat_sharpe": 0.7335605523192761,
+        "strat_annual": 0.10504206070980016
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11762921326887973,
+        "strat_sharpe": 0.9542946124489234,
+        "strat_annual": 0.10217133682032942
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.09069263179991771,
+        "strat_sharpe": 1.244571656180023,
+        "strat_annual": 0.1125377286109539
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10454272580806556,
+        "strat_sharpe": 1.0061143228581362,
+        "strat_annual": 0.09576678063029265
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953794,
+        "strat_sharpe": 1.296910289661436,
+        "strat_annual": 0.12837785894498333
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09136529690890818,
+        "strat_sharpe": 1.049089484810355,
+        "strat_annual": 0.11356412858039144
+      }
+    }
+  },
+  "thr0.4|slope0.9": {
+    "thr": 0.4,
+    "slope": 0.9,
+    "realized_sharpe": 1.5031558536885408,
+    "realized_maxdd": 0.05847189732050013,
+    "grey_maxdd": 0.1132833556337432,
+    "bond_bear_maxdd": 0.12320040187527563,
+    "stagflation_maxdd": 0.1198253220959537,
+    "vol_stress_maxdd": 0.11653141314258778,
+    "decorrelation_maxdd": 0.09076523835485861,
+    "offense_cool_maxdd": 0.10480871257207378,
+    "corr_shift_maxdd": 0.07871509131953798,
+    "corr_combo_maxdd": 0.09160157708194872,
+    "grey_sharpe": 0.70745377019588,
+    "bond_bear_sharpe": 0.7855740535090387,
+    "stagflation_sharpe": 0.8396093260580239,
+    "worst_maxdd": 0.12320040187527563,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0901",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.9788%",
+      "vol_stress: Sharpe -0.0272",
+      "vol_stress: MaxDD +0.3714%",
+      "decorrelation: MaxDD +1.1334%",
+      "offense_cooldown: MaxDD +0.6192%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527563,
+        "strat_sharpe": 0.7855740535090387,
+        "strat_annual": 0.08302281825769686
+      },
+      "stagflation": {
+        "strat_maxdd": 0.1198253220959537,
+        "strat_sharpe": 0.8396093260580239,
+        "strat_annual": 0.0906453738577977
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.1132833556337432,
+        "strat_sharpe": 0.70745377019588,
+        "strat_annual": 0.1046118065331949
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11653141314258778,
+        "strat_sharpe": 0.9542284341037707,
+        "strat_annual": 0.10219361184816833
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.09076523835485861,
+        "strat_sharpe": 1.2349956673034828,
+        "strat_annual": 0.11267978172060267
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10480871257207378,
+        "strat_sharpe": 1.0079488896260398,
+        "strat_annual": 0.09608776188079715
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953798,
+        "strat_sharpe": 1.2913024983106796,
+        "strat_annual": 0.13269632300762302
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09160157708194872,
+        "strat_sharpe": 1.051138709315843,
+        "strat_annual": 0.11352441644508149
+      }
+    }
+  },
+  "thr0.45|slope0.6": {
+    "thr": 0.45,
+    "slope": 0.6,
+    "realized_sharpe": 1.5058354945145849,
+    "realized_maxdd": 0.05847189732050019,
+    "grey_maxdd": 0.11506533215195129,
+    "bond_bear_maxdd": 0.1232004018752755,
+    "stagflation_maxdd": 0.1179486068877776,
+    "vol_stress_maxdd": 0.1144415697928962,
+    "decorrelation_maxdd": 0.08561955247651162,
+    "offense_cool_maxdd": 0.10231102234136508,
+    "corr_shift_maxdd": 0.07871509131953798,
+    "corr_combo_maxdd": 0.09242335073904114,
+    "grey_sharpe": 0.7201233416175755,
+    "bond_bear_sharpe": 0.8228139905634726,
+    "stagflation_sharpe": 0.8175077987066408,
+    "worst_maxdd": 0.1232004018752755,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0529",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.7911%",
+      "decorrelation: MaxDD +0.6189%",
+      "offense_cooldown: MaxDD +0.3694%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.1232004018752755,
+        "strat_sharpe": 0.8228139905634726,
+        "strat_annual": 0.08599468630675777
+      },
+      "stagflation": {
+        "strat_maxdd": 0.1179486068877776,
+        "strat_sharpe": 0.8175077987066408,
+        "strat_annual": 0.0908326377476969
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11506533215195129,
+        "strat_sharpe": 0.7201233416175755,
+        "strat_annual": 0.10832217423632917
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.1144415697928962,
+        "strat_sharpe": 0.9757826411755689,
+        "strat_annual": 0.10309220354266957
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08561955247651162,
+        "strat_sharpe": 1.2489314699875322,
+        "strat_annual": 0.11519721750934697
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10231102234136508,
+        "strat_sharpe": 0.988896833802666,
+        "strat_annual": 0.09788461061858666
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953798,
+        "strat_sharpe": 1.299429618739492,
+        "strat_annual": 0.13377688815746258
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09242335073904114,
+        "strat_sharpe": 1.0218921916208468,
+        "strat_annual": 0.11268762120512643
+      }
+    }
+  },
+  "thr0.45|slope0.75": {
+    "thr": 0.45,
+    "slope": 0.75,
+    "realized_sharpe": 1.507219500746281,
+    "realized_maxdd": 0.058471897320499996,
+    "grey_maxdd": 0.11688625582474858,
+    "bond_bear_maxdd": 0.12320040187527528,
+    "stagflation_maxdd": 0.11954815234785565,
+    "vol_stress_maxdd": 0.11608951884685956,
+    "decorrelation_maxdd": 0.08710542411675022,
+    "offense_cool_maxdd": 0.10328637814134096,
+    "corr_shift_maxdd": 0.07871509131953787,
+    "corr_combo_maxdd": 0.09230786120221347,
+    "grey_sharpe": 0.7336901015469871,
+    "bond_bear_sharpe": 0.8146616959484977,
+    "stagflation_sharpe": 0.8131593675886225,
+    "worst_maxdd": 0.12320040187527528,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0611",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.9511%",
+      "vol_stress: MaxDD +0.3272%",
+      "decorrelation: MaxDD +0.7675%",
+      "offense_cooldown: MaxDD +0.4670%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527528,
+        "strat_sharpe": 0.8146616959484977,
+        "strat_annual": 0.08542672083476566
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11954815234785565,
+        "strat_sharpe": 0.8131593675886225,
+        "strat_annual": 0.0908623836735889
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11688625582474858,
+        "strat_sharpe": 0.7336901015469871,
+        "strat_annual": 0.10803940867778516
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11608951884685956,
+        "strat_sharpe": 0.9706957280528067,
+        "strat_annual": 0.10253301525450453
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08710542411675022,
+        "strat_sharpe": 1.2462216428467754,
+        "strat_annual": 0.11443154297151126
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10328637814134096,
+        "strat_sharpe": 1.0114070433346045,
+        "strat_annual": 0.09567583392476631
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953787,
+        "strat_sharpe": 1.2949646116003344,
+        "strat_annual": 0.13288473706015824
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09230786120221347,
+        "strat_sharpe": 1.0173003953013717,
+        "strat_annual": 0.11178518930381265
+      }
+    }
+  },
+  "thr0.45|slope0.9": {
+    "thr": 0.45,
+    "slope": 0.9,
+    "realized_sharpe": 1.5071927577643371,
+    "realized_maxdd": 0.05847189732050035,
+    "grey_maxdd": 0.11821837983606406,
+    "bond_bear_maxdd": 0.12320040187527542,
+    "stagflation_maxdd": 0.1215902784905831,
+    "vol_stress_maxdd": 0.11817757256257765,
+    "decorrelation_maxdd": 0.08792182332317099,
+    "offense_cool_maxdd": 0.10469061215316533,
+    "corr_shift_maxdd": 0.07871509131953804,
+    "corr_combo_maxdd": 0.09151836397071542,
+    "grey_sharpe": 0.7452358055193189,
+    "bond_bear_sharpe": 0.8064956971958073,
+    "stagflation_sharpe": 0.8092475026567885,
+    "worst_maxdd": 0.12320040187527542,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0692",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +1.1553%",
+      "vol_stress: MaxDD +0.5360%",
+      "decorrelation: MaxDD +0.8491%",
+      "offense_cooldown: MaxDD +0.6074%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527542,
+        "strat_sharpe": 0.8064956971958073,
+        "strat_annual": 0.0836289412104636
+      },
+      "stagflation": {
+        "strat_maxdd": 0.1215902784905831,
+        "strat_sharpe": 0.8092475026567885,
+        "strat_annual": 0.09025723609386138
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11821837983606406,
+        "strat_sharpe": 0.7452358055193189,
+        "strat_annual": 0.10570431753895049
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11817757256257765,
+        "strat_sharpe": 0.9663145040615979,
+        "strat_annual": 0.10186150452722398
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08792182332317099,
+        "strat_sharpe": 1.2418322848383456,
+        "strat_annual": 0.11415881906861003
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10469061215316533,
+        "strat_sharpe": 1.006491477140909,
+        "strat_annual": 0.09516113109126456
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953804,
+        "strat_sharpe": 1.2998990034922104,
+        "strat_annual": 0.13287896810722288
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09151836397071542,
+        "strat_sharpe": 1.0217370217069637,
+        "strat_annual": 0.11183249644969373
+      }
+    }
+  },
+  "thr0.475|slope0.6": {
+    "thr": 0.475,
+    "slope": 0.6,
+    "realized_sharpe": 1.5010277744617764,
+    "realized_maxdd": 0.05847189732050005,
+    "grey_maxdd": 0.11780493376829972,
+    "bond_bear_maxdd": 0.12320040187527542,
+    "stagflation_maxdd": 0.1170764875190068,
+    "vol_stress_maxdd": 0.11352789887626594,
+    "decorrelation_maxdd": 0.08442624994527469,
+    "offense_cool_maxdd": 0.10194931286382371,
+    "corr_shift_maxdd": 0.07871509131953791,
+    "corr_combo_maxdd": 0.09360411871918117,
+    "grey_sharpe": 0.716833426191268,
+    "bond_bear_sharpe": 0.8283133638321385,
+    "stagflation_sharpe": 0.8214864848955195,
+    "worst_maxdd": 0.12320040187527542,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0474",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.7039%",
+      "decorrelation: MaxDD +0.4996%",
+      "offense_cooldown: MaxDD +0.3332%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527542,
+        "strat_sharpe": 0.8283133638321385,
+        "strat_annual": 0.07903180629646456
+      },
+      "stagflation": {
+        "strat_maxdd": 0.1170764875190068,
+        "strat_sharpe": 0.8214864848955195,
+        "strat_annual": 0.09028833495279653
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11780493376829972,
+        "strat_sharpe": 0.716833426191268,
+        "strat_annual": 0.10623958372636433
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11352789887626594,
+        "strat_sharpe": 0.9804020959673699,
+        "strat_annual": 0.10095424097670613
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08442624994527469,
+        "strat_sharpe": 1.256735160626122,
+        "strat_annual": 0.11495837079260718
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10194931286382371,
+        "strat_sharpe": 0.9883824910711342,
+        "strat_annual": 0.09764163972386908
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953791,
+        "strat_sharpe": 1.3013661047966905,
+        "strat_annual": 0.13436902563113629
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09360411871918117,
+        "strat_sharpe": 1.025307835354401,
+        "strat_annual": 0.11359230201307069
+      }
+    }
+  },
+  "thr0.475|slope0.75": {
+    "thr": 0.475,
+    "slope": 0.75,
+    "realized_sharpe": 1.5022271976096977,
+    "realized_maxdd": 0.058471897320500094,
+    "grey_maxdd": 0.1153555223947147,
+    "bond_bear_maxdd": 0.12320040187527527,
+    "stagflation_maxdd": 0.11835596168181611,
+    "vol_stress_maxdd": 0.11486179821050291,
+    "decorrelation_maxdd": 0.08513629348346434,
+    "offense_cool_maxdd": 0.10278969252559778,
+    "corr_shift_maxdd": 0.0787150913195379,
+    "corr_combo_maxdd": 0.09413196787577344,
+    "grey_sharpe": 0.7361823924568854,
+    "bond_bear_sharpe": 0.8238129223534766,
+    "stagflation_sharpe": 0.81557071473341,
+    "worst_maxdd": 0.12320040187527527,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0519",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.8319%",
+      "decorrelation: MaxDD +0.5706%",
+      "offense_cooldown: MaxDD +0.4173%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527527,
+        "strat_sharpe": 0.8238129223534766,
+        "strat_annual": 0.08565901694260591
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11835596168181611,
+        "strat_sharpe": 0.81557071473341,
+        "strat_annual": 0.09022140954579805
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.1153555223947147,
+        "strat_sharpe": 0.7361823924568854,
+        "strat_annual": 0.10948038512316671
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11486179821050291,
+        "strat_sharpe": 0.9738975774140076,
+        "strat_annual": 0.10253931456604093
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08513629348346434,
+        "strat_sharpe": 1.2479972143175848,
+        "strat_annual": 0.11475789909226197
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10278969252559778,
+        "strat_sharpe": 0.9871013532194675,
+        "strat_annual": 0.09746947994362642
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.0787150913195379,
+        "strat_sharpe": 1.2946243095521486,
+        "strat_annual": 0.13376037158275245
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09413196787577344,
+        "strat_sharpe": 1.0171083447677705,
+        "strat_annual": 0.11224603983842663
+      }
+    }
+  },
+  "thr0.475|slope0.9": {
+    "thr": 0.475,
+    "slope": 0.9,
+    "realized_sharpe": 1.5033604827974862,
+    "realized_maxdd": 0.058471897320500156,
+    "grey_maxdd": 0.11750850159296,
+    "bond_bear_maxdd": 0.12320040187527524,
+    "stagflation_maxdd": 0.119782085856618,
+    "vol_stress_maxdd": 0.11632156697274389,
+    "decorrelation_maxdd": 0.08575337906212972,
+    "offense_cool_maxdd": 0.103700034750067,
+    "corr_shift_maxdd": 0.07871509131953792,
+    "corr_combo_maxdd": 0.0931172942791845,
+    "grey_sharpe": 0.7341543813818487,
+    "bond_bear_sharpe": 0.8171400032028437,
+    "stagflation_sharpe": 0.8080344551226104,
+    "worst_maxdd": 0.12320040187527524,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0586",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.9745%",
+      "vol_stress: MaxDD +0.3504%",
+      "decorrelation: MaxDD +0.6323%",
+      "offense_cooldown: MaxDD +0.5083%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527524,
+        "strat_sharpe": 0.8171400032028437,
+        "strat_annual": 0.0851726144398608
+      },
+      "stagflation": {
+        "strat_maxdd": 0.119782085856618,
+        "strat_sharpe": 0.8080344551226104,
+        "strat_annual": 0.09060562805761618
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11750850159296,
+        "strat_sharpe": 0.7341543813818487,
+        "strat_annual": 0.10778223483360883
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11632156697274389,
+        "strat_sharpe": 0.9659168072992654,
+        "strat_annual": 0.10233787395799054
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08575337906212972,
+        "strat_sharpe": 1.2454944838256146,
+        "strat_annual": 0.114367958765486
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.103700034750067,
+        "strat_sharpe": 0.9802579201903181,
+        "strat_annual": 0.0952351269499776
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953792,
+        "strat_sharpe": 1.2888728578816193,
+        "strat_annual": 0.13344722768049344
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.0931172942791845,
+        "strat_sharpe": 1.0078196666416892,
+        "strat_annual": 0.11120571918796185
+      }
+    }
+  },
+  "thr0.5|slope0.6": {
+    "thr": 0.5,
+    "slope": 0.6,
+    "realized_sharpe": 1.4984230412885493,
+    "realized_maxdd": 0.05847189732050036,
+    "grey_maxdd": 0.12054085111893693,
+    "bond_bear_maxdd": 0.11165950965706097,
+    "stagflation_maxdd": 0.11601188521407481,
+    "vol_stress_maxdd": 0.1124232932611553,
+    "decorrelation_maxdd": 0.0838125368622936,
+    "offense_cool_maxdd": 0.10142112957740851,
+    "corr_shift_maxdd": 0.07871509131953805,
+    "corr_combo_maxdd": 0.09424320608348412,
+    "grey_sharpe": 0.7081320882379813,
+    "bond_bear_sharpe": 0.8795522313655794,
+    "stagflation_sharpe": 0.821427887674125,
+    "worst_maxdd": 0.12054085111893693,
+    "grey_ok": false,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: MaxDD +0.4042%",
+      "stagflation: MaxDD +0.5975%",
+      "decorrelation: MaxDD +0.4382%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.11165950965706097,
+        "strat_sharpe": 0.8795522313655794,
+        "strat_annual": 0.08618123750790363
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11601188521407481,
+        "strat_sharpe": 0.821427887674125,
+        "strat_annual": 0.09076125807435043
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.12054085111893693,
+        "strat_sharpe": 0.7081320882379813,
+        "strat_annual": 0.11002511948257876
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.1124232932611553,
+        "strat_sharpe": 0.9808868036590299,
+        "strat_annual": 0.102185936453286
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.0838125368622936,
+        "strat_sharpe": 1.2543538124542961,
+        "strat_annual": 0.1152789582751339
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10142112957740851,
+        "strat_sharpe": 0.9905163417873233,
+        "strat_annual": 0.0977259344393051
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953805,
+        "strat_sharpe": 1.301335878620618,
+        "strat_annual": 0.13467825900499664
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09424320608348412,
+        "strat_sharpe": 1.025413951741885,
+        "strat_annual": 0.1139975726060598
+      }
+    }
+  },
+  "thr0.5|slope0.75": {
+    "thr": 0.5,
+    "slope": 0.75,
+    "realized_sharpe": 1.4967692328225748,
+    "realized_maxdd": 0.05847189732050017,
+    "grey_maxdd": 0.11877657082896814,
+    "bond_bear_maxdd": 0.12320040187527541,
+    "stagflation_maxdd": 0.1170046734180454,
+    "vol_stress_maxdd": 0.11346738384789062,
+    "decorrelation_maxdd": 0.08436873600351778,
+    "offense_cool_maxdd": 0.10212864692351617,
+    "corr_shift_maxdd": 0.07871509131953797,
+    "corr_combo_maxdd": 0.09429526560112016,
+    "grey_sharpe": 0.718894846251606,
+    "bond_bear_sharpe": 0.8273954955630336,
+    "stagflation_sharpe": 0.8163204522337877,
+    "worst_maxdd": 0.12320040187527541,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0483",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.6967%",
+      "decorrelation: MaxDD +0.4938%",
+      "offense_cooldown: MaxDD +0.3512%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527541,
+        "strat_sharpe": 0.8273954955630336,
+        "strat_annual": 0.07910808191092622
+      },
+      "stagflation": {
+        "strat_maxdd": 0.1170046734180454,
+        "strat_sharpe": 0.8163204522337877,
+        "strat_annual": 0.0905810209453366
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11877657082896814,
+        "strat_sharpe": 0.718894846251606,
+        "strat_annual": 0.10951702930374729
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.11346738384789062,
+        "strat_sharpe": 0.975193416514775,
+        "strat_annual": 0.1012489834094703
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08436873600351778,
+        "strat_sharpe": 1.2504860378765694,
+        "strat_annual": 0.11496701969925005
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10212864692351617,
+        "strat_sharpe": 0.9893509562067498,
+        "strat_annual": 0.09756095078380955
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953797,
+        "strat_sharpe": 1.2985671364390332,
+        "strat_annual": 0.1327518620424828
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09429526560112016,
+        "strat_sharpe": 1.0229480110214468,
+        "strat_annual": 0.11334061271980511
+      }
+    }
+  },
+  "thr0.5|slope0.9": {
+    "thr": 0.5,
+    "slope": 0.9,
+    "realized_sharpe": 1.4976555398738314,
+    "realized_maxdd": 0.058471897320500066,
+    "grey_maxdd": 0.11701196750980512,
+    "bond_bear_maxdd": 0.12320040187527527,
+    "stagflation_maxdd": 0.11806256289151282,
+    "vol_stress_maxdd": 0.1145618428546896,
+    "decorrelation_maxdd": 0.08492501388820095,
+    "offense_cool_maxdd": 0.10285398541052203,
+    "corr_shift_maxdd": 0.07871509131953772,
+    "corr_combo_maxdd": 0.09439208438026223,
+    "grey_sharpe": 0.7324841465234676,
+    "bond_bear_sharpe": 0.8238988663310642,
+    "stagflation_sharpe": 0.8097458928465395,
+    "worst_maxdd": 0.12320040187527527,
+    "grey_ok": true,
+    "all_dd_ok": false,
+    "degrad_issues": [
+      "bond_bear: Sharpe -0.0518",
+      "bond_bear: MaxDD +1.5583%",
+      "stagflation: MaxDD +0.8025%",
+      "decorrelation: MaxDD +0.5494%",
+      "offense_cooldown: MaxDD +0.4237%"
+    ],
+    "realized_ok": true,
+    "verdict": false,
+    "scenarios": {
+      "bond_bear": {
+        "strat_maxdd": 0.12320040187527527,
+        "strat_sharpe": 0.8238988663310642,
+        "strat_annual": 0.08560822839818938
+      },
+      "stagflation": {
+        "strat_maxdd": 0.11806256289151282,
+        "strat_sharpe": 0.8097458928465395,
+        "strat_annual": 0.09026369269887069
+      },
+      "grey_corr_combo": {
+        "strat_maxdd": 0.11701196750980512,
+        "strat_sharpe": 0.7324841465234676,
+        "strat_annual": 0.10861553795646839
+      },
+      "vol_stress": {
+        "strat_maxdd": 0.1145618428546896,
+        "strat_sharpe": 0.9681763719994758,
+        "strat_annual": 0.10260279545711004
+      },
+      "decorrelation": {
+        "strat_maxdd": 0.08492501388820095,
+        "strat_sharpe": 1.2480101306525915,
+        "strat_annual": 0.11480026753582862
+      },
+      "offense_cooldown": {
+        "strat_maxdd": 0.10285398541052203,
+        "strat_sharpe": 0.9852625036211411,
+        "strat_annual": 0.09729290775740673
+      },
+      "corr_regime_shift": {
+        "strat_maxdd": 0.07871509131953772,
+        "strat_sharpe": 1.2908962614633757,
+        "strat_annual": 0.13268827193747113
+      },
+      "corr_crisis_combo": {
+        "strat_maxdd": 0.09439208438026223,
+        "strat_sharpe": 1.0103272584227392,
+        "strat_annual": 0.11178506720553583
+      }
+    }
+  }
+}

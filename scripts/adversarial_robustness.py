@@ -63,11 +63,18 @@ STRESS_SCENARIOS = {
     "decorrelation":     {"c_mult": 0.77},                        # 相关降低(分散噪声化)
     "stagflation":       {"sig_mult": 1.2, "muoff_mult": 0.8},    # 滞胀式组合冲击
 }
-# v4.4 相关性危机情景(独立注册,经 include_corr_scenarios 显式并入评估)
+# 相关性危机情景集(独立注册,经 include_corr_scenarios 显式并入评估):
+#   - v4.4: corr_regime_shift / corr_crisis_combo
+#   - v4.5: grey_corr_combo (灰区盲区监控情景; 持续中相关 0.50 × σ1.5,
+#           立项经 36 格实验中止, 见 docs/v4_5_grey_corr_abort.md)
 CORR_STRESS_SCENARIOS = {
     "corr_regime_shift": {"dgp": "regime_corr", "rho_crisis": 0.85},
     "corr_crisis_combo": {"dgp": "regime_corr", "rho_crisis": 0.85,
                            "sig_mult": 1.2, "muoff_mult": 0.8},
+    # v4.5 灰区盲区情景(预研最恶劣格: 持续中相关 0.50 × 波动放大 1.5;
+    # p_enter=1/p_stay=1 → 全程停留危机态, 见 output/experiments/exp_v45_grey_corr.md)
+    "grey_corr_combo":   {"dgp": "regime_corr", "rho_crisis": 0.50,
+                           "p_enter": 1.0, "p_stay": 1.0, "sig_mult": 1.5},
 }
 # 情景 → 主控机制映射(不同鲁棒方向由不同机制控制; 分机制门禁而非单一标量)
 #   vol_defense : Layer3 波动择时(nasdaq-vol 三档防御) — 抗波动放大
@@ -83,6 +90,7 @@ SCENARIO_MECHANISM = {
     "stagflation":       "composite",
     "corr_regime_shift": "corr_crisis",
     "corr_crisis_combo": "corr_crisis",
+    "grey_corr_combo":   "corr_crisis",
 }
 # 搜索范围(合理边界)
 BOUNDS = {

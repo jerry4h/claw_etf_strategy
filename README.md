@@ -103,6 +103,11 @@ v4.3 的 Layer 3.5（危机相关性加成）存在一个**方法论缺口**：C
 仍为 v4.3，试用 v4.4：`--config config/strategy_v4_4.yaml`。完整动机、选型、实现与验收记录见
 [`docs/v4_4_crisis_correlation_closure.md`](docs/v4_4_crisis_correlation_closure.md)。
 
+> **v4.5 灰区相关保护**：曾评估降阈值(M-C)与条件门控(M-D)两条路径修复 grey_corr_combo
+> （持续中相关×σ1.5, MaxDD 12.81%>12%），经 36 格实验证实结构性不可行（bond_bear DGP
+> 自然相关≈0.40 与灰区物理冲突），**立项中止**。grey_corr_combo 保留为监控情景。
+> 详见 [`docs/v4_5_grey_corr_abort.md`](docs/v4_5_grey_corr_abort.md)。
+
 ## v4.0 对抗鲁棒性框架
 
 四节点 + 收尾，实现"realized + adversarial 双维度评估 + 多目标约束优化"：

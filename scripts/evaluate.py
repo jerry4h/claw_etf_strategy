@@ -153,7 +153,7 @@ def main():
     p.add_argument("--seeds", default="11,22,33,44,55,66,77")
     p.add_argument("--json", action="store_true")
     p.add_argument("--corr-scenarios", action="store_true",
-                   help="额外评估 v4.4 相关性危机情景(corr_regime_shift/corr_crisis_combo)")
+                   help="额外评估相关性危机情景集: corr_regime_shift / corr_crisis_combo + grey_corr_combo(灰区监控)")
     p.add_argument("--save-baseline", action="store_true")
     p.add_argument("--vs-baseline", action="store_true")
     args = p.parse_args()
