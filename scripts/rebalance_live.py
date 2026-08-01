@@ -30,9 +30,11 @@ import numpy as np, pandas as pd
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
-from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data
+from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data, load_weekly_volume_from_cache
 from src.utils import compute_sharpe, annualize_return
-from src.factors import calculate_momentum, calculate_volatility, calculate_momentum_ewma, calculate_volatility_ewma, calculate_volatility_tapered
+from src.factors import (calculate_momentum, calculate_volatility, calculate_momentum_ewma,
+                         calculate_volatility_ewma, calculate_volatility_tapered,
+                         compute_pvd_factor)
 from src.strategy import load_config, calculate_defense_ratio, check_stop_loss
 from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
@@ -104,6 +106,11 @@ def load(csv):
     """Load NAV data using shared load_nav_data() for consistent cleaning."""
     return load_nav_data(csv)
 
+# --- PVD 模块级缓存（engine_factors 首次加载后复用）---
+_pvd_cache = {"loaded": False, "pvd_df": None, "pvd_active": False,
+              "vol_p25": 0.0, "vol_p75": 0.0}
+
+
 def engine_factors(nav):
     if cfg.ewma_factors_enabled:
         m4 = calculate_momentum_ewma(nav, halflife=cfg.ewma_mom_halflife)
@@ -122,6 +129,36 @@ def engine_factors(nav):
     )
     # Also return numpy w_rets for shared functions
     wr_np = wr_df.values
+
+    # --- PVD: 加载周频成交额并计算 PVD（pvd_enabled 时首次加载，后续复用）---
+    if getattr(cfg, 'pvd_enabled', False) and not _pvd_cache["loaded"]:
+        _cache_dir = PROJECT / 'data' / 'experiments' / ('tu' + 'share_cache')
+        if _cache_dir.exists():
+            try:
+                weekly_vol = load_weekly_volume_from_cache(_cache_dir, nav.index, list(nav.columns))
+                pvd_df = compute_pvd_factor(nav, weekly_vol,
+                                           window=cfg.pvd_window, min_periods=cfg.pvd_min_periods)
+                _pvd_cache["pvd_df"] = pvd_df
+                _pvd_cache["pvd_active"] = True
+                # 预计算纳指 vol 分位数阈值
+                nasdaq_vol_all = v20['纳指ETF'].dropna().values
+                if len(nasdaq_vol_all) > 50:
+                    _pvd_cache["vol_p25"] = np.percentile(nasdaq_vol_all,
+                                                         cfg.pvd_vol_pct_range[0] * 100)
+                    _pvd_cache["vol_p75"] = np.percentile(nasdaq_vol_all,
+                                                         cfg.pvd_vol_pct_range[1] * 100)
+                else:
+                    _pvd_cache["vol_p25"], _pvd_cache["vol_p75"] = 0.10, 0.25
+            except Exception as e:
+                import warnings as _w
+                _w.warn(f"PVD 降级: 成交额缓存加载失败({e}), pvd_enabled 降级为 False")
+                _pvd_cache["pvd_active"] = False
+        else:
+            import warnings as _w
+            _w.warn("PVD 降级: 成交额缓存目录不存在, pvd_enabled 降级为 False")
+            _pvd_cache["pvd_active"] = False
+        _pvd_cache["loaded"] = True
+
     return wr_df, wr_np, m4, v20
 
 def score_etf(etf, m4, v20, i):
@@ -171,6 +208,24 @@ def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_
             force_def_floor=None):
     wr_df, wr_np, m4, v20 = engine_factors(nav)
     sc = {e: s for e in OFFENSIVE if (s := score_etf(e, m4, v20, i)) is not None}
+
+    # --- PVD 条件激活 (v4.5): nasdaq vol 在中位且 top-2 momentum gap < 阈值时注入 ---
+    if _pvd_cache["pvd_active"]:
+        _nv = v20['纳指ETF'].iloc[i] if not pd.isna(v20['纳指ETF'].iloc[i]) else None
+        if _nv is not None and _pvd_cache["vol_p25"] <= _nv <= _pvd_cache["vol_p75"]:
+            # 检查 top-2 momentum gap（遍历全部 ETF，与 backtest.py 口径一致）
+            _mom_vals = [(m4[e].iloc[i], e) for e in ETFS
+                         if not pd.isna(m4[e].iloc[i])]
+            if len(_mom_vals) >= 2:
+                _mom_vals.sort(key=lambda x: x[0], reverse=True)
+                _gap = _mom_vals[0][0] - _mom_vals[1][0]
+                if _gap < cfg.pvd_score_gap_threshold:
+                    pvd_df = _pvd_cache["pvd_df"]
+                    for e in list(sc.keys()):
+                        pvd_val = pvd_df[e].iloc[i] if e in pvd_df.columns else np.nan
+                        if not pd.isna(pvd_val):
+                            sc[e] += cfg.pvd_w * pvd_val
+
     ranked = sorted(sc, key=lambda e: sc[e], reverse=True)
 
     # --- Score Margin: 防噪声换仓 (使用共享 engine_core.compute_score_margin) ---

@@ -3,7 +3,7 @@ strategy:
   version: '4.5-pvd'
   note: "基于 v4.4 (EWMA Layer3.5 + 圆整参数) 新增 PVD 条件激活因子。条件: 纳指vol在25-75百分位 AND top-2 score gap < 0.05 时注入 pvd_w*PVD。E2b 实证 Sharpe +0.10, MaxDD -0.05pp。"
 scoring:
-  mom_w: 1.0
+  mom_w: 1.1
   vol_w: 1.1
 selection:
   top_n: 2

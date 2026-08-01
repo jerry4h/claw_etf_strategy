@@ -140,7 +140,7 @@ class TestPVDConditionActivation:
 
 class TestPVDNanHandling:
     def test_hongli_pre2019_nan(self):
-        """红利低波 pre-2019 volume should be NaN (no file data before 2019-01-18)."""
+        """红利低波 pre-2019 成交额 should be NaN (no file data before 2019-01-18)."""
         from src.data_loader import load_weekly_volume_from_cache
         cache_dir = PROJECT / 'data' / 'experiments' / 'tushare_cache'
         if not cache_dir.exists():

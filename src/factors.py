@@ -197,13 +197,13 @@ def compute_pvd_factor(
     min_periods: int = 6,
 ) -> pd.DataFrame:
     """Price-Volume Divergence (PVD) 因子。
-
-    PVD = rolling_corr(log_return, log(vol_t / vol_{t-1})), window 周。
-    负相关 = 量价背离（价格上涨但成交量萎缩，看空信号）。
-
+    
+    PVD = rolling_corr(log_return, log(amount_t / amount_{t-1})), window 周。
+    负相关 = 量价背离（价格上涨但成交额萝缩，看空信号）。
+    
     Args:
         weekly_nav: 周频净值 DataFrame
-        weekly_vol: 周频成交量 DataFrame（与 weekly_nav 同 index/columns）
+        weekly_vol: 周频成交额 DataFrame（千元，与 weekly_nav 同 index/columns）
         window: 滚动窗口周数
         min_periods: 最少有效数据点
 
@@ -214,7 +214,7 @@ def compute_pvd_factor(
     weekly_vol_aligned = weekly_vol.reindex(index=weekly_nav.index, columns=weekly_nav.columns)
     # 对数收益率
     log_ret = np.log(weekly_nav / weekly_nav.shift(1))
-    # 成交量变化率
+    # 成交额变化率
     vol_change = np.log(weekly_vol_aligned / weekly_vol_aligned.shift(1))
     # 滚动相关
     pvd = log_ret.rolling(window=window, min_periods=min_periods).corr(vol_change)

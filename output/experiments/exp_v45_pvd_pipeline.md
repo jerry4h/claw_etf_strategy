@@ -122,3 +122,29 @@ PVD 因子仅含 **1 个实质自由参数**（`pvd_w=0.15`）：
 - Joint Test1 参数轴已包含策略核心参数的邻域稳定性验证
 
 结论：形式化 Morris/重优化步骤不适用于单参数因子，以 Joint Test2 block bootstrap 替代。
+
+---
+
+## 完善闭环验证（Step 1-4）
+
+| 步骤 | 内容 | 验收结果 |
+|------|------|----------|
+| Step 1 | amount(千元)替代vol(手) | Sharpe=1.5919→1.6007(参数调优后), baseline=1.4878不变 |
+| Step 2 | bootstrap升格evaluate.py | 胜率94.5%≥90%, pytest 212 passed |
+| Step 3 | 3×3网格(1.1,1.1)最优 | ΔSharpe=+0.0088, bootstrap PASS |
+| Step 4 | rebalance_live PVD同步 | 1983分数0差异, verify Δ=0.0314(结构性) |
+
+### 最终指标
+
+- **realized Sharpe**: 1.6007 (mom_w=1.1, vol_w=1.1, pvd_w=0.15)
+- **MaxDD**: 5.80%
+- **block bootstrap 200路径胜率**: 94.5%（alpha P10 = +0.076）
+- **v4.3 baseline**: 1.4878（byte-identical）
+- **pytest**: 212 passed
+
+### 异常项
+
+- rebalance_live --verify v4_5_pvd ΔSharpe=0.0314（超 0.02 阈值）
+  - 根因：verify 循环与引擎的仓位计算存在结构性差异（v4_3 已有 0.01 基础误差）
+  - PVD 在 34% 的周激活，导致复合误差放大
+  - 证据：所有 1983 个 PVD 后分数 bit-exact 匹配（0 差异），逻辑正确性已确认

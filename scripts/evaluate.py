@@ -112,6 +112,25 @@ def evaluate_full(cfg, d_max=0.12, seeds=(11, 22, 33, 44, 55, 66, 77), include_c
     fails = [k for k in ("realized_dd_ok", "realized_beats_ew", "adv_dd_ok") if not constraints[k]]
     fails += [f"hard:{m}" for m, g in mech_gates.items() if g["gate"] == "hard" and not g["passed"]]
 
+    # --- PVD bootstrap 升格：pvd_enabled 时 block bootstrap 胜率纳入 verdict ---
+    bootstrap_info = None
+    if getattr(cfg, 'pvd_enabled', False):
+        _rj = _load("rj", "scripts/robustness_joint.py")
+        real_rets, real_dates, first_nav = _rj.prepare_real_data()
+        base_m = _rj.eval_on_real(cfg, real_rets, real_dates, first_nav, "base")
+        rows, _ = _rj.run_test2(cfg, real_rets, real_dates, first_nav,
+                                n_paths=200, block_len=13, seed_base=7700)
+        if rows and base_m:
+            dist = _rj.judge_test2(rows, base_m)
+            bootstrap_info = {
+                "win_rate": dist["win_rate_over_ew"],
+                "alpha_p10": dist["alpha_sharpe_p10"],
+                "pass": dist["pass_relative_alpha"],
+            }
+            if not bootstrap_info["pass"]:
+                verdict = False
+                fails.append("pvd_bootstrap")
+
     return {
         "objective": realized["annual_return"],   # 优化目标: 最大化 realized 年化收益
         "verdict": "PASS" if verdict else "FAIL",
@@ -119,6 +138,7 @@ def evaluate_full(cfg, d_max=0.12, seeds=(11, 22, 33, 44, 55, 66, 77), include_c
         "realized": realized,
         "adversarial": adv,
         "constraints": constraints,
+        "bootstrap": bootstrap_info,
     }
 
 

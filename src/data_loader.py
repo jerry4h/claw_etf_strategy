@@ -186,7 +186,10 @@ def load_weekly_volume_from_cache(
     weekly_index: pd.DatetimeIndex,
     etf_names: list[str] | None = None,
 ) -> pd.DataFrame:
-    """从 tushare_cache 日频 CSV 读取 vol 列，按 ISO 周聚合为周频成交量，与 weekly_nav 对齐。
+    """从 tushare_cache 日频 CSV 读取 amount 列（成交额，千元），按 ISO 周聚合，与 weekly_nav 对齐。
+
+    使用成交额（amount）而非成交量（vol/手）：后者受 ETF 拆分/分红影响
+    导致时间序列不连续，amount 以千元计价天然免疫此问题。
 
     Args:
         cache_dir: tushare_cache 目录路径
@@ -227,6 +230,6 @@ def load_weekly_volume_from_cache(
             nav_date = nav_week_map.get((year, week))
             if nav_date is None:
                 continue
-            weekly_vol.loc[nav_date, etf_name] = grp['vol'].sum()
+            weekly_vol.loc[nav_date, etf_name] = grp['amount'].sum()
 
     return weekly_vol.astype(float)

@@ -177,3 +177,53 @@ v4.5-pvd 偏差原因：`rebalance_live.py` 明确不含 PVD 逻辑（仅回测�
 | `output/robustness/robustness_joint_all_*.json` | T3 联合鲁棒性结果 |
 | `config/strategy_v4_5_pvd.yaml` | v4.5-pvd 生产就绪配置 |
 | `tests/test_pvd_factor.py` | PVD 专项单元测试（11 个） |
+
+---
+
+## 8. 完善闭环记录（Step 1-4）
+
+### 8.1 Step 1: Amount 替代 Vol（正确性修复）
+
+**问题**：`load_weekly_volume_from_cache` 使用 `grp['vol'].sum()`（成交量/手），ETF 拆分/分红后时间序列不连续。  
+**修复**：改用 `grp['amount'].sum()`（成交额/千元），天然免疫拆分影响。  
+**验证**：
+- v4.3 baseline Sharpe = 1.4878（pin 不变）
+- v4.5-pvd amount 版 Sharpe = 1.5919, MaxDD = 5.80%
+- pytest 212 passed
+
+### 8.2 Step 2: Block Bootstrap 升格
+
+- 重跑 `robustness_joint --test t2 --n 200`：胜率 94.5% ≥ 90%，alpha P10 = +0.076 → PASS
+- `evaluate.py` 新增 bootstrap 通道：pvd_enabled 时自动跑 200 路径，胜率纳入 verdict 判定
+- pytest 212 passed
+
+### 8.3 Step 3: mom_w/vol_w 3×3 联合参数校验
+
+| mom_w | vol_w | Sharpe | MaxDD |
+|-------|-------|--------|-------|
+| 0.9 | 1.0 | 1.5043 | 8.49% |
+| 0.9 | 1.1 | 1.5951 | 5.80% |
+| 0.9 | 1.2 | 1.5527 | 5.80% |
+| 1.0 | 1.0 | 1.5122 | 8.49% |
+| 1.0 | 1.1 | 1.5919 | 5.80% |
+| 1.0 | 1.2 | 1.5911 | 5.80% |
+| 1.1 | 1.0 | 1.5109 | 8.49% |
+| **1.1** | **1.1** | **1.6007** | **5.80%** |
+| 1.1 | 1.2 | 1.5869 | 5.80% |
+
+Pareto 前沿 bootstrap 验证（100 路径）：
+- (1.1, 1.1): win_rate=93%, alpha_p10=0.0762 → PASS
+- (0.9, 1.1): win_rate=96%, alpha_p10=0.0740 → PASS
+- (1.0, 1.1): win_rate=95%, alpha_p10=0.0854 → PASS
+
+**结论**：最优 = (1.1, 1.1)，ΔSharpe = +0.0088 vs 原 (1.0, 1.1)。已更新 yaml。
+
+### 8.4 Step 4: Rebalance_live.py PVD 同步
+
+- 新增 ~40 行：PVD 条件激活镜像 backtest.py 逻辑
+- 降级容错：缓存目录不存在时 pvd_enabled 降级 False + 警告
+- v4.3 --verify: Sharpe 引擎=1.4878, 脚本=1.4977, Δ=0.0099 ✅
+- v4.5-pvd --verify: Sharpe 引擎=1.6007, 脚本=1.5694, Δ=0.0314
+  - 分数验证：1983 个 score 全部 bit-exact 匹配，0 个 top-2 排名差异
+  - Δ 来源：verify 循环仓位计算结构差异（v4_3 已有 0.01 基础误差，PVD 增加激活频次导致复合放大）
+- pytest 212 passed
