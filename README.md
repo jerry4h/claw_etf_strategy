@@ -108,6 +108,10 @@ v4.3 的 Layer 3.5（危机相关性加成）存在一个**方法论缺口**：C
 > 自然相关≈0.40 与灰区物理冲突），**立项中止**。grey_corr_combo 保留为监控情景。
 > 详见 [`docs/v4_5_grey_corr_abort.md`](docs/v4_5_grey_corr_abort.md)。
 
+> **周内波动(High/Low)探索**：评估 Parkinson/GK 估计器替代 CC-tapered vol，经 E1 信息增量
+> 评估（纳指 QDII 溢价扭曲 corr=0.30）+ E2 分资产回测（Mixed Sharpe -0.38）双 NO-GO，
+> **课题中止**。详见 [`docs/hl_vol_exploration_abort.md`](docs/hl_vol_exploration_abort.md)。
+
 ## v4.0 对抗鲁棒性框架
 
 四节点 + 收尾，实现"realized + adversarial 双维度评估 + 多目标约束优化"：
