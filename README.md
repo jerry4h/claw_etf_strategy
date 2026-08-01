@@ -108,6 +108,12 @@ v4.3 的 Layer 3.5（危机相关性加成）存在一个**方法论缺口**：C
 > 自然相关≈0.40 与灰区物理冲突），**立项中止**。grey_corr_combo 保留为监控情景。
 > 详见 [`docs/v4_5_grey_corr_abort.md`](docs/v4_5_grey_corr_abort.md)。
 
+> **v4.5-pvd PVD 条件激活因子**：量价背离(Price-Volume Divergence)作为动量接近时的 tiebreaker。
+> 条件：纳指成交量 ∈ [p25, p75] 且 top-2 动量 gap < 0.05 时注入 `0.15×PVD`，否则完全退化为
+> baseline。Realized Sharpe 1.588（+0.10 vs v4.3），MaxDD 5.80%，block bootstrap 200 路径胜率 95%。
+> **默认仍为 v4.3**，试用：`python scripts/run_backtest.py --config config/strategy_v4_5_pvd.yaml`。
+> 详见 [`docs/v4_5_pvd_factor_closure.md`](docs/v4_5_pvd_factor_closure.md)。
+
 > **周内波动(High/Low)探索**：评估 Parkinson/GK 估计器替代 CC-tapered vol，经 E1 信息增量
 > 评估（纳指 QDII 溢价扭曲 corr=0.30）+ E2 分资产回测（Mixed Sharpe -0.38）双 NO-GO，
 > **课题中止**。详见 [`docs/hl_vol_exploration_abort.md`](docs/hl_vol_exploration_abort.md)。

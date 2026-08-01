@@ -212,6 +212,9 @@ class TestFieldCompleteness:
             # v4.4: Layer 3.5 EWMA 相关估计 — 默认关；YAML 段 crisis_correlation_ewma 可启用
             # (v4_1 YAML 无此段 → 默认值；load_config 接线在 test_v44_crisis_corr 验证)
             'crisis_corr_ewma_enabled', 'crisis_corr_ewma_halflife',
+            # v4.5: PVD 条件激活因子 — 默认关；YAML 段 pvd_factor 可启用
+            'pvd_enabled', 'pvd_w', 'pvd_window', 'pvd_min_periods',
+            'pvd_score_gap_threshold', 'pvd_vol_pct_range',
         }
 
         mismatches = []

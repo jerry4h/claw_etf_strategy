@@ -205,6 +205,14 @@ class StrategyConfig:
     regime_overrides: dict = field(default_factory=dict)
     regime_3state: bool = False
 
+    # === PVD 条件激活因子 (v4.5) === DISABLED by default
+    pvd_enabled: bool = False
+    pvd_w: float = 0.15
+    pvd_window: int = 8
+    pvd_min_periods: int = 6
+    pvd_score_gap_threshold: float = 0.05
+    pvd_vol_pct_range: tuple = (0.25, 0.75)
+
     # 数据路径
     nav_path: str = 'data/all_etfs_nav_2013_2026_h20269_scaled.csv'
     pe_path: str = 'data/300etf_pe_percentile_weekly.csv'
@@ -319,6 +327,7 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     d1_cfg = raw.get('dynamic_weighting', {})
     constituent_cfg = raw.get('constituent_signals', {})
     regime_cfg = raw.get('regime_classifier', {})
+    pvd_cfg = raw.get('pvd_factor', {})
     data_cfg = raw.get('data', {})
     reporting = raw.get('reporting', {})
 
@@ -495,6 +504,13 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         softmax_regime_temperature=_parse_regime_softmax_temperature(
             regime_cfg.get('regimes', {})
         ),
+        # PVD 条件激活因子 (v4.5)
+        pvd_enabled=pvd_cfg.get('enabled', False),
+        pvd_w=pvd_cfg.get('weight', 0.15),
+        pvd_window=pvd_cfg.get('window', 8),
+        pvd_min_periods=pvd_cfg.get('min_periods', 6),
+        pvd_score_gap_threshold=pvd_cfg.get('score_gap_threshold', 0.05),
+        pvd_vol_pct_range=(pvd_cfg.get('vol_pct_low', 0.25), pvd_cfg.get('vol_pct_high', 0.75)),
         nav_path=data_cfg.get('nav_path', ''),
         pe_path=data_cfg.get('pe_path', ''),
         start_date=data_cfg.get('start_date'),

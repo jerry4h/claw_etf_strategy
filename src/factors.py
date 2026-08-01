@@ -1,4 +1,4 @@
-"""因子计算 — 动量、波动率、PE 分位数。纯函数，无副作用。"""
+"""因子计算 — 动量、波动率、PE 分位数、PVD。纯函数，无副作用。"""
 
 import numpy as np
 import pandas as pd
@@ -190,10 +190,42 @@ def calculate_pe_percentile(
     return result
 
 
+def compute_pvd_factor(
+    weekly_nav: pd.DataFrame,
+    weekly_vol: pd.DataFrame,
+    window: int = 8,
+    min_periods: int = 6,
+) -> pd.DataFrame:
+    """Price-Volume Divergence (PVD) 因子。
+
+    PVD = rolling_corr(log_return, log(vol_t / vol_{t-1})), window 周。
+    负相关 = 量价背离（价格上涨但成交量萎缩，看空信号）。
+
+    Args:
+        weekly_nav: 周频净值 DataFrame
+        weekly_vol: 周频成交量 DataFrame（与 weekly_nav 同 index/columns）
+        window: 滚动窗口周数
+        min_periods: 最少有效数据点
+
+    Returns:
+        DataFrame (n_weeks, n_etfs)，值为 rolling corr，前 window 周自然为 NaN
+    """
+    # 对齐列顺序
+    weekly_vol_aligned = weekly_vol.reindex(index=weekly_nav.index, columns=weekly_nav.columns)
+    # 对数收益率
+    log_ret = np.log(weekly_nav / weekly_nav.shift(1))
+    # 成交量变化率
+    vol_change = np.log(weekly_vol_aligned / weekly_vol_aligned.shift(1))
+    # 滚动相关
+    pvd = log_ret.rolling(window=window, min_periods=min_periods).corr(vol_change)
+    return pvd
+
+
 def compute_all_factors(
     weekly_nav: pd.DataFrame,
     pe_df: pd.DataFrame | None = None,
-    config: dict | None = None
+    config: dict | None = None,
+    weekly_vol: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """
     一次计算所有因子，自动 shift(1) 防前视偏差。
@@ -247,5 +279,14 @@ def compute_all_factors(
         pe_pct = calculate_pe_percentile(pe_df, window_years=pe_window_years)
         pe_pct = pe_pct.shift(1)
         result['pe_percentile'] = pe_pct
+
+    # v4.5: PVD 因子（仅当显式传入 weekly_vol 且配置启用时计算）
+    pvd_enabled = config.get('factors', {}).get('pvd_enabled', False)
+    if pvd_enabled and weekly_vol is not None:
+        pvd_window = config.get('factors', {}).get('pvd_window', 8)
+        pvd_min_periods = config.get('factors', {}).get('pvd_min_periods', 6)
+        result['pvd'] = compute_pvd_factor(weekly_nav, weekly_vol,
+                                           window=pvd_window,
+                                           min_periods=pvd_min_periods)
 
     return result

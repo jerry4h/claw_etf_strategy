@@ -1,0 +1,470 @@
+{
+  "config_baseline": "config/strategy_v4_3.yaml",
+  "config_candidate": "config/strategy_v4_5_pvd.yaml",
+  "channels": {
+    "A_held_out_magnitudes": {
+      "v4_1": {
+        "config": "v4_1",
+        "scenarios": {
+          "vol_small": {
+            "strat_sharpe": 1.3577639439522133,
+            "ew_sharpe": 1.110467922619698,
+            "strat_maxdd": 0.08184334487136877,
+            "strat_annual": 0.11808655595918949,
+            "ew_annual": 0.12014433529810398,
+            "margin": 0.24729602133251527,
+            "beats_ew": true
+          },
+          "vol_large": {
+            "strat_sharpe": 0.8449148023727435,
+            "ew_sharpe": 0.7576027880135887,
+            "strat_maxdd": 0.13084784640570893,
+            "strat_annual": 0.09528795045546645,
+            "ew_annual": 0.11724417430088319,
+            "margin": 0.08731201435915481,
+            "beats_ew": true
+          },
+          "offense_severe": {
+            "strat_sharpe": 0.8565478679965309,
+            "ew_sharpe": 0.7228348987758805,
+            "strat_maxdd": 0.1083741742559389,
+            "strat_annual": 0.08439683113665897,
+            "ew_annual": 0.0885176868212858,
+            "margin": 0.13371296922065046,
+            "beats_ew": true
+          },
+          "offense_neutral": {
+            "strat_sharpe": 1.1643643242982877,
+            "ew_sharpe": 1.0169810123490999,
+            "strat_maxdd": 0.09808372491999551,
+            "strat_annual": 0.11322449736246099,
+            "ew_annual": 0.1197350689281671,
+            "margin": 0.14738331194918786,
+            "beats_ew": true
+          },
+          "def_deep_bear": {
+            "strat_sharpe": 0.6771071883184938,
+            "ew_sharpe": 0.7059441456363306,
+            "strat_maxdd": 0.12382208196091832,
+            "strat_annual": 0.07594792018812324,
+            "ew_annual": 0.08689985238045517,
+            "margin": -0.028836957317836753,
+            "beats_ew": false
+          },
+          "def_mild_bear": {
+            "strat_sharpe": 0.9955527034336793,
+            "ew_sharpe": 0.8953706606321722,
+            "strat_maxdd": 0.1227787102740244,
+            "strat_annual": 0.09953519633445085,
+            "ew_annual": 0.10554539563559207,
+            "margin": 0.10018204280150711,
+            "beats_ew": true
+          },
+          "decorr_strong": {
+            "strat_sharpe": 1.2207792499079468,
+            "ew_sharpe": 1.1838275318933817,
+            "strat_maxdd": 0.07609669024628585,
+            "strat_annual": 0.11895757834715548,
+            "ew_annual": 0.12519878399706896,
+            "margin": 0.036951718014565094,
+            "beats_ew": true
+          },
+          "corr_boost": {
+            "strat_sharpe": 1.083401273958595,
+            "ew_sharpe": 0.938104675761571,
+            "strat_maxdd": 0.10224293191336392,
+            "strat_annual": 0.10885282609764024,
+            "ew_annual": 0.11727708762687805,
+            "margin": 0.145296598197024,
+            "beats_ew": true
+          },
+          "stag_severe": {
+            "strat_sharpe": 0.5788665691208406,
+            "ew_sharpe": 0.5281811283041025,
+            "strat_maxdd": 0.14409174652684129,
+            "strat_annual": 0.07328644830909425,
+            "ew_annual": 0.08609274643613096,
+            "margin": 0.05068544081673809,
+            "beats_ew": true
+          },
+          "quad_shock": {
+            "strat_sharpe": 0.43846055191357564,
+            "ew_sharpe": 0.5015013749111517,
+            "strat_maxdd": 0.14686618233289034,
+            "strat_annual": 0.05673102189662482,
+            "ew_annual": 0.07649299208523797,
+            "margin": -0.06304082299757602,
+            "beats_ew": false
+          }
+        },
+        "pass_rate": 0.8,
+        "worst_maxdd": 0.14686618233289034,
+        "avg_margin": 0.08569423363759299,
+        "n": 10
+      },
+      "v4_2": {
+        "config": "v4_2",
+        "scenarios": {
+          "vol_small": {
+            "strat_sharpe": 1.2022272775394343,
+            "ew_sharpe": 1.110467922619698,
+            "strat_maxdd": 0.07832375807865051,
+            "strat_annual": 0.11616147055046766,
+            "ew_annual": 0.12014433529810398,
+            "margin": 0.09175935491973619,
+            "beats_ew": true
+          },
+          "vol_large": {
+            "strat_sharpe": 0.7877921635039403,
+            "ew_sharpe": 0.7576027880135887,
+            "strat_maxdd": 0.11489340556511056,
+            "strat_annual": 0.09552549985310876,
+            "ew_annual": 0.11724417430088319,
+            "margin": 0.03018937549035161,
+            "beats_ew": true
+          },
+          "offense_severe": {
+            "strat_sharpe": 0.7590844652101321,
+            "ew_sharpe": 0.7228348987758805,
+            "strat_maxdd": 0.09877622397144616,
+            "strat_annual": 0.07906240783918173,
+            "ew_annual": 0.0885176868212858,
+            "margin": 0.03624956643425159,
+            "beats_ew": true
+          },
+          "offense_neutral": {
+            "strat_sharpe": 1.1273179277876217,
+            "ew_sharpe": 1.0169810123490999,
+            "strat_maxdd": 0.09191522890570832,
+            "strat_annual": 0.11274845440294246,
+            "ew_annual": 0.1197350689281671,
+            "margin": 0.11033691543852187,
+            "beats_ew": true
+          },
+          "def_deep_bear": {
+            "strat_sharpe": 0.6827597381068716,
+            "ew_sharpe": 0.7059441456363306,
+            "strat_maxdd": 0.11688984670355283,
+            "strat_annual": 0.07304917337341998,
+            "ew_annual": 0.08689985238045517,
+            "margin": -0.02318440752945894,
+            "beats_ew": false
+          },
+          "def_mild_bear": {
+            "strat_sharpe": 0.9040831729268476,
+            "ew_sharpe": 0.8953706606321722,
+            "strat_maxdd": 0.09615070484616883,
+            "strat_annual": 0.09364872796251644,
+            "ew_annual": 0.10554539563559207,
+            "margin": 0.0087125122946754,
+            "beats_ew": true
+          },
+          "decorr_strong": {
+            "strat_sharpe": 1.2118685794272628,
+            "ew_sharpe": 1.1838275318933817,
+            "strat_maxdd": 0.07525229106289603,
+            "strat_annual": 0.11123439467560092,
+            "ew_annual": 0.12519878399706896,
+            "margin": 0.028041047533881036,
+            "beats_ew": true
+          },
+          "corr_boost": {
+            "strat_sharpe": 1.0607253184933254,
+            "ew_sharpe": 0.938104675761571,
+            "strat_maxdd": 0.08488739952562248,
+            "strat_annual": 0.11271796746328144,
+            "ew_annual": 0.11727708762687805,
+            "margin": 0.12262064273175444,
+            "beats_ew": true
+          },
+          "stag_severe": {
+            "strat_sharpe": 0.5082986024519461,
+            "ew_sharpe": 0.5281811283041025,
+            "strat_maxdd": 0.12165596273467352,
+            "strat_annual": 0.07049598068107277,
+            "ew_annual": 0.08609274643613096,
+            "margin": -0.01988252585215633,
+            "beats_ew": false
+          },
+          "quad_shock": {
+            "strat_sharpe": 0.41530740832377966,
+            "ew_sharpe": 0.5015013749111517,
+            "strat_maxdd": 0.1452780659632252,
+            "strat_annual": 0.0591899279113024,
+            "ew_annual": 0.07649299208523797,
+            "margin": -0.086193966587372,
+            "beats_ew": false
+          }
+        },
+        "pass_rate": 0.7,
+        "worst_maxdd": 0.1452780659632252,
+        "avg_margin": 0.029864851487418485,
+        "n": 10
+      }
+    },
+    "A2_regime_corr_variants": {
+      "v4_1": {
+        "config": "v4_1",
+        "scenarios": {
+          "corr_shift_075": {
+            "strat_sharpe": 1.2069888121784873,
+            "ew_sharpe": 0.9257994172077866,
+            "strat_maxdd": 0.08723661051452658,
+            "strat_annual": 0.13240312906340446,
+            "ew_annual": 0.1228472729000385,
+            "margin": 0.2811893949707007,
+            "beats_ew": true
+          },
+          "corr_shift_090": {
+            "strat_sharpe": 1.331460700943665,
+            "ew_sharpe": 0.9196886235060668,
+            "strat_maxdd": 0.07926272113558563,
+            "strat_annual": 0.13465542798319285,
+            "ew_annual": 0.12202710153213814,
+            "margin": 0.41177207743759814,
+            "beats_ew": true
+          }
+        },
+        "pass_rate": 1.0,
+        "worst_maxdd": 0.08723661051452658,
+        "avg_margin": 0.34648073620414943,
+        "n": 2
+      },
+      "v4_2": {
+        "config": "v4_2",
+        "scenarios": {
+          "corr_shift_075": {
+            "strat_sharpe": 1.1743273747352572,
+            "ew_sharpe": 0.9257994172077866,
+            "strat_maxdd": 0.09107030753520837,
+            "strat_annual": 0.13137339172796048,
+            "ew_annual": 0.1228472729000385,
+            "margin": 0.2485279575274706,
+            "beats_ew": true
+          },
+          "corr_shift_090": {
+            "strat_sharpe": 1.288050179373428,
+            "ew_sharpe": 0.9196886235060668,
+            "strat_maxdd": 0.09158628837380973,
+            "strat_annual": 0.13577989791412137,
+            "ew_annual": 0.12202710153213814,
+            "margin": 0.3683615558673612,
+            "beats_ew": true
+          }
+        },
+        "pass_rate": 1.0,
+        "worst_maxdd": 0.09158628837380973,
+        "avg_margin": 0.3084447566974159,
+        "n": 2
+      }
+    },
+    "B_independent_seeds": {
+      "v4_1": {
+        "config": "v4_1",
+        "scenarios": {
+          "vol_stress": {
+            "strat_sharpe": 0.8792680096968684,
+            "ew_sharpe": 0.7210013066987688,
+            "strat_maxdd": 0.09797675259897898,
+            "strat_annual": 0.08710374979211766,
+            "ew_annual": 0.1090544506215021,
+            "margin": 0.15826670299809953,
+            "beats_ew": true
+          },
+          "offense_cooldown": {
+            "strat_sharpe": 0.922689525614507,
+            "ew_sharpe": 0.726583072153713,
+            "strat_maxdd": 0.09265161617492582,
+            "strat_annual": 0.08350544115844549,
+            "ew_annual": 0.09611621264653936,
+            "margin": 0.19610645346079403,
+            "beats_ew": true
+          },
+          "bond_bear": {
+            "strat_sharpe": 0.8013954874095748,
+            "ew_sharpe": 0.6531359977097106,
+            "strat_maxdd": 0.09494120893956119,
+            "strat_annual": 0.0773544612806154,
+            "ew_annual": 0.08833678629480302,
+            "margin": 0.14825948969986413,
+            "beats_ew": true
+          },
+          "decorrelation": {
+            "strat_sharpe": 1.0921214847765424,
+            "ew_sharpe": 0.9418190498614379,
+            "strat_maxdd": 0.0836263123571706,
+            "strat_annual": 0.09832291420840145,
+            "ew_annual": 0.11211808602672657,
+            "margin": 0.15030243491510442,
+            "beats_ew": true
+          },
+          "stagflation": {
+            "strat_sharpe": 0.6970353141368006,
+            "ew_sharpe": 0.5976286066399046,
+            "strat_maxdd": 0.1015348832737696,
+            "strat_annual": 0.07612421876965025,
+            "ew_annual": 0.09348409897514132,
+            "margin": 0.09940670749689606,
+            "beats_ew": true
+          }
+        },
+        "pass_rate": 1.0,
+        "worst_maxdd": 0.1015348832737696,
+        "avg_margin": 0.15046835771415162,
+        "n": 5
+      },
+      "v4_2": {
+        "config": "v4_2",
+        "scenarios": {
+          "vol_stress": {
+            "strat_sharpe": 0.8502652875159737,
+            "ew_sharpe": 0.7210013066987688,
+            "strat_maxdd": 0.10055613021049245,
+            "strat_annual": 0.089360406012575,
+            "ew_annual": 0.1090544506215021,
+            "margin": 0.12926398081720492,
+            "beats_ew": true
+          },
+          "offense_cooldown": {
+            "strat_sharpe": 0.8749904105911015,
+            "ew_sharpe": 0.726583072153713,
+            "strat_maxdd": 0.09222020120605903,
+            "strat_annual": 0.08346449728672001,
+            "ew_annual": 0.09611621264653936,
+            "margin": 0.14840733843738851,
+            "beats_ew": true
+          },
+          "bond_bear": {
+            "strat_sharpe": 0.8154014114035422,
+            "ew_sharpe": 0.6531359977097106,
+            "strat_maxdd": 0.09475812501667817,
+            "strat_annual": 0.07963241509434082,
+            "ew_annual": 0.08833678629480302,
+            "margin": 0.16226541369383152,
+            "beats_ew": true
+          },
+          "decorrelation": {
+            "strat_sharpe": 1.077750022919584,
+            "ew_sharpe": 0.9418190498614379,
+            "strat_maxdd": 0.08268235907284406,
+            "strat_annual": 0.0971341026856769,
+            "ew_annual": 0.11211808602672657,
+            "margin": 0.13593097305814605,
+            "beats_ew": true
+          },
+          "stagflation": {
+            "strat_sharpe": 0.7247519573324679,
+            "ew_sharpe": 0.5976286066399046,
+            "strat_maxdd": 0.11331876374622978,
+            "strat_annual": 0.07860519628162121,
+            "ew_annual": 0.09348409897514132,
+            "margin": 0.1271233506925633,
+            "beats_ew": true
+          }
+        },
+        "pass_rate": 1.0,
+        "worst_maxdd": 0.11331876374622978,
+        "avg_margin": 0.14059821133982686,
+        "n": 5
+      }
+    },
+    "C_block_bootstrap": {
+      "v4_1": {
+        "config": "v4_1",
+        "n_paths": 30,
+        "block_len": 8,
+        "strat_sharpe_median": 1.064144170374233,
+        "ew_sharpe_median": 0.8966685568947387,
+        "strat_maxdd_median": 0.09619991374945233,
+        "strat_maxdd_max": 0.15127889670825298,
+        "strat_annual_median": 0.11098522162506208,
+        "ew_annual_median": 0.1143407285321707,
+        "pass_rate": 0.9333333333333333,
+        "avg_margin": 0.2357997038537031
+      },
+      "v4_2": {
+        "config": "v4_2",
+        "n_paths": 30,
+        "block_len": 8,
+        "strat_sharpe_median": 1.0876043130215247,
+        "ew_sharpe_median": 0.8966685568947387,
+        "strat_maxdd_median": 0.09383537014698888,
+        "strat_maxdd_max": 0.17527434208888998,
+        "strat_annual_median": 0.11244796901686582,
+        "ew_annual_median": 0.1143407285321707,
+        "pass_rate": 0.8666666666666667,
+        "avg_margin": 0.2458739272742288
+      }
+    }
+  },
+  "verdicts": {
+    "A_held_out_magnitudes": {
+      "core_pass": false,
+      "envelope_ok": false,
+      "checks": {
+        "pass_rate_not_regressed": false,
+        "worst_dd_not_regressed": true,
+        "avg_margin_not_regressed": false,
+        "avg_margin_positive": true,
+        "worst_dd_within_envelope": false
+      },
+      "n_bucket": 10,
+      "v41": {
+        "pass_rate": 0.8,
+        "worst_dd": 0.14686618233289034,
+        "avg_margin": 0.08569423363759299
+      },
+      "v42": {
+        "pass_rate": 0.7,
+        "worst_dd": 0.1452780659632252,
+        "avg_margin": 0.029864851487418485
+      }
+    },
+    "B_independent_seeds": {
+      "core_pass": true,
+      "envelope_ok": true,
+      "checks": {
+        "pass_rate_not_regressed": true,
+        "worst_dd_not_regressed": true,
+        "avg_margin_not_regressed": true,
+        "avg_margin_positive": true,
+        "worst_dd_within_envelope": true
+      },
+      "n_bucket": 5,
+      "v41": {
+        "pass_rate": 1.0,
+        "worst_dd": 0.1015348832737696,
+        "avg_margin": 0.15046835771415162
+      },
+      "v42": {
+        "pass_rate": 1.0,
+        "worst_dd": 0.11331876374622978,
+        "avg_margin": 0.14059821133982686
+      }
+    },
+    "C_block_bootstrap": {
+      "core_pass": false,
+      "envelope_ok": false,
+      "checks": {
+        "pass_rate_not_regressed": false,
+        "worst_dd_not_regressed": false,
+        "avg_margin_not_regressed": true,
+        "avg_margin_positive": true,
+        "worst_dd_within_envelope": false
+      },
+      "n_bucket": 30,
+      "v41": {
+        "pass_rate": 0.9333333333333333,
+        "worst_dd": 0.15127889670825298,
+        "avg_margin": 0.2357997038537031
+      },
+      "v42": {
+        "pass_rate": 0.8666666666666667,
+        "worst_dd": 0.17527434208888998,
+        "avg_margin": 0.2458739272742288
+      }
+    }
+  },
+  "conclusion": "OVERFIT_SIGNATURE",
+  "envelope_note": "v4_2 部分通道超出设计包线(极端OOS幅度天然突破策略族上限,与过拟合无关)"
+}

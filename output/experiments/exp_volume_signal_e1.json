@@ -1,0 +1,313 @@
+{
+  "coverage": {
+    "纳指ETF": {
+      "n_days": 3211,
+      "start": "2013-05-15",
+      "end": "2026-07-30",
+      "n_weeks": 677
+    },
+    "红利低波ETF": {
+      "n_days": 1824,
+      "start": "2019-01-18",
+      "end": "2026-07-30",
+      "n_weeks": 385
+    },
+    "中证500ETF": {
+      "n_days": 3248,
+      "start": "2013-03-15",
+      "end": "2026-07-30",
+      "n_weeks": 677
+    },
+    "黄金ETF": {
+      "n_days": 3162,
+      "start": "2013-07-29",
+      "end": "2026-07-30",
+      "n_weeks": 666
+    },
+    "国债ETF": {
+      "n_days": 3244,
+      "start": "2013-03-25",
+      "end": "2026-07-30",
+      "n_weeks": 677
+    }
+  },
+  "rank_ic": {
+    "volume_change": {
+      "mean_IC": 0.009036144578313246,
+      "std_IC": 0.5159004631226802,
+      "t_stat": 0.4513373690392084,
+      "n_weeks": 664,
+      "ir": 0.01751528681253474,
+      "pct_positive": 0.46536144578313254
+    },
+    "volume_ma_ratio": {
+      "mean_IC": 0.03643292682926828,
+      "std_IC": 0.540408682648306,
+      "t_stat": 1.7267269332378594,
+      "n_weeks": 656,
+      "ir": 0.06741736022953311,
+      "pct_positive": 0.49390243902439024
+    },
+    "price_volume_divergence": {
+      "mean_IC": 0.05280728376327769,
+      "std_IC": 0.535141843725545,
+      "t_stat": 2.533189189937957,
+      "n_weeks": 659,
+      "ir": 0.09867904067386038,
+      "pct_positive": 0.5204855842185129
+    },
+    "turnover_intensity": {
+      "mean_IC": 0.009624060150375934,
+      "std_IC": 0.48094269274709167,
+      "t_stat": 0.516031033901044,
+      "n_weeks": 665,
+      "ir": 0.02001082518876493,
+      "pct_positive": 0.45864661654135336
+    },
+    "volume_volatility": {
+      "mean_IC": 0.0010654490106544903,
+      "std_IC": 0.5390804140612919,
+      "t_stat": 0.05065960532063672,
+      "n_weeks": 657,
+      "ir": 0.0019764194410768405,
+      "pct_positive": 0.4748858447488584
+    }
+  },
+  "orthogonality": {
+    "volume_change": {
+      "corr_with_momentum": 0.012923112571253517,
+      "corr_with_volatility": -0.026059719647212574,
+      "orthogonal_to_both": true,
+      "n_obs": 3032
+    },
+    "volume_ma_ratio": {
+      "corr_with_momentum": 0.023564686791569197,
+      "corr_with_volatility": 0.009024668659929567,
+      "orthogonal_to_both": true,
+      "n_obs": 3019
+    },
+    "price_volume_divergence": {
+      "corr_with_momentum": 0.28720510442735436,
+      "corr_with_volatility": -0.059502134107336235,
+      "orthogonal_to_both": true,
+      "n_obs": 3025
+    },
+    "turnover_intensity": {
+      "corr_with_momentum": 0.024253459156237035,
+      "corr_with_volatility": 0.3459429853838446,
+      "orthogonal_to_both": false,
+      "n_obs": 3033
+    },
+    "volume_volatility": {
+      "corr_with_momentum": -0.009011083901866015,
+      "corr_with_volatility": 0.006391175314250162,
+      "orthogonal_to_both": true,
+      "n_obs": 2995
+    }
+  },
+  "autocorrelation": {
+    "volume_change": {
+      "mean_AC1": -0.32592187143816775,
+      "per_etf_AC1": {
+        "纳指ETF": -0.3274654321510363,
+        "红利低波ETF": -0.410175784710097,
+        "中证500ETF": -0.35348982577380467,
+        "黄金ETF": -0.30730704622589367,
+        "国债ETF": -0.23117126833000717
+      }
+    },
+    "volume_ma_ratio": {
+      "mean_AC1": 0.5103910310326757,
+      "per_etf_AC1": {
+        "纳指ETF": 0.5234688804933094,
+        "红利低波ETF": 0.39076987965866716,
+        "中证500ETF": 0.42574057859917197,
+        "黄金ETF": 0.6268433209796238,
+        "国债ETF": 0.5851324954326063
+      }
+    },
+    "price_volume_divergence": {
+      "mean_AC1": 0.8573491089721978,
+      "per_etf_AC1": {
+        "纳指ETF": 0.8535997294821526,
+        "红利低波ETF": 0.859789424087316,
+        "中证500ETF": 0.8513298051147602,
+        "黄金ETF": 0.8832623689489403,
+        "国债ETF": 0.8387642172278202
+      }
+    },
+    "turnover_intensity": {
+      "mean_AC1": 0.862077487398999,
+      "per_etf_AC1": {
+        "纳指ETF": 0.8597597420013706,
+        "红利低波ETF": 0.9065379508475845,
+        "中证500ETF": 0.7971770911427583,
+        "黄金ETF": 0.8904206816275749,
+        "国债ETF": 0.8564919713757067
+      }
+    },
+    "volume_volatility": {
+      "mean_AC1": 0.39710495930086004,
+      "per_etf_AC1": {
+        "纳指ETF": 0.34359026139278,
+        "红利低波ETF": 0.43296973513798714,
+        "中证500ETF": 0.37766714908892524,
+        "黄金ETF": 0.36265444475478137,
+        "国债ETF": 0.46864320612982613
+      }
+    }
+  },
+  "quintile_returns": {
+    "volume_change": {
+      "top_mean_annual": 0.11427181429304162,
+      "bot_mean_annual": 0.10133647135640662,
+      "spread_annual": 0.012935342936635012,
+      "spread_t_stat": 0.28741296618273937,
+      "n_weeks": 664,
+      "spread_positive_pct": 0.49698795180722893
+    },
+    "volume_ma_ratio": {
+      "top_mean_annual": 0.1337093272379579,
+      "bot_mean_annual": 0.04030859086241619,
+      "spread_annual": 0.09340073637554167,
+      "spread_t_stat": 1.9340722712570995,
+      "n_weeks": 656,
+      "spread_positive_pct": 0.5152439024390244
+    },
+    "price_volume_divergence": {
+      "top_mean_annual": 0.14105200335519694,
+      "bot_mean_annual": 0.05641624988143277,
+      "spread_annual": 0.08463575347376417,
+      "spread_t_stat": 1.8348905549977799,
+      "n_weeks": 659,
+      "spread_positive_pct": 0.5311077389984825
+    },
+    "turnover_intensity": {
+      "top_mean_annual": 0.0780193699715596,
+      "bot_mean_annual": 0.09316115333068405,
+      "spread_annual": -0.015141783359124455,
+      "spread_t_stat": -0.3627733122456543,
+      "n_weeks": 665,
+      "spread_positive_pct": 0.5097744360902255
+    },
+    "volume_volatility": {
+      "top_mean_annual": 0.07528423378603154,
+      "bot_mean_annual": 0.09242222672271473,
+      "spread_annual": -0.017137992936683204,
+      "spread_t_stat": -0.37346925416202187,
+      "n_weeks": 657,
+      "spread_positive_pct": 0.5053272450532724
+    }
+  },
+  "qdii_comparison": {
+    "volume_change": {
+      "per_etf_IC": {
+        "纳指ETF": -0.002055440832772543,
+        "红利低波ETF": -0.009008516878180254,
+        "中证500ETF": -0.0802706598492191,
+        "黄金ETF": -0.03645275463401671,
+        "国债ETF": -0.016381733866326426
+      },
+      "qdii_ic": -0.002055440832772543,
+      "domestic_mean_ic": -0.044368382783187416,
+      "qdii_anomalous": false
+    },
+    "volume_ma_ratio": {
+      "per_etf_IC": {
+        "纳指ETF": -0.003914053550246957,
+        "红利低波ETF": -0.05174058776542207,
+        "中证500ETF": -0.012899503163483785,
+        "黄金ETF": -0.02682171212878631,
+        "国债ETF": -0.049596216618992654
+      },
+      "qdii_ic": -0.003914053550246957,
+      "domestic_mean_ic": -0.02977247730375425,
+      "qdii_anomalous": false
+    },
+    "price_volume_divergence": {
+      "per_etf_IC": {
+        "纳指ETF": 0.04069096732308664,
+        "红利低波ETF": -0.027753200434788038,
+        "中证500ETF": 0.002693555675029763,
+        "黄金ETF": 0.11325729528633652,
+        "国债ETF": 0.01306518007092178
+      },
+      "qdii_ic": 0.04069096732308664,
+      "domestic_mean_ic": 0.04300534367742936,
+      "qdii_anomalous": false
+    },
+    "turnover_intensity": {
+      "per_etf_IC": {
+        "纳指ETF": -0.0325140923654707,
+        "红利低波ETF": -0.02359088490932009,
+        "中证500ETF": -0.002723428157778136,
+        "黄金ETF": -0.019943977474450952,
+        "国债ETF": -0.10194393216777035
+      },
+      "qdii_ic": -0.0325140923654707,
+      "domestic_mean_ic": -0.041537112599999815,
+      "qdii_anomalous": false
+    },
+    "volume_volatility": {
+      "per_etf_IC": {
+        "纳指ETF": -0.010809608724949175,
+        "红利低波ETF": 0.03833161966193123,
+        "中证500ETF": 0.03878983135273412,
+        "黄金ETF": -0.03822676942082143,
+        "国债ETF": -0.008235792417692499
+      },
+      "qdii_ic": -0.010809608724949175,
+      "domestic_mean_ic": -0.0025575768285932697,
+      "qdii_anomalous": false
+    }
+  },
+  "economic_intuition": {
+    "high_volume_weeks": {
+      "mean_fwd_ret_annual": 0.07202586735586188,
+      "n_obs": 471
+    },
+    "low_volume_weeks": {
+      "mean_fwd_ret_annual": 0.1520917881968859,
+      "n_obs": 742
+    },
+    "interpretation": "缩量买入 表现更优"
+  },
+  "gate_decision": {
+    "verdict": "GO",
+    "go_factors": [
+      "price_volume_divergence"
+    ],
+    "conditional_factors": [
+      "volume_ma_ratio"
+    ],
+    "high_corr_factors": [],
+    "nogo_reasons": [],
+    "details": {
+      "volume_change": {
+        "abs_IC": 0.009036144578313246,
+        "abs_t": 0.4513373690392084,
+        "orthogonal": true
+      },
+      "volume_ma_ratio": {
+        "abs_IC": 0.03643292682926828,
+        "abs_t": 1.7267269332378594,
+        "orthogonal": true
+      },
+      "price_volume_divergence": {
+        "abs_IC": 0.05280728376327769,
+        "abs_t": 2.533189189937957,
+        "orthogonal": true
+      },
+      "turnover_intensity": {
+        "abs_IC": 0.009624060150375934,
+        "abs_t": 0.516031033901044,
+        "orthogonal": false
+      },
+      "volume_volatility": {
+        "abs_IC": 0.0010654490106544903,
+        "abs_t": 0.05065960532063672,
+        "orthogonal": true
+      }
+    }
+  }
+}

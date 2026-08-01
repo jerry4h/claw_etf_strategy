@@ -123,6 +123,15 @@ def run_backtest(
         weekly_nav = weekly_nav[weekly_nav.index <= pd.to_datetime(end)]
 
     # === 3. 因子计算 ===
+    # --- PVD: 加载周频成交量数据（仅 pvd_enabled 时）---
+    weekly_vol = None
+    if config.pvd_enabled:
+        from src.data_loader import load_weekly_volume_from_cache
+        _cache_dir = project_root / 'data' / 'experiments' / 'tushare_cache'
+        if _cache_dir.exists():
+            weekly_vol = load_weekly_volume_from_cache(
+                _cache_dir, weekly_nav.index, list(weekly_nav.columns))
+
     config_dict = {
         'factors': {
             'mom_window': config.mom_window,
@@ -135,9 +144,12 @@ def run_backtest(
             'vol_taper_enabled': config.vol_taper_enabled,
             'vol_taper_window': config.vol_taper_window,
             'vol_taper_len': config.vol_taper_len,
+            'pvd_enabled': config.pvd_enabled,
+            'pvd_window': config.pvd_window,
+            'pvd_min_periods': config.pvd_min_periods,
         }
     }
-    factors = compute_all_factors(weekly_nav, pe_df, config_dict)
+    factors = compute_all_factors(weekly_nav, pe_df, config_dict, weekly_vol=weekly_vol)
     momentum = factors['momentum']
     volatility = factors['volatility']
 
@@ -242,6 +254,20 @@ def run_backtest(
 
     weekly_records = []
 
+    # === PVD 条件激活预计算（循环外一次性，零开销当 pvd_enabled=False）===
+    _pvd_active = config.pvd_enabled and 'pvd' in factors
+    _pvd_values = None
+    _pvd_vol_p25 = _pvd_vol_p75 = 0.0
+    if _pvd_active:
+        _pvd_values = factors['pvd'].values  # (n_weeks, n_etfs)
+        nasdaq_vol_all = vol_values[:, NASDAQ_IDX]
+        valid_nv = nasdaq_vol_all[~np.isnan(nasdaq_vol_all)]
+        if len(valid_nv) > 50:
+            _pvd_vol_p25 = np.percentile(valid_nv, config.pvd_vol_pct_range[0] * 100)
+            _pvd_vol_p75 = np.percentile(valid_nv, config.pvd_vol_pct_range[1] * 100)
+        else:
+            _pvd_vol_p25, _pvd_vol_p75 = 0.10, 0.25
+
     for i in range(start_idx, n_weeks - 1):
         date = w_index[i]
 
@@ -304,6 +330,21 @@ def run_backtest(
                         cwm_val = sigs[etf].get('cwm', 0.0)
                         conc_val = sigs[etf].get('conc', 0.0)
                         scores_vec[j] += config.cwm_weight * cwm_val + config.conc_weight * conc_val
+
+        # --- PVD 条件激活 (v4.5): nasdaq vol 在中位且 top-2 momentum gap < 阈值时注入 ---
+        if _pvd_active:
+            _nv = vol_values[i, NASDAQ_IDX]
+            if not np.isnan(_nv) and _pvd_vol_p25 <= _nv <= _pvd_vol_p75:
+                # 检查 top-2 momentum gap (与 E2b 一致：使用原始动量值，遍历所有 ETF)
+                _valid_mom = [(mom_values[i, j], j) for j in range(n_etfs)
+                              if not np.isnan(mom_values[i, j]) and mom_values[i, j] > -np.inf]
+                if len(_valid_mom) >= 2:
+                    _valid_mom.sort(key=lambda x: x[0], reverse=True)
+                    _gap = _valid_mom[0][0] - _valid_mom[1][0]
+                    if _gap < config.pvd_score_gap_threshold:
+                        for j in off_idx:
+                            if not np.isnan(_pvd_values[i, j]) and scores_vec[j] > -np.inf:
+                                scores_vec[j] += config.pvd_w * _pvd_values[i, j]
 
         # --- 选 top_n (or softmax all-offensive) ---
         off_scores = [(scores_vec[j], j) for j in off_idx if not np.isnan(scores_vec[j])]

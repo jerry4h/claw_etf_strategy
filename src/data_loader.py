@@ -169,3 +169,64 @@ def load_pe_percentile(pe_path: str | Path) -> pd.DataFrame:
     df = pd.read_csv(pe_path, index_col=0, parse_dates=True)
     df = df.dropna()
     return df
+
+
+# ETF 代码 → tushare_cache 文件名后缀映射
+_ETF_CACHE_CODE_MAP = {
+    '纳指ETF': '513100SH',
+    '红利低波ETF': '512890SH',
+    '中证500ETF': '510500SH',
+    '黄金ETF': '518880SH',
+    '国债ETF': '511010SH',
+}
+
+
+def load_weekly_volume_from_cache(
+    cache_dir: str | Path,
+    weekly_index: pd.DatetimeIndex,
+    etf_names: list[str] | None = None,
+) -> pd.DataFrame:
+    """从 tushare_cache 日频 CSV 读取 vol 列，按 ISO 周聚合为周频成交量，与 weekly_nav 对齐。
+
+    Args:
+        cache_dir: tushare_cache 目录路径
+        weekly_index: weekly_nav.index（周频日期索引）
+        etf_names: ETF 名称列表，默认使用标准 5-ETF
+
+    Returns:
+        DataFrame (n_weeks, n_etfs)，列顺序与 etf_names 一致，
+        红利低波 pre-2019-01-18 为 NaN。
+    """
+    cache_dir = Path(cache_dir)
+    if etf_names is None:
+        etf_names = ETFS
+
+    # 建立 ISO (year, week) -> nav_date 映射
+    nav_week_map: dict[tuple[int, int], pd.Timestamp] = {}
+    for dt in weekly_index:
+        iy = dt.isocalendar().year
+        iw = dt.isocalendar().week
+        nav_week_map[(iy, iw)] = dt
+
+    weekly_vol = pd.DataFrame(index=weekly_index, columns=etf_names, dtype=float)
+
+    for etf_name in etf_names:
+        code = _ETF_CACHE_CODE_MAP.get(etf_name)
+        if code is None:
+            continue
+        csv_path = cache_dir / f'fund_daily_{code}.csv'
+        if not csv_path.exists():
+            continue
+        daily = pd.read_csv(csv_path)
+        daily['trade_date'] = pd.to_datetime(daily['trade_date'], format='%Y%m%d')
+        daily = daily.sort_values('trade_date').reset_index(drop=True)
+        daily['_iy'] = daily['trade_date'].dt.isocalendar().year.values
+        daily['_iw'] = daily['trade_date'].dt.isocalendar().week.values
+
+        for (year, week), grp in daily.groupby(['_iy', '_iw']):
+            nav_date = nav_week_map.get((year, week))
+            if nav_date is None:
+                continue
+            weekly_vol.loc[nav_date, etf_name] = grp['vol'].sum()
+
+    return weekly_vol.astype(float)
