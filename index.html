@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>虾池ETF轮动策略 — 实时看板</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b1121; --card: #151e34; --card-hover: #1c2844;
+    --text: #e8edf5; --muted: #8892a8; --accent: #60a5fa;
+    --green: #34d399; --red: #f87171; --orange: #fb923c;
+    --yellow: #facc15; --gold: #fbbf24; --border: #1e2a45;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+         background: var(--bg); color: var(--text); padding: 24px; min-height: 100vh; }
+  .container { max-width: 1280px; margin: 0 auto; }
+
+  /* Header */
+  .header { margin-bottom: 28px; }
+  .header h1 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg,#60a5fa,#a78bfa);
+               -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header .sub { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+  .header .sub em { color: var(--text); font-style: normal; }
+
+  /* Metric cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+           gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--card); border-radius: 10px; padding: 14px 16px; border: 1px solid var(--border);
+          transition: border-color 0.2s, background 0.2s; }
+  .card:hover { border-color: var(--accent); background: var(--card-hover); }
+  .card .l { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  .card .v { font-size: 1.35rem; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .card .s { font-size: 0.7rem; color: var(--muted); margin-top: 1px; }
+  .g { color: var(--green) }  .r { color: var(--red) }  .o { color: var(--orange) }
+  .a { color: var(--accent) } .y { color: var(--yellow) }
+
+  /* Panel */
+  .panel { background: var(--card); border-radius: 10px; padding: 18px; border: 1px solid var(--border); }
+  .panel h2 { font-size: 0.8rem; color: var(--muted); margin-bottom: 14px;
+              text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .grid-2, .grid-3, .grid-2-1 { grid-template-columns: 1fr; } }
+
+  /* Holdings */
+  .ht { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .ht th { text-align: left; color: var(--muted); padding: 6px 8px; font-weight: 500;
+           border-bottom: 1px solid var(--border); }
+  .ht td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .ht tr:last-child td { border: none; }
+  .hbar { background: var(--border); border-radius: 4px; height: 16px; overflow: hidden; width: 100px; }
+  .hfill { height: 100%; border-radius: 4px; }
+
+  /* ETF Stats */
+  .st { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .st th { text-align: left; color: var(--muted); padding: 5px 8px; font-weight: 500;
+           border-bottom: 1px solid var(--border); }
+  .st td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  .st tr:hover td { background: rgba(96,165,250,0.04); }
+
+  /* Recent cards */
+  .rc { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .rc-item { background: rgba(11,17,33,0.6); border-radius: 8px; padding: 12px; text-align: center; }
+  .rc-item .lbl { font-size: 0.75rem; color: var(--muted); }
+  .rc-item .val { font-size: 1.15rem; font-weight: 700; margin-top: 4px; }
+  .rc-item .sub { font-size: 0.65rem; color: var(--muted); margin-top: 3px; }
+
+  /* Params grid */
+  .px { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .px-item { background: rgba(11,17,33,0.6); border-radius: 6px; padding: 6px 8px; text-align: center; }
+  .px-item .k { font-size: 0.65rem; color: var(--muted); }
+  .px-item .v { font-size: 0.82rem; font-weight: 600; margin-top: 2px; color: var(--accent); }
+
+  /* Charts */
+  .chart-wrap { position: relative; width: 100%; }
+  .chart-wrap canvas { width: 100% !important; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🦐 虾池ETF轮动策略 · 实时看板</h1>
+    <div class="sub" id="header-sub">加载中...</div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="cards" id="metric-cards"></div>
+
+  <!-- NAV + Drawdown -->
+  <div class="grid-2-1">
+    <div class="panel">
+      <h2>📈 净值曲线</h2>
+      <div class="chart-wrap"><canvas id="navChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>🎯 当前持仓</h2>
+      <div id="holdings-content">加载中...</div>
+      <div id="offdef-summary" style="margin-top:12px;font-size:0.85rem;display:flex;gap:16px;"></div>
+    </div>
+  </div>
+
+  <!-- Defense + Annual -->
+  <div class="grid-2">
+    <div class="panel">
+      <h2>🛡️ 防御比例</h2>
+      <div class="chart-wrap"><canvas id="defenseChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>📊 年度收益</h2>
+      <div class="chart-wrap"><canvas id="annualChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Recent + ETF Stats -->
+  <div class="grid-2">
+    <div class="panel">
+      <h2>⏱️ 近期表现</h2>
+      <div class="rc" id="recent-cards"></div>
+    </div>
+    <div class="panel">
+      <h2>📋 ETF 全周期统计</h2>
+      <table class="st"><thead><tr><th>ETF</th><th>平均权重</th><th>持有周</th><th>持有率</th></tr></thead>
+      <tbody id="etf-stats-body"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Params -->
+  <div class="panel" style="margin-bottom:16px;">
+    <h2>⚙️ 策略参数</h2>
+    <div class="px" id="params-content"></div>
+  </div>
+
+</div>
+
+<script>
+(async function() {
+  const res = await fetch('dashboard/data.json');
+  const d = await res.json();
+  const {meta,metrics: m,nav:navData,defense:defData,nasdaq_vol:nvData,
+         holdings,annual_returns:ann,etf_stats:etfS,recent_ytd:rytd,
+         recent_year1:r1y,recent_month3:r3m,params} = d;
+
+  // === Header ===
+  document.getElementById('header-sub').innerHTML =
+    `${meta.strategy} · <em>v${meta.version}</em> · ${meta.data_range} · 更新: ${meta.generated_at}`;
+
+  // === Metric Cards ===
+  const cards = [
+    {l:'夏普比率', v:m.sharpe.toFixed(3), c:'a'},
+    {l:'年化收益', v:m.annual_return+'%', c:+m.annual_return>10?'g':'o'},
+    {l:'最大回撤', v:m.max_drawdown+'%', c:'r'},
+    {l:'当前回撤', v:m.current_drawdown+'%', c:+m.current_drawdown<2?'g':(+m.current_drawdown<4?'o':'r')},
+    {l:'卡尔马', v:m.calmar.toFixed(2), c:'a'},
+    {l:'年化波动', v:m.annual_vol+'%', c:'o'},
+    {l:'周胜率', v:m.win_rate+'%', c:'g'},
+    {l:'防御周数', v:m.defensive_weeks, s:'/'+meta.weeks+'周', c:'a'},
+  ];
+  document.getElementById('metric-cards').innerHTML =
+    cards.map(c => `<div class="card"><div class="l">${c.l}</div><div class="v ${c.c}">${c.v}</div>${c.s?`<div class="s">${c.s}</div>`:''}</div>`).join('');
+
+  // === NAV Chart ===
+  new Chart(document.getElementById('navChart'), {
+    type:'line', data:{
+      labels:navData.dates,
+      datasets:[{
+        label:'净值', data:navData.values,
+        borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)',
+        fill:true, tension:0.1, pointRadius:0, borderWidth:1.5,
+      }]
+    }, options:{
+      responsive:true, maintainAspectRatio:true, aspectRatio:2.2,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'NAV: '+c.parsed.y.toFixed(3)+'x'}}},
+      scales:{
+        x:{ticks:{maxTicksLimit:8,color:'#8892a8',font:{size:9}},grid:{color:'rgba(30,42,69,0.5)'}},
+        y:{ticks:{color:'#8892a8',font:{size:9},callback:v=>v.toFixed(1)+'x'},grid:{color:'rgba(30,42,69,0.5)'}},
+      },
+      interaction:{mode:'nearest',axis:'x',intersect:false},
+    }
+  });
+
+  // === Holdings ===
+  const catClr = {'进攻':{c:'#f59e0b',b:'bg-amber'}, '防御':{c:'#60a5fa',b:'bg-blue'}};
+  let htm = '<table class="ht"><thead><tr><th>ETF</th><th>仓位</th><th></th></tr></thead><tbody>';
+  for (const h of holdings) {
+    if (h.weight < 0.1) continue;
+    const clr = catClr[h.category].c;
+    htm += `<tr><td><span style="color:${clr}">${h.category==='进攻'?'⚔️':'🛡️'}</span> ${h.name}</td>
+            <td style="font-weight:600">${h.weight.toFixed(1)}%</td>
+            <td><div class="hbar"><div class="hfill" style="width:${h.weight}%;background:${clr}"></div></div></td></tr>`;
+  }
+  htm += '</tbody></table>';
+  document.getElementById('holdings-content').innerHTML = htm;
+
+  // Offense/Defense summary
+  const off = holdings.filter(h=>h.category==='进攻').reduce((s,h)=>s+h.weight,0);
+  const def = holdings.filter(h=>h.category==='防御').reduce((s,h)=>s+h.weight,0);
+  document.getElementById('offdef-summary').innerHTML =
+    `<span style="color:#f59e0b">⚔️ 进攻 ${off.toFixed(1)}%</span>
+     <span style="color:#60a5fa">🛡️ 防御 ${def.toFixed(1)}%</span>`;
+
+  // === Defense Chart ===
+  new Chart(document.getElementById('defenseChart'), {
+    type:'line', data:{
+      labels:defData.dates,
+      datasets:[{
+        label:'防御比', data:defData.ratios,
+        borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.12)',
+        fill:true, tension:0.1, pointRadius:0, borderWidth:1.2,
+      }]
+    }, options:{
+      responsive:true, maintainAspectRatio:true, aspectRatio:2.5,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{maxTicksLimit:8,color:'#8892a8',font:{size:9}},grid:{color:'rgba(30,42,69,0.5)'}},
+        y:{min:0,max:100,ticks:{color:'#8892a8',font:{size:9},callback:v=>v+'%'},grid:{color:'rgba(30,42,69,0.5)'}},
+      },
+    }
+  });
+
+  // === Annual Returns ===
+  new Chart(document.getElementById('annualChart'), {
+    type:'bar', data:{
+      labels:ann.map(a=>a.year),
+      datasets:[{
+        label:'年收益', data:ann.map(a=>a.return),
+        backgroundColor:ann.map(a=>a.return>=0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.7)'),
+        borderColor:ann.map(a=>a.return>=0?'#34d399':'#f87171'),
+        borderWidth:1, borderRadius:3,
+      }]
+    }, options:{
+      responsive:true, maintainAspectRatio:true, aspectRatio:2.5,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{
+          afterLabel: function(ctx) {
+            const a = ann[ctx.dataIndex];
+            return '平均防御: '+a.avg_defense+'%';
+          }
+        }}
+      },
+      scales:{
+        x:{ticks:{color:'#8892a8',font:{size:9}},grid:{display:false}},
+        y:{ticks:{color:'#8892a8',font:{size:9},callback:v=>v+'%'},grid:{color:'rgba(30,42,69,0.5)'}},
+      },
+    }
+  });
+
+  // === Recent Performance ===
+  const recentItems = [
+    {l:'今年 (YTD)', d:rytd}, {l:'近1年', d:r1y}, {l:'近3月', d:r3m},
+  ];
+  document.getElementById('recent-cards').innerHTML =
+    recentItems.map(r => {
+      const c = r.d.return>0?'g':'r';
+      return `<div class="rc-item"><div class="lbl">${r.l}</div>
+              <div class="val ${c}">${r.d.return>0?'+':''}${r.d.return}%</div>
+              <div class="sub">最大回撤 ${r.d.max_drawdown}%</div></div>`;
+    }).join('');
+
+  // === ETF Stats ===
+  document.getElementById('etf-stats-body').innerHTML =
+    etfS.map(e => `<tr><td>${e.name}</td><td>${e.avg_weight}%</td><td>${e.held_weeks}</td><td>${e.held_pct}%</td></tr>`).join('');
+
+  // === Params ===
+  const paramLabels = {
+    mom_w:'动量权重',vol_w:'波动权重',top_n:'选TOP-N',score_margin:'分数门槛',
+    rebalance_threshold:'调仓阈值',max_single_alloc:'单标上限',def_alloc:'基准防御',
+    step_low:'防御下限',step_high:'防御上限',max_def:'最大防御',inv_vol_window:'InvVol窗口',
+    vol_taper_enabled:'Taper',vol_taper_window:'Taper窗口',vol_taper_len:'Taper降权',
+    pvd_enabled:'PVD',pvd_w:'PVD权重',crisis_corr_ewma_enabled:'EWMA相关',
+  };
+  document.getElementById('params-content').innerHTML =
+    Object.entries(params)
+      .filter(([k])=>paramLabels[k])
+      .map(([k,v])=>`<div class="px-item"><div class="k">${paramLabels[k]}</div>
+           <div class="v">${typeof v==='boolean'?(v?'✅':'❌'):v}</div></div>`).join('');
+})();
+</script>
+</body>
+</html>
