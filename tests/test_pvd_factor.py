@@ -159,15 +159,15 @@ class TestPVDNanHandling:
 
 class TestBaselineUnchanged:
     def test_v43_sharpe_unchanged(self):
-        """pvd_enabled=false (v4.3) 时 Sharpe 与 T1 前完全相同 (1.4878)."""
+        """pvd_enabled=false (v4.3) 时 Sharpe 锁定基线 (数据窗口至 2026-07-31)."""
         from src.backtest import run_backtest
         cfg = load_config(PROJECT / 'config/strategy_v4_3.yaml')
         assert cfg.pvd_enabled is False
         result = run_backtest(cfg)
         sharpe = result.metrics['sharpe_ratio']
         # Pin to known baseline value
-        assert abs(sharpe - 1.4878) < 0.0005, \
-            f"Baseline Sharpe drift: got {sharpe:.4f}, expected 1.4878"
+        assert abs(sharpe - 1.4963) < 0.0005, \
+            f"Baseline Sharpe drift: got {sharpe:.4f}, expected 1.4963"
 
 
 # ============================================================

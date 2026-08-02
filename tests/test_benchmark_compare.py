@@ -28,8 +28,9 @@ def full():
     return _bc.compute_benchmarks(cfg)
 
 
-def test_window_is_665_weeks(full):
-    assert full["window"]["weeks"] == 665, 有效周数减少
+def test_window_is_666_weeks(full):
+    # 数据窗口至 2026-07-31 (678 周 NAV, 666 有效周)
+    assert full["window"]["weeks"] == 666, "有效周数变化"
     # start date shifts with EWMA (longer warmup)
     assert full["window"]["start"] == "2013-08-09"
     assert full["window"]["n_valid_etf"] == 5
