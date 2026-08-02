@@ -108,9 +108,9 @@ _active_replace_cols = []
 _patch_mode = None   # 'real' or 'ratio'
 
 
-def _patched_compute_all_factors(weekly_nav, pe_df=None, config=None):
+def _patched_compute_all_factors(*args, **kwargs):
     """Wrapper that replaces specific vol columns after normal computation."""
-    factors = _original_caf(weekly_nav, pe_df, config)
+    factors = _original_caf(*args, **kwargs)
     if not _active_replace_cols:
         return factors
 

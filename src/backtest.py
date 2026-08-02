@@ -18,7 +18,7 @@ from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
     compute_ashare_vol_boost,
     compute_inv_vol_weights, compute_score_margin, compute_snr_margin,
-    apply_trend_confirmation,
+    apply_trend_confirmation, compute_pvd_vol_gates,
 )
 from src.strategy import (
     StrategyConfig, load_config,
@@ -257,16 +257,13 @@ def run_backtest(
     # === PVD 条件激活预计算（循环外一次性，零开销当 pvd_enabled=False）===
     _pvd_active = config.pvd_enabled and 'pvd' in factors
     _pvd_values = None
-    _pvd_vol_p25 = _pvd_vol_p75 = 0.0
+    _pvd_gate_lo = _pvd_gate_hi = None
     if _pvd_active:
         _pvd_values = factors['pvd'].values  # (n_weeks, n_etfs)
-        nasdaq_vol_all = vol_values[:, NASDAQ_IDX]
-        valid_nv = nasdaq_vol_all[~np.isnan(nasdaq_vol_all)]
-        if len(valid_nv) > 50:
-            _pvd_vol_p25 = np.percentile(valid_nv, config.pvd_vol_pct_range[0] * 100)
-            _pvd_vol_p75 = np.percentile(valid_nv, config.pvd_vol_pct_range[1] * 100)
-        else:
-            _pvd_vol_p25, _pvd_vol_p75 = 0.10, 0.25
+        # 审查修复(前视偏差): 原全样本 p25/p75 含未来数据, 改为 expanding 无前视门限
+        # (共享 engine_core.compute_pvd_vol_gates, 与 rebalance_live 同口径)
+        _pvd_gate_lo, _pvd_gate_hi = compute_pvd_vol_gates(
+            vol_values[:, NASDAQ_IDX], config.pvd_vol_pct_range)
 
     for i in range(start_idx, n_weeks - 1):
         date = w_index[i]
@@ -334,7 +331,7 @@ def run_backtest(
         # --- PVD 条件激活 (v4.5): nasdaq vol 在中位且 top-2 momentum gap < 阈值时注入 ---
         if _pvd_active:
             _nv = vol_values[i, NASDAQ_IDX]
-            if not np.isnan(_nv) and _pvd_vol_p25 <= _nv <= _pvd_vol_p75:
+            if not np.isnan(_nv) and _pvd_gate_lo[i] <= _nv <= _pvd_gate_hi[i]:
                 # 检查 top-2 momentum gap (与 E2b 一致：使用原始动量值，遍历所有 ETF)
                 _valid_mom = [(mom_values[i, j], j) for j in range(n_etfs)
                               if not np.isnan(mom_values[i, j]) and mom_values[i, j] > -np.inf]

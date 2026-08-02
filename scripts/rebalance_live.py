@@ -40,6 +40,7 @@ from src.engine_core import (
     compute_crisis_boost, compute_dynamic_hongli,
     compute_inv_vol_weights, compute_score_margin,
     apply_trend_confirmation, compute_ashare_vol_boost,
+    compute_pvd_vol_gates,
 )
 
 def _apply_cfg(c):
@@ -108,7 +109,7 @@ def load(csv):
 
 # --- PVD 模块级缓存（engine_factors 首次加载后复用）---
 _pvd_cache = {"loaded": False, "pvd_df": None, "pvd_active": False,
-              "vol_p25": 0.0, "vol_p75": 0.0}
+              "gate_lo": None, "gate_hi": None}
 
 
 def engine_factors(nav):
@@ -132,7 +133,7 @@ def engine_factors(nav):
 
     # --- PVD: 加载周频成交额并计算 PVD（pvd_enabled 时首次加载，后续复用）---
     if getattr(cfg, 'pvd_enabled', False) and not _pvd_cache["loaded"]:
-        _cache_dir = PROJECT / 'data' / 'experiments' / ('tu' + 'share_cache')
+        _cache_dir = PROJECT / 'data' / 'experiments' / 'tushare_cache'
         if _cache_dir.exists():
             try:
                 weekly_vol = load_weekly_volume_from_cache(_cache_dir, nav.index, list(nav.columns))
@@ -140,15 +141,12 @@ def engine_factors(nav):
                                            window=cfg.pvd_window, min_periods=cfg.pvd_min_periods)
                 _pvd_cache["pvd_df"] = pvd_df
                 _pvd_cache["pvd_active"] = True
-                # 预计算纳指 vol 分位数阈值
-                nasdaq_vol_all = v20['纳指ETF'].dropna().values
-                if len(nasdaq_vol_all) > 50:
-                    _pvd_cache["vol_p25"] = np.percentile(nasdaq_vol_all,
-                                                         cfg.pvd_vol_pct_range[0] * 100)
-                    _pvd_cache["vol_p75"] = np.percentile(nasdaq_vol_all,
-                                                         cfg.pvd_vol_pct_range[1] * 100)
-                else:
-                    _pvd_cache["vol_p25"], _pvd_cache["vol_p75"] = 0.10, 0.25
+                # expanding 无前视门限 (共享 engine_core.compute_pvd_vol_gates,
+                # 与 backtest.py 同口径: 第 i 周仅用截至 i 的历史 vol)
+                gate_lo, gate_hi = compute_pvd_vol_gates(
+                    v20['纳指ETF'].values, cfg.pvd_vol_pct_range)
+                _pvd_cache["gate_lo"] = gate_lo
+                _pvd_cache["gate_hi"] = gate_hi
             except Exception as e:
                 import warnings as _w
                 _w.warn(f"PVD 降级: 成交额缓存加载失败({e}), pvd_enabled 降级为 False")
@@ -212,7 +210,7 @@ def compute(nav, i, prev_sel=None, prev_pending=None, prev_pending_count=0, gap_
     # --- PVD 条件激活 (v4.5): nasdaq vol 在中位且 top-2 momentum gap < 阈值时注入 ---
     if _pvd_cache["pvd_active"]:
         _nv = v20['纳指ETF'].iloc[i] if not pd.isna(v20['纳指ETF'].iloc[i]) else None
-        if _nv is not None and _pvd_cache["vol_p25"] <= _nv <= _pvd_cache["vol_p75"]:
+        if _nv is not None and _pvd_cache["gate_lo"][i] <= _nv <= _pvd_cache["gate_hi"][i]:
             # 检查 top-2 momentum gap（遍历全部 ETF，与 backtest.py 口径一致）
             _mom_vals = [(m4[e].iloc[i], e) for e in ETFS
                          if not pd.isna(m4[e].iloc[i])]
@@ -459,11 +457,16 @@ def main():
             nxt, cur = df.iloc[i + 1], df.iloc[i]
             wr = sum(al.get(e, 0) * (nxt[e] / cur[e] - 1)
                      for e in al if e in df.columns and pd.notna(cur[e]) and cur[e] > 0)
-            nav *= (1 + wr)
+            # 审查修复(verify 漏算交易费): 与引擎同口径扣减换手费
+            # 首周 prev_al={} → turnover=1.0 全额建仓费, 与引擎 last_alloc=zeros 一致
+            turnover = sum(abs(al.get(e, 0) - prev_al.get(e, 0))
+                           for e in set(al) | set(prev_al))
+            fee_cost = turnover * FEE
+            nav *= (1 + wr - fee_cost)
             peak = max(peak, nav)
             dd = (peak - nav) / peak
             dd_max = max(dd_max, dd)
-            wrets.append(wr)
+            wrets.append(wr - fee_cost)
             prev_al = al
             prev_sel = result.selected
             prev_pending = result.pending

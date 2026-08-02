@@ -361,3 +361,37 @@ def apply_trend_confirmation(
         return list(last_selected), pending_selected, pending_count
 
     return candidate_sel, pending_selected, pending_count
+
+
+def compute_pvd_vol_gates(
+    nasdaq_vol,
+    pct_range=(0.25, 0.75),
+    min_samples: int = 50,
+):
+    """PVD 条件激活的纳指 vol 分位数门限 —— expanding 无前视版本。
+
+    审查修复(前视偏差)：原实现用全样本 vol 计算 p25/p75，含未来数据。
+    本函数每周 i 仅用截至 i（含）的历史 vol 计算分位数；有效样本 ≤ min_samples
+    时用默认门限 (0.10, 0.25)。backtest 与 rebalance_live 共用同一实现，杜绝口径分叉。
+
+    Args:
+        nasdaq_vol: 纳指 vol 序列 (1-D array-like, 可含 NaN)。
+        pct_range: (低分位, 高分位) 如 (0.25, 0.75)。
+        min_samples: 有效样本下限（严格大于才启用分位数）。
+
+    Returns:
+        (gate_lo, gate_hi): 与输入等长的 np.ndarray，第 i 位为第 i 周可用的门限。
+    """
+    v = np.asarray(nasdaq_vol, dtype=float)
+    n = len(v)
+    gate_lo = np.full(n, 0.10)
+    gate_hi = np.full(n, 0.25)
+    vals: list[float] = []
+    for i in range(n):
+        if not np.isnan(v[i]):
+            vals.append(float(v[i]))
+        if len(vals) > min_samples:
+            arr = np.asarray(vals)
+            gate_lo[i] = np.percentile(arr, pct_range[0] * 100)
+            gate_hi[i] = np.percentile(arr, pct_range[1] * 100)
+    return gate_lo, gate_hi

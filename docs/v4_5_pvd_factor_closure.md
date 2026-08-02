@@ -144,7 +144,7 @@ Channel C 分析：
 | v4.3 默认 | 0.0099 | PASS (≤ 0.01) |
 | v4.5-pvd | 0.0795 | 结构性 N/A |
 
-v4.5-pvd 偏差原因：`rebalance_live.py` 明确不含 PVD 逻辑（仅回测引擎实现），脚本输出 = v4.4 水平。非回归问题。
+v4.5-pvd 偏差原因（当时）：`rebalance_live.py` 尚未含 PVD 逻辑。**现已同步（见 §8.4），本表为历史记录。**
 
 ### 5.4 门禁总判定
 
@@ -157,7 +157,7 @@ v4.5-pvd 偏差原因：`rebalance_live.py` 明确不含 PVD 逻辑（仅回测�
 | 项目 | 状态 |
 |------|------|
 | 生产默认配置 | 仍 v4.3（用户手动切换至 v4.5-pvd） |
-| `rebalance_live.py` PVD 集成 | 待后续同步（当前仅回测引擎） |
+| `rebalance_live.py` PVD 集成 | 已同步（见 §8.4） |
 | 数据管线 | tushare_cache 增量更新 + 新浪(vol=股)/腾讯(vol=手) 三级链备选 |
 | 远期探索方向 | PVD 窗口自适应、与 crisis_corr 联动、PVD 分位数条件门控 |
 
@@ -227,3 +227,55 @@ Pareto 前沿 bootstrap 验证（100 路径）：
   - 分数验证：1983 个 score 全部 bit-exact 匹配，0 个 top-2 排名差异
   - Δ 来源：verify 循环仓位计算结构差异（v4_3 已有 0.01 基础误差，PVD 增加激活频次导致复合放大）
 - pytest 212 passed
+
+## 9. 审查修复记录（三维审查 + 对抗边界探测后）
+
+### 9.1 Fix 1（Critical）：PVD vol 门限前视偏差
+
+**问题**：`src/backtest.py` 原实现用**全样本**纳指 vol 计算 p25/p75 条件激活门限，
+含未来数据（前视偏差）。影响面：53 周（7.8%）的 PVD 激活决策与无前视版本不同。
+
+**修复**：改为 expanding 无前视门限——第 i 周仅用截至 i（含）的历史 vol 计算分位数，
+有效样本 ≤50 时用默认门限 (0.10, 0.25)。百分位构造逻辑抽为公共函数
+`engine_core.compute_pvd_vol_gates(nasdaq_vol, pct_range, min_samples=50)`，
+`backtest.py` 与 `rebalance_live.py` 复用同一实现，杜绝口径分叉
+（生产环境"当前可见数据"即 expanding 序列最后一点，语义天然一致）。
+
+### 9.2 Fix 2（Critical）：--verify 漏算交易费
+
+`rebalance_live.py --verify` 循环原先 `nav *= (1 + wr)` 未扣交易费，
+是 §8.4 中 Δ=0.0314 的真正根因（分数已 bit-exact，差异全部来自费用）。
+修复：按引擎同口径补 `turnover × FEE` 扣减（首周 prev_al={} → turnover=1.0
+全额建仓费，与引擎 last_alloc=zeros 一致），FEE 由 `_apply_cfg` 与配置 fee_rate 对齐。
+
+### 9.3 修复前后数字对比
+
+| 指标 | 修复前（含前视） | 修复后（无前视） | 门禁 | 判定 |
+|------|-----------------|-----------------|------|------|
+| v4.5-pvd realized Sharpe | 1.6007 | **1.5819** | ≥ 1.5085 (v4.4+0.01) | ✅ |
+| v4.5-pvd MaxDD | 5.80% | **5.80%**（不变） | ≤ 6.10% (+0.3pp) | ✅ |
+| bootstrap 200 路径胜率 | 94.5% | **94.5%** | ≥ 90% | ✅ |
+| bootstrap alpha P10 | +0.076 | **+0.082** | > 0 | ✅ |
+| --verify Δ (v4.3) | 0.0099 | **0.0065** | ≤ 0.02 | ✅ |
+| --verify Δ (v4.5-pvd) | 0.0314 | **0.0065** | ≤ 0.02 | ✅ |
+| v4.3 baseline pin | 1.4878 | 1.4878（零扰动） | 不变 | ✅ |
+| pytest | 212 passed | 212 passed | 全绿 | ✅ |
+
+**结论**：前视偏差移除后 Sharpe 1.6007 → 1.5819（-0.0188，即原立项价值中约 19%
+来自前视泄漏），但仍显著高于 v4.4 底线 1.5085，三项门禁全部通过，立项价值成立。
+verify 双路径 Δ 统一降至 0.0065，费用漏算确认为 §8.4 遗留偏差的根因。
+
+### 9.4 Warnings 清理
+
+- `_exp_hl_vol_e2.py` / `_exp_volume_signal_e2.py`：monkeypatch 包装改为
+  `*args, **kwargs` 透传，兼容 compute_all_factors 新签名（weekly_vol 参数）
+- `_exp_pvd_param_grid.py`：删除重复拼接的第二份内容（保留与 §8.3 一致版本，仅一个 main()）
+- 本文档 §5.3/§7 "rebalance_live 未含 PVD/待后续同步" 旧描述改为 "已同步（见 §8.4）"
+- `rebalance_live.py`：`('tu' + 'share_cache')` 拼接还原为 `'tushare_cache'` 明文，
+  同步调整 `test_premium_sentinel` 导入期检查排除纯路径字符串误报
+
+### 9.5 对抗边界探测结论引用
+
+见 `output/experiments/exp_v45_pvd_stress_boundary.md`（脚本
+`scripts/_exp_v45_stress_boundary.py`）：PVD 在灰区相关性、危机情景、参数扰动
+边界下的失效模式与安全边际探测，为本次审查修复的前置输入。

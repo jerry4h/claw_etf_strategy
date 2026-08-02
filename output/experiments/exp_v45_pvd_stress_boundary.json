@@ -1,0 +1,661 @@
+{
+ "meta": {
+  "date": "2026-08-02",
+  "seeds": [
+   11,
+   22,
+   33,
+   44,
+   55
+  ],
+  "fail_criteria": "median MaxDD>12% OR median Sharpe<0.5 OR median Sharpe<=等权",
+  "note": "合成 DGP 仅生成价格路径; v4_5 的 PVD 在合成数据上 = 真实 amount × 合成价格的滚动相关 ≈ 噪声化 PVD。Q2 对照度量'PVD 作为噪声'的边际影响; 'PVD 作为反向信号'的最坏损害见 Q3b pvd_inverted。",
+  "elapsed_min": 2.2
+ },
+ "q2_sweep": {
+  "baseline": {
+   "params": {},
+   "v4_5": {
+    "strat_sharpe": 1.0913591414270074,
+    "ew_sharpe": 1.0440175744104023,
+    "strat_maxdd": 0.08350021796102773,
+    "ew_maxdd": 0.19126573187830243,
+    "strat_annual": 0.11262213877738403,
+    "ew_annual": 0.13459537825410317,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 5.1
+   },
+   "v4_3": {
+    "strat_sharpe": 1.1643643242982877,
+    "ew_sharpe": 1.0440175744104023,
+    "strat_maxdd": 0.08447848218866952,
+    "ew_maxdd": 0.19126573187830243,
+    "strat_annual": 0.1141700638105736,
+    "ew_annual": 0.13459537825410317,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 4.5
+   }
+  },
+  "sig_1.50": {
+   "params": {
+    "sig_mult": 1.5
+   },
+   "v4_5": {
+    "strat_sharpe": 0.6953538391893811,
+    "ew_sharpe": 0.7365132750749412,
+    "strat_maxdd": 0.10781602370985477,
+    "ew_maxdd": 0.2922531173203528,
+    "strat_annual": 0.08547348535460508,
+    "ew_annual": 0.1374208315495098,
+    "fail": true,
+    "fail_reasons": [
+     "跑输等权(0.70<=0.74)"
+    ],
+    "elapsed_s": 2.8
+   },
+   "v4_3": {
+    "strat_sharpe": 0.7561599718132826,
+    "ew_sharpe": 0.7365132750749412,
+    "strat_maxdd": 0.10509038110586368,
+    "ew_maxdd": 0.2922531173203528,
+    "strat_annual": 0.09196187214870744,
+    "ew_annual": 0.1374208315495098,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 3.2
+   }
+  },
+  "sig_1.75": {
+   "params": {
+    "sig_mult": 1.75
+   },
+   "v4_5": {
+    "strat_sharpe": 0.5479516309908825,
+    "ew_sharpe": 0.6563780200262508,
+    "strat_maxdd": 0.1131131557304698,
+    "ew_maxdd": 0.3391344404723177,
+    "strat_annual": 0.07371661259288054,
+    "ew_annual": 0.1377080439410383,
+    "fail": true,
+    "fail_reasons": [
+     "跑输等权(0.55<=0.66)"
+    ],
+    "elapsed_s": 2.7
+   },
+   "v4_3": {
+    "strat_sharpe": 0.5886122224144814,
+    "ew_sharpe": 0.6563780200262508,
+    "strat_maxdd": 0.12064001347988455,
+    "ew_maxdd": 0.3391344404723177,
+    "strat_annual": 0.07824164946420997,
+    "ew_annual": 0.1377080439410383,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 12.1%>12%",
+     "跑输等权(0.59<=0.66)"
+    ],
+    "elapsed_s": 3.5
+   }
+  },
+  "sig_2.00": {
+   "params": {
+    "sig_mult": 2.0
+   },
+   "v4_5": {
+    "strat_sharpe": 0.419494169295633,
+    "ew_sharpe": 0.5962761924538984,
+    "strat_maxdd": 0.12576248412436877,
+    "ew_maxdd": 0.38473519278693463,
+    "strat_annual": 0.06229196678382998,
+    "ew_annual": 0.13724527657525942,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 12.6%>12%",
+     "Sharpe 0.42<0.5",
+     "跑输等权(0.42<=0.60)"
+    ],
+    "elapsed_s": 2.9
+   },
+   "v4_3": {
+    "strat_sharpe": 0.4288868100960826,
+    "ew_sharpe": 0.5962761924538984,
+    "strat_maxdd": 0.13258692746187073,
+    "ew_maxdd": 0.38473519278693463,
+    "strat_annual": 0.06710405906897066,
+    "ew_annual": 0.13724527657525942,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 13.3%>12%",
+     "Sharpe 0.43<0.5",
+     "跑输等权(0.43<=0.60)"
+    ],
+    "elapsed_s": 3.4
+   }
+  },
+  "sig_2.50": {
+   "params": {
+    "sig_mult": 2.5
+   },
+   "v4_5": {
+    "strat_sharpe": 0.2574357005804966,
+    "ew_sharpe": 0.5121331428828336,
+    "strat_maxdd": 0.1751927362689348,
+    "ew_maxdd": 0.46277446052789173,
+    "strat_annual": 0.05208450873389925,
+    "ew_annual": 0.1340739905947419,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 17.5%>12%",
+     "Sharpe 0.26<0.5",
+     "跑输等权(0.26<=0.51)"
+    ],
+    "elapsed_s": 2.7
+   },
+   "v4_3": {
+    "strat_sharpe": 0.25129852791802765,
+    "ew_sharpe": 0.5121331428828336,
+    "strat_maxdd": 0.15538355420457328,
+    "ew_maxdd": 0.46277446052789173,
+    "strat_annual": 0.05111244518520097,
+    "ew_annual": 0.1340739905947419,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 15.5%>12%",
+     "Sharpe 0.25<0.5",
+     "跑输等权(0.25<=0.51)"
+    ],
+    "elapsed_s": 3.6
+   }
+  },
+  "sig_3.00": {
+   "params": {
+    "sig_mult": 3.0
+   },
+   "v4_5": {
+    "strat_sharpe": 0.21925757432696918,
+    "ew_sharpe": 0.4560374960608774,
+    "strat_maxdd": 0.2279816211620127,
+    "ew_maxdd": 0.5326335156482216,
+    "strat_annual": 0.04839835149743554,
+    "ew_annual": 0.12792101693582492,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 22.8%>12%",
+     "Sharpe 0.22<0.5",
+     "跑输等权(0.22<=0.46)"
+    ],
+    "elapsed_s": 2.6
+   },
+   "v4_3": {
+    "strat_sharpe": 0.23831758861077462,
+    "ew_sharpe": 0.4560374960608774,
+    "strat_maxdd": 0.20632467403332838,
+    "ew_maxdd": 0.5326335156482216,
+    "strat_annual": 0.051458759509938945,
+    "ew_annual": 0.12792101693582492,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 20.6%>12%",
+     "Sharpe 0.24<0.5",
+     "跑输等权(0.24<=0.46)"
+    ],
+    "elapsed_s": 3.1
+   }
+  },
+  "rho_0.85": {
+   "params": {
+    "dgp": "regime_corr",
+    "rho_crisis": 0.85
+   },
+   "v4_5": {
+    "strat_sharpe": 1.3230499966585776,
+    "ew_sharpe": 0.9232789807079765,
+    "strat_maxdd": 0.08097695311238584,
+    "ew_maxdd": 0.17545256512995502,
+    "strat_annual": 0.13900007107649048,
+    "ew_annual": 0.1223577477547988,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 2.7
+   },
+   "v4_3": {
+    "strat_sharpe": 1.345552159302258,
+    "ew_sharpe": 0.9232789807079765,
+    "strat_maxdd": 0.07583058062187094,
+    "ew_maxdd": 0.17545256512995502,
+    "strat_annual": 0.1446187493576443,
+    "ew_annual": 0.1223577477547988,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 3.2
+   }
+  },
+  "rho_0.90": {
+   "params": {
+    "dgp": "regime_corr",
+    "rho_crisis": 0.9
+   },
+   "v4_5": {
+    "strat_sharpe": 1.320531355052755,
+    "ew_sharpe": 0.9196886235060668,
+    "strat_maxdd": 0.07580306856446217,
+    "ew_maxdd": 0.1779764081862722,
+    "strat_annual": 0.13520367731623972,
+    "ew_annual": 0.12202710153213814,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 3.0
+   },
+   "v4_3": {
+    "strat_sharpe": 1.345326028942122,
+    "ew_sharpe": 0.9196886235060668,
+    "strat_maxdd": 0.07287203017646822,
+    "ew_maxdd": 0.1779764081862722,
+    "strat_annual": 0.1446890928679807,
+    "ew_annual": 0.12202710153213814,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 4.6
+   }
+  },
+  "rho_0.95": {
+   "params": {
+    "dgp": "regime_corr",
+    "rho_crisis": 0.95
+   },
+   "v4_5": {
+    "strat_sharpe": 1.309142264075502,
+    "ew_sharpe": 0.9162886788234019,
+    "strat_maxdd": 0.07630569798801808,
+    "ew_maxdd": 0.18021137118612646,
+    "strat_annual": 0.1358411573466738,
+    "ew_annual": 0.12171055197711422,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 3.9
+   },
+   "v4_3": {
+    "strat_sharpe": 1.3263516650534053,
+    "ew_sharpe": 0.9162886788234019,
+    "strat_maxdd": 0.07295359141915174,
+    "ew_maxdd": 0.18021137118612646,
+    "strat_annual": 0.1431157651073116,
+    "ew_annual": 0.12171055197711422,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 5.1
+   }
+  },
+  "muoff_0.6": {
+   "params": {
+    "muoff_mult": 0.6
+   },
+   "v4_5": {
+    "strat_sharpe": 0.7458373030190468,
+    "ew_sharpe": 0.7473985326050346,
+    "strat_maxdd": 0.0942277804605308,
+    "ew_maxdd": 0.2003688609159245,
+    "strat_annual": 0.08377253092236803,
+    "ew_annual": 0.10297070776233697,
+    "fail": true,
+    "fail_reasons": [
+     "跑输等权(0.75<=0.75)"
+    ],
+    "elapsed_s": 3.7
+   },
+   "v4_3": {
+    "strat_sharpe": 0.8565478679965309,
+    "ew_sharpe": 0.7473985326050346,
+    "strat_maxdd": 0.09537413460093515,
+    "ew_maxdd": 0.2003688609159245,
+    "strat_annual": 0.0877745216750303,
+    "ew_annual": 0.10297070776233697,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 3.2
+   }
+  },
+  "muoff_0.4": {
+   "params": {
+    "muoff_mult": 0.4
+   },
+   "v4_5": {
+    "strat_sharpe": 0.5833539616778826,
+    "ew_sharpe": 0.6126050272552881,
+    "strat_maxdd": 0.10035714984050978,
+    "ew_maxdd": 0.20542041353836946,
+    "strat_annual": 0.06950675701954112,
+    "ew_annual": 0.08748419807962016,
+    "fail": true,
+    "fail_reasons": [
+     "跑输等权(0.58<=0.61)"
+    ],
+    "elapsed_s": 2.9
+   },
+   "v4_3": {
+    "strat_sharpe": 0.662469956637732,
+    "ew_sharpe": 0.6126050272552881,
+    "strat_maxdd": 0.10065044076467802,
+    "ew_maxdd": 0.20542041353836946,
+    "strat_annual": 0.07251592125554507,
+    "ew_annual": 0.08748419807962016,
+    "fail": false,
+    "fail_reasons": [],
+    "elapsed_s": 3.8
+   }
+  },
+  "muoff_0.2": {
+   "params": {
+    "muoff_mult": 0.2
+   },
+   "v4_5": {
+    "strat_sharpe": 0.44430856380713163,
+    "ew_sharpe": 0.4778102970043663,
+    "strat_maxdd": 0.10244838276325757,
+    "ew_maxdd": 0.2109269835664015,
+    "strat_annual": 0.05792445864581053,
+    "ew_annual": 0.07221099924429297,
+    "fail": true,
+    "fail_reasons": [
+     "Sharpe 0.44<0.5",
+     "跑输等权(0.44<=0.48)"
+    ],
+    "elapsed_s": 3.1
+   },
+   "v4_3": {
+    "strat_sharpe": 0.47737357919064605,
+    "ew_sharpe": 0.4778102970043663,
+    "strat_maxdd": 0.10364126470247265,
+    "ew_maxdd": 0.2109269835664015,
+    "strat_annual": 0.05836849383500842,
+    "ew_annual": 0.07221099924429297,
+    "fail": true,
+    "fail_reasons": [
+     "Sharpe 0.48<0.5",
+     "跑输等权(0.48<=0.48)"
+    ],
+    "elapsed_s": 3.3
+   }
+  },
+  "muoff_0.0": {
+   "params": {
+    "muoff_mult": 0.0
+   },
+   "v4_5": {
+    "strat_sharpe": 0.310447515748899,
+    "ew_sharpe": 0.34301455592831576,
+    "strat_maxdd": 0.11118833805721709,
+    "ew_maxdd": 0.2133435866666574,
+    "strat_annual": 0.04646146207561519,
+    "ew_annual": 0.057148230047994186,
+    "fail": true,
+    "fail_reasons": [
+     "Sharpe 0.31<0.5",
+     "跑输等权(0.31<=0.34)"
+    ],
+    "elapsed_s": 2.7
+   },
+   "v4_3": {
+    "strat_sharpe": 0.2769600331124301,
+    "ew_sharpe": 0.34301455592831576,
+    "strat_maxdd": 0.10150820495374974,
+    "ew_maxdd": 0.2133435866666574,
+    "strat_annual": 0.04369598748680947,
+    "ew_annual": 0.057148230047994186,
+    "fail": true,
+    "fail_reasons": [
+     "Sharpe 0.28<0.5",
+     "跑输等权(0.28<=0.34)"
+    ],
+    "elapsed_s": 3.5
+   }
+  },
+  "combo": {
+   "params": {
+    "dgp": "regime_corr",
+    "rho_crisis": 0.85,
+    "sig_mult": 2.0,
+    "muoff_mult": 0.5
+   },
+   "v4_5": {
+    "strat_sharpe": 0.6090197345448937,
+    "ew_sharpe": 0.32748167107138687,
+    "strat_maxdd": 0.14233657977339215,
+    "ew_maxdd": 0.4262284215019578,
+    "strat_annual": 0.08331026074270431,
+    "ew_annual": 0.07406324133068343,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 14.2%>12%"
+    ],
+    "elapsed_s": 3.6
+   },
+   "v4_3": {
+    "strat_sharpe": 0.6474859977864293,
+    "ew_sharpe": 0.32748167107138687,
+    "strat_maxdd": 0.1617181074611778,
+    "ew_maxdd": 0.4262284215019578,
+    "strat_annual": 0.08794529367152393,
+    "ew_annual": 0.07406324133068343,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 16.2%>12%"
+    ],
+    "elapsed_s": 4.4
+   }
+  }
+ },
+ "q3a_calm_bleed": {
+  "calm_bleed_-0.3": {
+   "params": {
+    "sig_mult": 0.9,
+    "muoff_mult": -0.3
+   },
+   "v4_5": {
+    "strat_sharpe": 0.12463253265457518,
+    "ew_sharpe": 0.13695981070445534,
+    "strat_maxdd": 0.13336673346828515,
+    "ew_maxdd": 0.2095654047537,
+    "strat_annual": 0.03159911110070612,
+    "ew_annual": 0.03409891185657843,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 13.3%>12%",
+     "Sharpe 0.12<0.5",
+     "跑输等权(0.12<=0.14)"
+    ]
+   },
+   "v4_3": {
+    "strat_sharpe": 0.04201235498556285,
+    "ew_sharpe": 0.13695981070445534,
+    "strat_maxdd": 0.1378453536399235,
+    "ew_maxdd": 0.2095654047537,
+    "strat_annual": 0.0259025465895939,
+    "ew_annual": 0.03409891185657843,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 13.8%>12%",
+     "Sharpe 0.04<0.5",
+     "跑输等权(0.04<=0.14)"
+    ]
+   },
+   "delta_sharpe_v45_vs_v43": 0.08262017766901233,
+   "delta_maxdd_v45_vs_v43": -0.004478620171638359
+  },
+  "calm_bleed_-0.6": {
+   "params": {
+    "sig_mult": 0.9,
+    "muoff_mult": -0.6
+   },
+   "v4_5": {
+    "strat_sharpe": -0.08739927544341529,
+    "ew_sharpe": -0.08770252901520618,
+    "strat_maxdd": 0.14616843766700444,
+    "ew_maxdd": 0.2784530452899414,
+    "strat_annual": 0.016694322942870654,
+    "ew_annual": 0.012368554512845797,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 14.6%>12%",
+     "Sharpe -0.09<0.5"
+    ]
+   },
+   "v4_3": {
+    "strat_sharpe": -0.17152677840871963,
+    "ew_sharpe": -0.08770252901520618,
+    "strat_maxdd": 0.16201527247795247,
+    "ew_maxdd": 0.2784530452899414,
+    "strat_annual": 0.011037185322802845,
+    "ew_annual": 0.012368554512845797,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 16.2%>12%",
+     "Sharpe -0.17<0.5",
+     "跑输等权(-0.17<=-0.09)"
+    ]
+   },
+   "delta_sharpe_v45_vs_v43": 0.08412750296530434,
+   "delta_maxdd_v45_vs_v43": -0.015846834810948035
+  },
+  "deep_calm_bleed": {
+   "params": {
+    "sig_mult": 0.7,
+    "muoff_mult": -0.6
+   },
+   "v4_5": {
+    "strat_sharpe": -0.21067940697495424,
+    "ew_sharpe": -0.1629194935392501,
+    "strat_maxdd": 0.12307664378083347,
+    "ew_maxdd": 0.22219071956809436,
+    "strat_annual": 0.011150149668484488,
+    "ew_annual": 0.01039453585075667,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 12.3%>12%",
+     "Sharpe -0.21<0.5",
+     "跑输等权(-0.21<=-0.16)"
+    ]
+   },
+   "v4_3": {
+    "strat_sharpe": -0.27277034009085965,
+    "ew_sharpe": -0.1629194935392501,
+    "strat_maxdd": 0.1341396731683838,
+    "ew_maxdd": 0.22219071956809436,
+    "strat_annual": 0.007338235942390803,
+    "ew_annual": 0.01039453585075667,
+    "fail": true,
+    "fail_reasons": [
+     "MaxDD 13.4%>12%",
+     "Sharpe -0.27<0.5",
+     "跑输等权(-0.27<=-0.16)"
+    ]
+   },
+   "delta_sharpe_v45_vs_v43": 0.06209093311590541,
+   "delta_maxdd_v45_vs_v43": -0.011063029387550327
+  }
+ },
+ "pvd_activation": {
+  "real": {
+   "n_weeks": 662,
+   "n_vol_band": 330,
+   "n_active": 227,
+   "vol_band_rate": 0.4984894259818731,
+   "act_rate": 0.3429003021148036,
+   "vol_p25": 0.12067071392561199,
+   "vol_p75": 0.1957294518674732
+  },
+  "calm_bleed_-0.6": {
+   "act_rate_med": 0.4169184290030212,
+   "vol_band_rate_med": 0.4984894259818731
+  },
+  "sig_2.00": {
+   "act_rate_med": 0.23564954682779457,
+   "vol_band_rate_med": 0.4984894259818731
+  }
+ },
+ "q3b_pvd_failure": {
+  "v4_5_baseline": {
+   "sharpe": 1.6007348601295863,
+   "maxdd": 0.05796487766108733,
+   "annual": 0.15491078384937573
+  },
+  "v4_3_baseline": {
+   "sharpe": 1.4878019225442454,
+   "maxdd": 0.05842581279905498,
+   "annual": 0.145217905430306
+  },
+  "amount_permuted": {
+   "n": 10,
+   "rows": [
+    {
+     "sharpe": 1.5157019723589156,
+     "maxdd": 0.06888458354329642,
+     "annual": 0.14670404490705935
+    },
+    {
+     "sharpe": 1.605488060103952,
+     "maxdd": 0.057964877661087315,
+     "annual": 0.1559877921017021
+    },
+    {
+     "sharpe": 1.4713992622468786,
+     "maxdd": 0.061830392591006623,
+     "annual": 0.14369324719844423
+    },
+    {
+     "sharpe": 1.5185832100035932,
+     "maxdd": 0.06011425143686101,
+     "annual": 0.14746154412605783
+    },
+    {
+     "sharpe": 1.6377327093769665,
+     "maxdd": 0.057964877661087245,
+     "annual": 0.1573270667101876
+    },
+    {
+     "sharpe": 1.5169901444408662,
+     "maxdd": 0.06011425143686101,
+     "annual": 0.14831874023212333
+    },
+    {
+     "sharpe": 1.5947796496400715,
+     "maxdd": 0.057964877661087245,
+     "annual": 0.15547137008382683
+    },
+    {
+     "sharpe": 1.5884504470409033,
+     "maxdd": 0.057964877661087336,
+     "annual": 0.15570344834070582
+    },
+    {
+     "sharpe": 1.6008799823991218,
+     "maxdd": 0.05796487766108726,
+     "annual": 0.15498358401800738
+    },
+    {
+     "sharpe": 1.486315374445191,
+     "maxdd": 0.06183039259100659,
+     "annual": 0.1450581761306513
+    }
+   ],
+   "sharpe_med": 1.5535168285222483,
+   "sharpe_min": 1.4713992622468786,
+   "sharpe_max": 1.6377327093769665,
+   "maxdd_med": 0.059039564548974174,
+   "maxdd_max": 0.06888458354329642,
+   "delta_sharpe_med_vs_v45": -0.04721803160733806,
+   "delta_sharpe_worst_vs_v45": -0.12933559788270776,
+   "delta_maxdd_worst_vs_v45": 0.010919705882209092
+  },
+  "pvd_inverted": {
+   "sharpe": 1.4255610262070881,
+   "maxdd": 0.05847315247829629,
+   "annual": 0.14045909299815595,
+   "delta_sharpe_vs_v45": -0.1751738339224982,
+   "delta_maxdd_vs_v45": 0.0005082748172089632,
+   "delta_sharpe_vs_v43": -0.06224089633715724
+  }
+ }
+}

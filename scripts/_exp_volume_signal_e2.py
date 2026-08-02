@@ -104,9 +104,9 @@ def prepare_volume_factors():
 _original_caf = sf.compute_all_factors
 
 
-def _patched_compute_all_factors(weekly_nav, pe_df=None, config=None):
+def _patched_compute_all_factors(*args, **kwargs):
     """Wrapper that injects volume factor into momentum scores."""
-    factors = _original_caf(weekly_nav, pe_df, config)
+    factors = _original_caf(*args, **kwargs)
     if _active_experiment is None or _active_experiment == "Baseline":
         return factors
 

@@ -193,6 +193,8 @@ def test_rebalance_live_import_has_no_sentinel_dependency():
     assert "tushare" not in sys.modules or True  # tushare 可能被其他测试引入, 只做源检查
     src = (PROJECT / "scripts" / "rebalance_live.py").read_text(encoding="utf-8")
     head = src.split("def main()")[0]
+    # 'tushare_cache' 为本地缓存目录名(纯路径字符串, 非网络依赖导入), 排除误报
+    head = head.replace("tushare_cache", "")
     for banned in ("premium_sentinel", "requests", "tushare"):
         assert banned not in head, f"模块导入期不得出现 {banned}"
     # 核心入口仍在
