@@ -187,8 +187,7 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto San
 .px-item {{ background:rgba(11,17,33,0.6); border-radius:6px; padding:6px 8px; text-align:center; }}
 .px-item .k {{ font-size:0.65rem; color:var(--muted); }}
 .px-item .v {{ font-size:0.82rem; font-weight:600; margin-top:2px; color:var(--accent); }}
-.chart-wrap {{ position:relative; width:100%; }}
-.chart-wrap canvas {{ width:100% !important; height:auto !important; }}
+.chart-wrap {{ position:relative; width:100%; min-height:100px; }}\n.chart-wrap canvas {{ display:block; width:100% !important; }}  /* 移除 height:auto; 让 Chart.js 完全控制 canvas 高度 */
 </style>
 </head>
 <body>
@@ -276,18 +275,26 @@ const DATA = {data_json};
   ).join('');
 
   // ----- 图表公共配置：统一 hover 交互 + 禁用 tooltip 动画（消除密集点抖动）-----
-  const IX = {{mode:'nearest', axis:'x', intersect:false}};
+  // 公共图表预设 —— 无动画 + 防抖resize + 十字参考线
   const TIP_ANIM = {{duration:0}};
-  // 十字准线插件：hover 时绘制竖直参考线
+  const CHART_OPT = {{ responsive:true, maintainAspectRatio:true, resizeDelay:200,
+    animation:{{duration:0}}, transitions:{{active:{{animation:{{duration:0}}}}}},
+    plugins:{{legend:{{display:false}}, tooltip:{{animation:TIP_ANIM}}}},
+    scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }},
+              y:{{ ticks:{{color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }},
+    interaction:{{mode:'nearest',axis:'x',intersect:false}},
+  }};
+  const CHART_BAR = {{ ...CHART_OPT, scales:{{ ...CHART_OPT.scales, x:{{ ...CHART_OPT.scales.x, grid:{{display:false}} }} }} }};
+  // 十字参考线插件（只画线，不影响 layout）
   const vline = {{ id:'vline', afterDatasetsDraw(ch) {{
     const act = ch.tooltip && ch.tooltip.getActiveElements ? ch.tooltip.getActiveElements() : [];
     if (!act.length) return;
     const x = act[0].element.x, ctx = ch.ctx, ca = ch.chartArea;
-    ctx.save(); ctx.strokeStyle='rgba(136,146,168,0.5)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.save(); ctx.strokeStyle='rgba(136,146,168,0.4)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(x, ca.top); ctx.lineTo(x, ca.bottom); ctx.stroke(); ctx.restore();
   }} }};
-  // 数据健壮性：过滤 null/NaN；空数据或 CDN 失败时给出提示而非白屏
-  const clean = (dates, vals) => {{ const D=[], V=[]; (dates||[]).forEach((dt,i) => {{ const v=(vals||[])[i]; if (v!==null && v!==undefined && isFinite(v)) {{ D.push(dt); V.push(v); }} }}); return {{dates:D, vals:V}}; }};
+  // 清洗 NaN/null
+  const clean = (dates, vals) => {{ const D=[], V=[]; (dates||[]).forEach((dt,i)=>{{ const v=(vals||[])[i]; if(v!==null && v!==undefined && isFinite(v)){{ D.push(dt); V.push(v); }} }}); return {{dates:D, vals:V}}; }};
   const chartMsg = (id, msg) => {{ document.getElementById(id).parentElement.innerHTML = `<div class="chart-err">${{msg}}</div>`; }};
   const canChart = typeof Chart !== 'undefined';
   const CDN_ERR = '⚠️ 图表库加载失败，请检查网络后刷新';
@@ -299,7 +306,7 @@ const DATA = {data_json};
   else if (!ns.dates.length) chartMsg('navChart', '暂无数据');
   else navChart = new Chart(document.getElementById('navChart'), {{
     type:'line', data:{{ labels:ns.dates, datasets:[{{ label:'净值', data:ns.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.5 }}] }},
-    options:{{ responsive:true, maintainAspectRatio:true, aspectRatio:2.2, plugins:{{ legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{label:c=>'NAV: '+c.parsed.y.toFixed(3)+'x'}}}} }}, scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }}, y:{{ type:'logarithmic', ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>Number(v).toFixed(1)+'x'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, interaction:IX }},
+    options:{{ responsive:true, maintainAspectRatio:true, resizeDelay:200, animation:{{duration:0}}, transitions:{{active:{{animation:{{duration:0}}}}}}, aspectRatio:2.2, plugins:{{legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{label:c=>'NAV: '+c.parsed.y.toFixed(3)+'x'}}}} }}, scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }}, y:{{ type:'logarithmic', ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>Number(v).toFixed(1)+'x'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, interaction:{{mode:'nearest',axis:'x',intersect:false}} }},
     plugins:[vline]
   }});
   const st = document.getElementById('scale-toggle');
@@ -327,10 +334,10 @@ const DATA = {data_json};
   if (!canChart) chartMsg('defenseChart', CDN_ERR);
   else if (!ds.dates.length) chartMsg('defenseChart', '暂无数据');
   else new Chart(document.getElementById('defenseChart'), {{
-    type:'line', data:{{ labels:ds.dates, datasets:[{{ label:'防御比', data:ds.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.12)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.2 }}] }},
-    options:{{ responsive:true, maintainAspectRatio:true, aspectRatio:2.5, plugins:{{ legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{label:c=>'防御比: '+c.parsed.y.toFixed(1)+'%'}}}} }}, scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }}, y:{{ min:0, max:100, ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>v+'%'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, interaction:IX }},
-    plugins:[vline]
-  }});
+      type:'line', data:{{ labels:ds.dates, datasets:[{{ label:'防御比', data:ds.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.12)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.2 }}] }},
+      options:{{ responsive:true, maintainAspectRatio:true, resizeDelay:200, animation:{{duration:0}}, transitions:{{active:{{animation:{{duration:0}}}}}}, aspectRatio:2.5, plugins:{{legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{label:c=>'防御比: '+c.parsed.y.toFixed(1)+'%'}}}} }}, scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }}, y:{{ min:0, max:100, ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>v+'%'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, interaction:{{mode:'nearest',axis:'x',intersect:false}} }},
+      plugins:[vline]
+    }});
 
   // ----- 年度收益（部分年度标注 YTD；hover 显示平均防御）-----
   const endD = endDate ? new Date(endDate + 'T00:00:00') : null;
