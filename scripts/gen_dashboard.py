@@ -347,7 +347,7 @@ const DATA = {data_json};
   else if (!annArr.length) chartMsg('annualChart', '暂无数据');
   else new Chart(document.getElementById('annualChart'), {{
     type:'bar', data:{{ labels:annLabels, datasets:[{{ label:'年收益', data:annArr.map(a=>a.return), backgroundColor:annArr.map(a=>a.return>=0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.7)'), borderColor:annArr.map(a=>a.return>=0?'#34d399':'#f87171'), borderWidth:1, borderRadius:3 }}] }},
-    options:{{ responsive:true, maintainAspectRatio:true, aspectRatio:2.5, plugins:{{ legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{afterLabel:ctx=>'平均防御: '+annArr[ctx.dataIndex].avg_defense+'%'}}}} }}, scales:{{ x:{{ ticks:{{color:'#8892a8',font:{{size:9}}}}, grid:{{display:false}} }}, y:{{ ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>v+'%'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, interaction:IX }}
+    options:{{ responsive:true, maintainAspectRatio:true, aspectRatio:2.5, plugins:{{ legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{afterLabel:ctx=>'平均防御: '+annArr[ctx.dataIndex].avg_defense+'%'}}}} }}, scales:{{ x:{{ ticks:{{color:'#8892a8',font:{{size:9}}}}, grid:{{display:false}} }}, y:{{ ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>v+'%'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, }}
   }});
 
   document.getElementById('recent-cards').innerHTML =
