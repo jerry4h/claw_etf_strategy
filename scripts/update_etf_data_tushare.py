@@ -114,7 +114,9 @@ print("-" * 40)
 
 # 从原数据最后日期之后开始拉取
 start_inc = (last_old_date + timedelta(days=1)).strftime('%Y%m%d')
-today = datetime.now().strftime('%Y%m%d')
+# 增量截止日默认今天；weekly_refresh.py 通过 ETF_UPDATE_END_DATE 截断到最近完整 ISO 周，
+# 避免周中运行写入本周未完结的快照行（下次周五快照会与其同周重复）。
+today = os.environ.get('ETF_UPDATE_END_DATE') or datetime.now().strftime('%Y%m%d')
 print(f"增量区间: {start_inc} ~ {today}")
 
 all_inc = {}
