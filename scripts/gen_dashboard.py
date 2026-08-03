@@ -3,6 +3,7 @@
 import json
 import sys
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -11,24 +12,22 @@ sys.path.insert(0, str(PROJ))
 
 from src.strategy import load_config
 from src.backtest import run_backtest
-from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE
+from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data, resample_weekly
 
 
 def _build_data(cfg):
-    """Run backtest and extract all dashboard data."""
+    """Run backtest and extract all dashboard data, including equal-weight baseline."""
     result = run_backtest(cfg)
     nav = result.nav_series
     m = result.metrics
 
     data = {
         "meta": {
-            "strategy": cfg.name,
-            "version": cfg.version,
+            "strategy": cfg.name, "version": cfg.version,
             "generated_at": pd.Timestamp.now(tz="Asia/Shanghai").strftime("%Y-%m-%d %H:%M") + " (UTC+8)",
             "data_range": f"{nav.index[0].date()} ~ {nav.index[-1].date()}",
             "data_as_of": str(nav.index[-1].date()),
-            "data_source": "Tushare",
-            "weeks": m["total_weeks"],
+            "data_source": "Tushare", "weeks": m["total_weeks"],
         },
         "metrics": {
             "total_return": round(m["total_return"] * 100, 2),
@@ -43,17 +42,21 @@ def _build_data(cfg):
         },
     }
 
-    # NAV (降采样 ~300 点)
+    # === 降采样 ===
     step = max(1, len(nav) // 260)
     nav_s = nav.iloc[::step]
+
+    # NAV
     data["nav"] = {
         "dates": [str(d.date()) for d in nav_s.index],
         "values": [round(v, 4) for v in nav_s["nav"].tolist()],
     }
+    # Defense ratio
     data["defense"] = {
         "dates": [str(d.date()) for d in nav_s.index],
         "ratios": [round(v * 100, 1) for v in nav_s["def_ratio"].tolist()],
     }
+    # Drawdown
     data["drawdown"] = {
         "dates": [str(d.date()) for d in nav_s.index],
         "ratios": [round(v * 100, 2) for v in nav_s["drawdown"].tolist()],
@@ -64,7 +67,22 @@ def _build_data(cfg):
             "values": [round(v * 100, 1) for v in nav_s["nasdaq_vol"].tolist()],
         }
 
-    # Holdings (latest)
+    # === 等权每周再均衡基线 ===
+    nav_df = load_nav_data(PROJ / cfg.nav_path)
+    weekly_raw = resample_weekly(nav_df, anchor=cfg.anchor)
+    if cfg.start_date:
+        weekly_raw = weekly_raw[weekly_raw.index >= pd.to_datetime(cfg.start_date)]
+    # 对齐到策略回测日期范围
+    weekly_aligned = weekly_raw.loc[nav.index[0]:nav.index[-1]]
+    # 每周等权净值 = 5只ETF价格的均值，起始归一化到1
+    first_nav = np.mean(weekly_aligned.iloc[0].values)
+    eq_vals = []
+    for dt in nav_s.index:
+        p = np.mean(weekly_aligned.loc[dt].values)
+        eq_vals.append(round(p / first_nav, 4))
+    data["eq_nav"] = {"dates": data["nav"]["dates"], "values": eq_vals}
+
+    # Holdings
     latest = nav.iloc[-1]
     data["holdings"] = [
         {"name": e, "weight": round(latest.get(f"weight_{e}", 0) * 100, 1),
@@ -126,14 +144,12 @@ def _build_data(cfg):
         "vol_taper_window": cfg.vol_taper_window,
         "vol_taper_len": cfg.vol_taper_len,
         "inv_vol_window": cfg.inv_vol_window,
-        "pvd_enabled": cfg.pvd_enabled,
-        "pvd_w": cfg.pvd_w,
+        "pvd_enabled": cfg.pvd_enabled, "pvd_w": cfg.pvd_w,
     }
-    return data, nav
+    return data
 
 
 def _html_template(data_json: str) -> str:
-    """Generate the full HTML with embedded data."""
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -187,7 +203,11 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto San
 .px-item {{ background:rgba(11,17,33,0.6); border-radius:6px; padding:6px 8px; text-align:center; }}
 .px-item .k {{ font-size:0.65rem; color:var(--muted); }}
 .px-item .v {{ font-size:0.82rem; font-weight:600; margin-top:2px; color:var(--accent); }}
-.chart-wrap {{ position:relative; width:100%; min-height:100px; }}\n.chart-wrap canvas {{ display:block; width:100% !important; }}  /* 移除 height:auto; 让 Chart.js 完全控制 canvas 高度 */
+.chart-wrap {{ position:relative; width:100%; min-height:100px; }}
+.chart-wrap canvas {{ display:block; width:100% !important; }}
+.chart-pair > .chart-wrap:first-child canvas {{ aspect-ratio:2.2/1; }}
+.chart-pair > .chart-wrap:last-child {{ min-height:60px; }}
+.chart-pair > .chart-wrap:last-child canvas {{ aspect-ratio:6/1; }}
 </style>
 </head>
 <body>
@@ -201,8 +221,11 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto San
 
 <div class="grid-2-1">
   <div class="panel">
-    <h2>📈 净值曲线 <button class="tgl" id="scale-toggle" type="button">对数坐标</button></h2>
-    <div class="chart-wrap"><canvas id="navChart"></canvas></div>
+    <h2>📈 净值曲线 & 回撤 <button class="tgl" id="scale-toggle" type="button">对数坐标</button></h2>
+    <div class="chart-pair">
+      <div class="chart-wrap"><canvas id="navChart"></canvas></div>
+      <div class="chart-wrap"><canvas id="ddChart"></canvas></div>
+    </div>
   </div>
   <div class="panel">
     <h2>🎯 当前持仓</h2>
@@ -241,15 +264,12 @@ body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto San
 </div>
 
 <script>
-// ===== 数据内嵌 =====
 const DATA = {data_json};
-
-// ===== 渲染 =====
 (function() {{
   const d = DATA;
-  const {{meta,metrics:m,nav:nd,defense:dd,drawdown:dwd,holdings,annual_returns:ann,etf_stats:etfS,recent_ytd:rytd,recent_year1:r1y,recent_month3:r3m,params}} = d;
+  const {{meta,metrics:m,nav:nd,defense:dd,drawdown:dwd,eq_nav:eqd,holdings,annual_returns:ann,etf_stats:etfS,recent_ytd:rytd,recent_year1:r1y,recent_month3:r3m,params}} = d;
 
-  // ----- 头部信息（数据源 / 截止日期 / 版本说明）-----
+  // Header
   const endDate = (meta.data_range || ' ~ ').split(' ~ ')[1] || '';
   const wd = endDate ? '日一二三四五六'[new Date(endDate + 'T00:00:00').getDay()] : '';
   document.getElementById('header-sub').innerHTML =
@@ -257,7 +277,7 @@ const DATA = {data_json};
     `数据源: ${{meta.data_source || 'Tushare'}} · 周频调仓（收盘信号） · 区间 ${{meta.data_range}} · 生成: ${{meta.generated_at}}`;
   document.getElementById('header-asof').textContent = endDate ? `📅 数据截至 ${{endDate}}（周${{wd}}收盘）` : '';
 
-  // NaN/缺失兜底格式化
+  // Metric cards
   const fnum = (v, dg) => Number.isFinite(v) ? v.toFixed(dg) : '—';
   const fpct = v => Number.isFinite(v) ? v + '%' : '—';
   const cards = [
@@ -274,18 +294,15 @@ const DATA = {data_json};
     `<div class="card"><div class="l">${{c.l}}</div><div class="v ${{c.c}}${{c.big?' big':''}}">${{c.v}}</div>${{c.s?`<div class="s">${{c.s}}</div>`:''}}</div>`
   ).join('');
 
-  // ----- 图表公共配置：统一 hover 交互 + 禁用 tooltip 动画（消除密集点抖动）-----
-  // 公共图表预设 —— 无动画 + 防抖resize + 十字参考线
+  // ---- Chart presets ----
   const TIP_ANIM = {{duration:0}};
-  const CHART_OPT = {{ responsive:true, maintainAspectRatio:true, resizeDelay:200,
+  const CHART_OPT = {{ responsive:true, maintainAspectRatio:false, resizeDelay:200,
     animation:{{duration:0}}, transitions:{{active:{{animation:{{duration:0}}}}}},
     plugins:{{legend:{{display:false}}, tooltip:{{animation:TIP_ANIM}}}},
     scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }},
               y:{{ ticks:{{color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }},
     interaction:{{mode:'nearest',axis:'x',intersect:false}},
   }};
-  const CHART_BAR = {{ ...CHART_OPT, scales:{{ ...CHART_OPT.scales, x:{{ ...CHART_OPT.scales.x, grid:{{display:false}} }} }} }};
-  // 十字参考线插件（只画线，不影响 layout）
   const vline = {{ id:'vline', afterDatasetsDraw(ch) {{
     const act = ch.tooltip && ch.tooltip.getActiveElements ? ch.tooltip.getActiveElements() : [];
     if (!act.length) return;
@@ -293,32 +310,63 @@ const DATA = {data_json};
     ctx.save(); ctx.strokeStyle='rgba(136,146,168,0.4)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(x, ca.top); ctx.lineTo(x, ca.bottom); ctx.stroke(); ctx.restore();
   }} }};
-  // 清洗 NaN/null
   const clean = (dates, vals) => {{ const D=[], V=[]; (dates||[]).forEach((dt,i)=>{{ const v=(vals||[])[i]; if(v!==null && v!==undefined && isFinite(v)){{ D.push(dt); V.push(v); }} }}); return {{dates:D, vals:V}}; }};
-  const chartMsg = (id, msg) => {{ document.getElementById(id).parentElement.innerHTML = `<div class="chart-err">${{msg}}</div>`; }};
+  const chartMsg = (id, msg) => {{ const el=document.getElementById(id); if(el) el.parentElement.innerHTML = `<div class="chart-err">${{msg}}</div>`; }};
   const canChart = typeof Chart !== 'undefined';
   const CDN_ERR = '⚠️ 图表库加载失败，请检查网络后刷新';
 
-  // ----- 净值曲线（默认对数坐标，可切换线性）-----
-  let navChart = null;
+  // ---- NAV chart (strategy + equal-weight baseline) ----
   const ns = clean(nd && nd.dates, nd && nd.values);
-  if (!canChart) chartMsg('navChart', CDN_ERR);
-  else if (!ns.dates.length) chartMsg('navChart', '暂无数据');
-  else navChart = new Chart(document.getElementById('navChart'), {{
-    type:'line', data:{{ labels:ns.dates, datasets:[{{ label:'净值', data:ns.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.5 }}] }},
-    options:{{ responsive:true, maintainAspectRatio:true, resizeDelay:200, animation:{{duration:0}}, transitions:{{active:{{animation:{{duration:0}}}}}}, aspectRatio:2.2, plugins:{{legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{label:c=>'NAV: '+c.parsed.y.toFixed(3)+'x'}}}} }}, scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }}, y:{{ type:'logarithmic', ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>Number(v).toFixed(1)+'x'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, interaction:{{mode:'nearest',axis:'x',intersect:false}} }},
-    plugins:[vline]
-  }});
+  const es = clean(eqd && eqd.dates, eqd && eqd.values);
+  if (canChart && ns.dates.length) {{
+    new Chart(document.getElementById('navChart'), {{
+      type:'line', data:{{
+        labels:ns.dates,
+        datasets:[
+          {{ label:'策略', data:ns.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.5 }},
+          {{ label:'等权再均衡', data:es.vals.length===ns.vals.length?es.vals:[], borderColor:'rgba(136,146,168,0.5)', borderDash:[4,3], tension:0.1, pointRadius:0, borderWidth:1, fill:false }},
+        ]
+      }},
+      options:{{ ...CHART_OPT,
+        plugins:{{ ...CHART_OPT.plugins,
+          legend:{{ display:true, position:'top', labels:{{ color:'var(--muted)', font:{{size:9}}, boxWidth:12, boxHeight:2, padding:8, usePointStyle:true, pointStyle:'dash' }} }},
+          tooltip:{{ ...CHART_OPT.plugins.tooltip, callbacks:{{ label:ctx=>ctx.dataset.label+': '+ctx.parsed.y.toFixed(3)+'x'}} }},
+        }},
+        scales:{{ ...CHART_OPT.scales, y:{{ ...CHART_OPT.scales.y, type:'logarithmic', ticks:{{...CHART_OPT.scales.y.ticks, callback:v=>Number(v).toFixed(1)+'x'}} }} }},
+      }},
+      plugins:[vline]
+    }});
+  }} else if (!canChart) chartMsg('navChart', CDN_ERR);
+
+  // ---- Drawdown chart (below NAV) ----
+  const ds = clean(dwd && dwd.dates, dwd && dwd.ratios);
+  if (canChart && ds.dates.length) {{
+    new Chart(document.getElementById('ddChart'), {{
+      type:'line', data:{{ labels:ds.dates, datasets:[{{ label:'回撤', data:ds.vals, borderColor:'#f87171', backgroundColor:'rgba(248,113,113,0.15)', fill:true, tension:0.1, pointRadius:0, borderWidth:1 }}] }},
+      options:{{ ...CHART_OPT,
+        plugins:{{ ...CHART_OPT.plugins, tooltip:{{...CHART_OPT.plugins.tooltip, callbacks:{{label:c=>'回撤: '+c.parsed.y.toFixed(2)+'%'}} }} }},
+        scales:{{ ...CHART_OPT.scales, y:{{ ...CHART_OPT.scales.y, min:0, reverse:true, ticks:{{...CHART_OPT.scales.y.ticks, callback:v=>v+'%'}} }} }},
+      }},
+      plugins:[vline]
+    }});
+  }} else if (!canChart) chartMsg('ddChart', CDN_ERR);
+
+  // ---- Scale toggle for NAV chart ----
   const st = document.getElementById('scale-toggle');
   let logScale = true;
-  const applyScale = () => {{ navChart.options.scales.y.type = logScale ? 'logarithmic' : 'linear'; st.textContent = logScale ? '对数坐标' : '线性坐标'; navChart.update(); }};
-  if (navChart) {{ applyScale(); st.onclick = () => {{ logScale = !logScale; applyScale(); }}; }} else st.style.display = 'none';
+  {{
+    const nc = Chart.getChart('navChart');
+    if (nc) {{
+      const apply = () => {{ nc.options.scales.y.type = logScale ? 'logarithmic' : 'linear'; st.textContent = logScale ? '对数坐标' : '线性坐标'; nc.update(); }};
+      apply(); st.onclick = () => {{ logScale = !logScale; apply(); }};
+    }}
+  }}
 
   // Holdings
   const catClr = {{'进攻':'#f59e0b','防御':'#60a5fa'}};
   let htm = '<table class="ht"><thead><tr><th>ETF</th><th>仓位</th><th></th></tr></thead><tbody>';
   for (const h of holdings) {{
-    if (h.weight<0) continue;  // 仅过滤异常负值；0% 零持仓本身有信息量，弱化显示
+    if (h.weight<0) continue;
     const clr=catClr[h.category];
     const zero = h.weight<0.05;
     htm += `<tr${{zero?' style="color:var(--muted)"':''}}><td><span style="color:${{zero?'var(--muted)':clr}}">${{h.category==='进攻'?'⚔️':'🛡️'}}</span> ${{h.name}}</td><td style="font-weight:600">${{h.weight.toFixed(1)}}%</td><td><div class="hbar">${{zero?'':`<div class="hfill" style="width:${{h.weight>5?h.weight:5}}%;background:${{clr}}"></div>`}}</div></td></tr>`;
@@ -330,34 +378,44 @@ const DATA = {data_json};
   document.getElementById('offdef-summary').innerHTML =
     `<span style="color:#f59e0b">⚔️ 进攻 ${{off.toFixed(1)}}%</span><span style="color:#60a5fa">🛡️ 防御 ${{def.toFixed(1)}}%</span>`;
 
-  const ds = clean(dd && dd.dates, dd && dd.ratios);
-  if (!canChart) chartMsg('defenseChart', CDN_ERR);
-  else if (!ds.dates.length) chartMsg('defenseChart', '暂无数据');
-  else new Chart(document.getElementById('defenseChart'), {{
-      type:'line', data:{{ labels:ds.dates, datasets:[{{ label:'防御比', data:ds.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.12)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.2 }}] }},
-      options:{{ responsive:true, maintainAspectRatio:true, resizeDelay:200, animation:{{duration:0}}, transitions:{{active:{{animation:{{duration:0}}}}}}, aspectRatio:2.5, plugins:{{legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{label:c=>'防御比: '+c.parsed.y.toFixed(1)+'%'}}}} }}, scales:{{ x:{{ ticks:{{maxTicksLimit:8,color:'#8892a8',font:{{size:9}}}}, grid:{{color:'rgba(30,42,69,0.5)'}} }}, y:{{ min:0, max:100, ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>v+'%'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, interaction:{{mode:'nearest',axis:'x',intersect:false}} }},
+  // Defense chart
+  const dds = clean(dd && dd.dates, dd && dd.ratios);
+  if (canChart && dds.dates.length) {{
+    new Chart(document.getElementById('defenseChart'), {{
+      type:'line', data:{{ labels:dds.dates, datasets:[{{ label:'防御比', data:dds.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.12)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.2 }}] }},
+      options:{{ ...CHART_OPT,
+        plugins:{{ ...CHART_OPT.plugins, tooltip:{{...CHART_OPT.plugins.tooltip, callbacks:{{label:c=>'防御比: '+c.parsed.y.toFixed(1)+'%'}} }} }},
+        scales:{{ ...CHART_OPT.scales, y:{{ ...CHART_OPT.scales.y, min:0, max:100, ticks:{{...CHART_OPT.scales.y.ticks, callback:v=>v+'%'}} }} }},
+      }},
       plugins:[vline]
     }});
+  }} else if (!canChart) chartMsg('defenseChart', CDN_ERR);
 
-  // ----- 年度收益（部分年度标注 YTD；hover 显示平均防御）-----
+  // Annual returns
   const endD = endDate ? new Date(endDate + 'T00:00:00') : null;
   const annArr = ann || [];
   const annLabels = annArr.map(a => (endD && a.year === endD.getFullYear() && endD.getMonth() < 11) ? a.year + ' YTD' : String(a.year));
-  if (!canChart) chartMsg('annualChart', CDN_ERR);
-  else if (!annArr.length) chartMsg('annualChart', '暂无数据');
-  else new Chart(document.getElementById('annualChart'), {{
-    type:'bar', data:{{ labels:annLabels, datasets:[{{ label:'年收益', data:annArr.map(a=>a.return), backgroundColor:annArr.map(a=>a.return>=0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.7)'), borderColor:annArr.map(a=>a.return>=0?'#34d399':'#f87171'), borderWidth:1, borderRadius:3 }}] }},
-    options:{{ responsive:true, maintainAspectRatio:true, aspectRatio:2.5, plugins:{{ legend:{{display:false}}, tooltip:{{animation:TIP_ANIM, callbacks:{{afterLabel:ctx=>'平均防御: '+annArr[ctx.dataIndex].avg_defense+'%'}}}} }}, scales:{{ x:{{ ticks:{{color:'#8892a8',font:{{size:9}}}}, grid:{{display:false}} }}, y:{{ ticks:{{color:'#8892a8',font:{{size:9}},callback:v=>v+'%'}}, grid:{{color:'rgba(30,42,69,0.5)'}} }} }}, }}
-  }});
+  if (canChart && annArr.length) {{
+    new Chart(document.getElementById('annualChart'), {{
+      type:'bar', data:{{ labels:annLabels, datasets:[{{ label:'年收益', data:annArr.map(a=>a.return), backgroundColor:annArr.map(a=>a.return>=0?'rgba(52,211,153,0.7)':'rgba(248,113,113,0.7)'), borderColor:annArr.map(a=>a.return>=0?'#34d399':'#f87171'), borderWidth:1, borderRadius:3 }}] }},
+      options:{{ ...CHART_OPT,
+        plugins:{{ ...CHART_OPT.plugins, legend:{{...CHART_OPT.plugins.legend, display:false}}, tooltip:{{...CHART_OPT.plugins.tooltip, callbacks:{{ afterLabel:ctx=>'平均防御: '+annArr[ctx.dataIndex].avg_defense+'%' }} }} }},
+        scales:{{ ...CHART_OPT.scales, x:{{ ...CHART_OPT.scales.x, grid:{{display:false}} }}, y:{{ ...CHART_OPT.scales.y, ticks:{{...CHART_OPT.scales.y.ticks, callback:v=>v+'%'}} }} }},
+      }},
+    }});
+  }} else if (!canChart) chartMsg('annualChart', CDN_ERR);
 
+  // Recent performance
   document.getElementById('recent-cards').innerHTML =
     [{{l:'今年 (YTD)',d:rytd}},{{l:'近1年',d:r1y}},{{l:'近3月',d:r3m}}].filter(r => r.d).map(r =>
       `<div class="rc-item"><div class="lbl">${{r.l}}</div><div class="val ${{r.d.return>0?'g':'r'}}">${{r.d.return>0?'+':''}}${{r.d.return}}%</div><div class="sub">最大回撤 ${{r.d.max_drawdown}}% · ${{r.d.start}}</div></div>`
     ).join('');
 
+  // ETF stats
   document.getElementById('etf-stats-body').innerHTML =
     etfS.map(e=>`<tr><td>${{e.name}}</td><td>${{e.avg_weight}}%</td><td>${{e.held_weeks}}</td><td>${{e.held_pct}}%</td></tr>`).join('');
 
+  // Params
   const pl = {{ mom_w:'动量权重',vol_w:'波动权重',top_n:'选TOP-N',score_margin:'分数门槛',rebalance_threshold:'调仓阈值',max_single_alloc:'单标上限',def_alloc:'基准防御',step_low:'防御下限',step_high:'防御上限',max_def:'最大防御',inv_vol_window:'InvVol窗口',vol_taper_enabled:'Taper',vol_taper_window:'Taper窗口',vol_taper_len:'Taper降权',pvd_enabled:'PVD',pvd_w:'PVD权重' }};
   document.getElementById('params-content').innerHTML =
     Object.entries(params).filter(([k])=>pl[k]).map(([k,v])=>`<div class="px-item"><div class="k">${{pl[k]}}</div><div class="v">${{typeof v==='boolean'?(v?'✅':'❌'):v}}</div></div>`).join('');
@@ -369,17 +427,14 @@ const DATA = {data_json};
 
 def main():
     cfg = load_config(PROJ / "config" / "strategy_v4_5_pvd.yaml")
-    data, nav = _build_data(cfg)
-    # 呈现字段：版本一句话说明（与上面加载的配置对应）
+    data = _build_data(cfg)
     data["meta"]["version_note"] = "候选版本（PVD 量价因子增强）；生产基线 v4.3"
 
-    # 写 JSON (for other uses)
     out_dir = PROJ / "dashboard"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "data.json").write_text(
         json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 写 index.html (单文件，数据内嵌)
     html = _html_template(json.dumps(data, ensure_ascii=False))
     (PROJ / "index.html").write_text(html, encoding="utf-8")
 
