@@ -2,12 +2,12 @@
   "meta": {
     "strategy": "虾池ETF轮动 v4.5-pvd — PVD条件激活因子",
     "version": "4.5-pvd",
-    "generated_at": "2026-08-04 00:41 (UTC+8)",
+    "generated_at": "2026-08-04 01:05 (UTC+8)",
     "data_range": "2013-08-30 ~ 2026-07-31",
     "data_as_of": "2026-07-31",
     "data_source": "Tushare",
     "weeks": 663,
-    "version_note": "候选版本（PVD 量价因子增强）；生产基线 v4.3"
+    "version_note": "候选版（PVD 量价因子增强）"
   },
   "metrics": {
     "total_return": 521.52,
