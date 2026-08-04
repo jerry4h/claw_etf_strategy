@@ -365,7 +365,7 @@ def _generate_weekly_report(nt_data: dict):
     lines.append("\n## 本周异常事件\n")
     events = nt_data.get('recent_events', [])
     if events:
-        lines.append("| 日期 | ETF | 板块 | 触发类型 | 份额增幅 | 百分位 |")
+        lines.append("| 日期 | ETF | 板块 | 份额增幅 | 百分位 |")
         lines.append("|------|-----|------|---------|---------|--------|")
         # 取最近 7 天的事件(近似本周)
         if events:
@@ -374,7 +374,7 @@ def _generate_weekly_report(nt_data: dict):
             for ev in events[:10]:
                 g = f"{ev['share_growth_20d']:+.2f}%" if ev.get('share_growth_20d') is not None else '—'
                 p = f"{ev['hist_pctile']:.1f}%" if ev.get('hist_pctile') is not None else '—'
-                lines.append(f"| {ev['date']} | {ev['etf']} | {ev['index']} | {ev['trigger_type']} | {g} | {p} |")
+                lines.append(f"| {ev['date']} | {ev['etf']} | {ev['index']} | {g} | {p} |")
     else:
         lines.append("*本周无异常事件*\n")
 
@@ -426,7 +426,7 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .grid-2 {display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 .grid-2-1 {display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
 @media(max-width:900px){.grid-2,.grid-2-1{grid-template-columns:1fr;}}
-@media(max-width:600px){body{padding:14px;}.px{grid-template-columns:repeat(2,1fr);}.rc{grid-template-columns:1fr;}.nt-cards{grid-template-columns:1fr 1fr !important;}}
+@media(max-width:600px){body{padding:14px;}.px{grid-template-columns:repeat(2,1fr);}.rc{grid-template-columns:1fr;}.nt-cards{grid-template-columns:1fr 1fr !important;}.nt-grid{grid-template-columns:1fr;}}
 .ht {width:100%;border-collapse:collapse;font-size:0.82rem;}
 .ht th {text-align:left;color:var(--muted);padding:6px 8px;font-weight:500;border-bottom:1px solid var(--border);}
 .ht td {padding:6px 8px;border-bottom:1px solid var(--border);}
@@ -455,6 +455,7 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .nt-section {margin-top:24px;border-top:1px solid var(--border);padding-top:24px;}
 .nt-section h2.section-title {font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:16px;}
 .nt-cards {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
+.nt-grid {display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
 .nt-card {background:var(--card);border-radius:8px;padding:12px;border:1px solid var(--border);text-align:center;}
 .nt-card .sector {font-size:0.72rem;color:var(--muted);margin-bottom:4px;}
 .nt-card .growth {font-size:1.2rem;font-weight:700;}
@@ -722,17 +723,17 @@ const DATA = __DATA__;
 
     // 量价对比图容器（一行最多 2 列）
     ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场量价对比（2018 年起 · 左轴=规模亿元 · 右轴=净值归一）</h2>';
-    ntHtml += '<div id="ntGridCharts" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px"></div></div>';
+    ntHtml += '<div class="nt-grid" id="ntGridCharts"></div></div>';
 
     // 事件表
     ntHtml += '<div class="panel"><h2>⚡ 疑似主力介入事件（最近 20 条）</h2>';
     if ((nt.recent_events||[]).length) {
-      ntHtml += '<table class="st"><thead><tr><th>日期</th><th>ETF</th><th>板块</th><th>触发类型</th><th>份额增幅</th><th>百分位</th></tr></thead><tbody>';
+      ntHtml += '<table class="st"><thead><tr><th>日期</th><th>ETF</th><th>板块</th><th>份额增幅</th><th>百分位</th></tr></thead><tbody>';
       for (const ev of nt.recent_events) {
         const g = ev.share_growth_20d !== null ? (ev.share_growth_20d > 0 ? '+' : '') + ev.share_growth_20d + '%' : '—';
         const p = ev.hist_pctile !== null ? ev.hist_pctile + '%' : '—';
         const gc = ev.share_growth_20d > 0 ? 'g' : (ev.share_growth_20d < 0 ? 'r' : '');
-        ntHtml += `<tr><td>${ev.date}</td><td>${ev.etf}</td><td>${ev.index}</td><td>${ev.trigger_type}</td><td class="${gc}">${g}</td><td>${p}</td></tr>`;
+        ntHtml += `<tr><td>${ev.date}</td><td>${ev.etf}</td><td>${ev.index}</td><td class="${gc}">${g}</td><td>${p}</td></tr>`;
       }
       ntHtml += '</tbody></table>';
     } else {
