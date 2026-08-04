@@ -24,6 +24,16 @@ NT_PRIORITY_NAMES = {
     '159915.SZ': '创业板ETF', '588000.SH': '科创50ETF',
 }
 
+# 指数级汇总配置（指数名→旗舰 ETF 代码 + benchmark 关键词）
+INDEX_AGG_CONFIG = [
+    {'name': '沪深300', 'flagship': '510300.SH', 'keywords': ['沪深300', '000300'], 'sector': '大盘核心'},
+    {'name': '上证50', 'flagship': '510050.SH', 'keywords': ['上证50', '000016'], 'exclude': ['科创'], 'sector': '大盘核心'},
+    {'name': '中证500', 'flagship': '510500.SH', 'keywords': ['中证500', '000905'], 'sector': '中盘'},
+    {'name': '中证1000', 'flagship': '512100.SH', 'keywords': ['中证1000', '000852'], 'sector': '小盘'},
+    {'name': '创业板', 'flagship': '159915.SZ', 'keywords': ['创业板', '399006', '399673'], 'sector': '创业板'},
+    {'name': '科创50', 'flagship': '588000.SH', 'keywords': ['科创板50', '000688'], 'sector': '科创'},
+]
+
 
 def _build_national_team_data():
     """
@@ -46,50 +56,99 @@ def _build_national_team_data():
     if 'error' in overview:
         return {'available': False, 'reason': overview['error']}
 
-    # 读取优先标的份额时序（从 2018 年起，周频降采样）
-    share_trends = {}
-    price_cache_dir = data_dir / 'fund_daily_cache'
-    for code in NT_PRIORITY_CODES:
-        fname = code.replace('.', '_') + '.csv'
-        fpath = share_dir / fname
-        if not fpath.exists():
-            continue
-        df = pd.read_csv(fpath, dtype={'trade_date': str})
-        df = df.sort_values('trade_date').reset_index(drop=True)
-        # 从 2018 年起
-        df = df[df['trade_date'] >= '20180101'].reset_index(drop=True)
-        if len(df) == 0:
-            continue
-        # 周频降采样：每 5 个交易日取最后一个点
-        df_weekly = df.iloc[::5].copy()
-        if len(df) > 0 and df.index[-1] not in df_weekly.index:
-            df_weekly = pd.concat([df_weekly, df.iloc[[-1]]])
+    # 指数级汇总：按指数分组求和份额，乘以旗舰净值得规模(亿元)
+    import yaml as _yaml
+    config_path = PROJ / 'config' / 'national_team_etfs.yaml'
+    with open(config_path) as _f:
+        _cfg = _yaml.safe_load(_f)
+    all_etfs = _cfg['etfs']
 
-        # 加载价格数据（净值归一化）
+    price_cache_dir = data_dir / 'fund_daily_cache'
+    share_trends = {}  # key=index_name
+
+    for idx_cfg in INDEX_AGG_CONFIG:
+        idx_name = idx_cfg['name']
+        flagship = idx_cfg['flagship']
+        keywords = idx_cfg['keywords']
+
+        # 找属于该指数的所有 ETF
+        member_codes = []
+        exclude_kws = idx_cfg.get('exclude', [])
+        for etf in all_etfs:
+            bm = etf.get('benchmark', '') + ' ' + etf.get('name', '')
+            if any(kw in bm for kw in keywords):
+                if exclude_kws and any(ek in bm for ek in exclude_kws):
+                    continue
+                member_codes.append(etf['ts_code'])
+
+        # 读取各 ETF 份额并按日期求和
+        share_frames = []
+        for code in member_codes:
+            fname = code.replace('.', '_') + '.csv'
+            fpath = share_dir / fname
+            if not fpath.exists():
+                continue
+            sdf = pd.read_csv(fpath, dtype={'trade_date': str})
+            sdf = sdf[sdf['trade_date'] >= '20180101'][['trade_date', 'fd_share']]
+            if len(sdf) == 0:
+                continue
+            sdf = sdf.rename(columns={'fd_share': code})
+            share_frames.append(sdf.set_index('trade_date'))
+
+        if not share_frames:
+            continue
+
+        # 合并求和
+        merged = pd.concat(share_frames, axis=1)
+        merged = merged.sort_index()
+        total_share = merged.sum(axis=1, min_count=1)  # 万份
+
+        # 加载旗舰 ETF 的 close 价格作为净值代理
+        pfname = flagship.replace('.', '_') + '.csv'
+        pfpath = price_cache_dir / pfname if price_cache_dir.exists() else None
+        nav_series = None
+        if pfpath and pfpath.exists():
+            pdf = pd.read_csv(pfpath, dtype={'trade_date': str})
+            pdf = pdf[pdf['trade_date'] >= '20180101'].sort_values('trade_date')
+            nav_series = pdf.set_index('trade_date')['close']
+
+        # 计算规模(亿元) = 总份额(万份) × 净值(元) / 10000
+        if nav_series is not None:
+            nav_aligned = nav_series.reindex(total_share.index)
+            aum_series = total_share * nav_aligned / 10000  # 亿元
+        else:
+            aum_series = pd.Series(dtype=float)
+
+        # 周频降采样：每 5 个交易日取一个点
+        aum_valid = aum_series.dropna()
+        if len(aum_valid) == 0:
+            continue
+        aum_weekly = aum_valid.iloc[::5]
+        if aum_valid.index[-1] not in aum_weekly.index:
+            aum_weekly = pd.concat([aum_weekly, aum_valid.iloc[[-1]]])
+
+        # 净值归一化曲线
         price_dates = []
         price_values = []
-        price_fpath = price_cache_dir / fname if price_cache_dir.exists() else None
-        if price_fpath and price_fpath.exists():
-            pdf = pd.read_csv(price_fpath, dtype={'trade_date': str})
-            pdf = pdf.sort_values('trade_date').reset_index(drop=True)
-            pdf = pdf[pdf['trade_date'] >= '20180101'].reset_index(drop=True)
-            if len(pdf) > 0:
-                # 同样周频降采样
-                pdf_weekly = pdf.iloc[::5].copy()
-                if len(pdf) > 0 and pdf.index[-1] not in pdf_weekly.index:
-                    pdf_weekly = pd.concat([pdf_weekly, pdf.iloc[[-1]]])
-                # 归一化到基期=1
-                base_price = pdf_weekly['close'].iloc[0]
-                if base_price > 0:
-                    price_dates = pdf_weekly['trade_date'].tolist()
-                    price_values = (pdf_weekly['close'] / base_price).round(4).tolist()
+        if nav_series is not None and len(nav_series) > 0:
+            nav_filt = nav_series[nav_series.index >= '20180101'].dropna()
+            if len(nav_filt) > 0:
+                nav_weekly = nav_filt.iloc[::5]
+                if nav_filt.index[-1] not in nav_weekly.index:
+                    nav_weekly = pd.concat([nav_weekly, nav_filt.iloc[[-1]]])
+                base_p = nav_weekly.iloc[0]
+                if base_p > 0:
+                    price_dates = nav_weekly.index.tolist()
+                    price_values = (nav_weekly / base_p).round(4).tolist()
 
-        share_trends[code] = {
-            'name': NT_PRIORITY_NAMES.get(code, code),
-            'dates': df_weekly['trade_date'].tolist(),
-            'shares': df_weekly['fd_share'].tolist(),
+        share_trends[idx_name] = {
+            'name': idx_name,
+            'dates': aum_weekly.index.tolist(),
+            'aum': aum_weekly.round(1).tolist(),  # 亿元
             'price_dates': price_dates,
             'price_values': price_values,
+            'n_etfs': len(share_frames),
+            'current_aum': round(float(aum_valid.iloc[-1]), 1),
         }
 
     # 读取最近事件
@@ -108,14 +167,26 @@ def _build_national_team_data():
                 'hist_pctile': round(float(row['hist_pctile']) * 100, 1) if pd.notna(row.get('hist_pctile')) else None,
             })
 
-    # 板块概览
+    # 板块概览（加入规模数据）
+    # 建立 sector → 规模汇总映射
+    sector_aum_map = {}
+    for idx_cfg in INDEX_AGG_CONFIG:
+        s = idx_cfg['sector']
+        idx_name = idx_cfg['name']
+        if idx_name in share_trends:
+            aum = share_trends[idx_name].get('current_aum', 0)
+            sector_aum_map[s] = sector_aum_map.get(s, 0) + aum
+
     sector_exposure = overview.get('sector_exposure', {})
     sector_cards = []
     for sector, growth in sorted(sector_exposure.items(), key=lambda x: abs(x[1]), reverse=True):
-        sector_cards.append({
+        card = {
             'sector': sector,
             'growth_20d': round(growth * 100, 1),
-        })
+        }
+        if sector in sector_aum_map and sector_aum_map[sector] > 0:
+            card['current_aum'] = round(sector_aum_map[sector], 1)
+        sector_cards.append(card)
 
     return {
         'available': True,
@@ -622,18 +693,19 @@ const DATA = __DATA__;
   } else {
     let ntHtml = '';
 
-    // 板块增幅概览卡片
+    // 板块增幅概览卡片（含规模）
     ntHtml += `<div style="margin-bottom:8px;font-size:0.8rem;color:var(--muted)">数据截至 ${nt.date} · 方向: <span style="color:${nt.direction_sign==='入场'?'var(--green)':'var(--red)'};font-weight:600">${nt.direction_sign}</span> · 轮动热点: <span style="color:var(--accent);font-weight:600">${nt.rotation_heat}</span></div>`;
     ntHtml += '<div class="nt-cards">';
     for (const sc of (nt.sector_cards||[])) {
       const clr = sc.growth_20d > 5 ? 'var(--red)' : sc.growth_20d > 0 ? 'var(--green)' : 'var(--accent)';
       const heat = sc.sector === nt.rotation_heat ? ' 🔥' : '';
-      ntHtml += `<div class="nt-card"><div class="sector">${sc.sector}${heat}</div><div class="growth" style="color:${clr}">${sc.growth_20d>0?'+':''}${sc.growth_20d}%</div><div class="meta">20d 增幅</div></div>`;
+      const aumStr = sc.current_aum ? `<div class="meta" style="margin-top:2px">规模 ${sc.current_aum>=10000?((sc.current_aum/10000).toFixed(1)+'万亿'):(sc.current_aum.toFixed(0)+'亿')}</div>` : '';
+      ntHtml += `<div class="nt-card"><div class="sector">${sc.sector}${heat}</div><div class="growth" style="color:${clr}">${sc.growth_20d>0?'+':''}${sc.growth_20d}%</div><div class="meta">20d 增幅</div>${aumStr}</div>`;
     }
     ntHtml += '</div>';
 
     // 量价对比图容器（2×3 小图 grid）
-    ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场量价对比（2018 年起 · 左轴=份额对数 · 右轴=净值归一化）</h2>';
+    ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场量价对比（2018 年起 · 左轴=规模亿元 · 右轴=净值归一）</h2>';
     ntHtml += '<div id="ntGridCharts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px"></div></div>';
 
     // 事件表
@@ -654,7 +726,7 @@ const DATA = __DATA__;
 
     ntEl.innerHTML = ntHtml;
 
-    // 绘制量价对比小图（2×3 grid，每只 ETF 双 Y 轴）
+    // 绘制量价对比小图（2×3 grid，每个指数双 Y 轴）
     if (canChart && nt.share_trends && Object.keys(nt.share_trends).length) {
       const colors = ['#60a5fa','#f87171','#34d399','#fb923c','#a78bfa','#f472b6'];
       const trends = nt.share_trends;
@@ -668,12 +740,12 @@ const DATA = __DATA__;
         wrap.appendChild(cvs);
         gridEl.appendChild(wrap);
         const datasets = [{
-          label: t.name + ' 份额',
-          data: t.shares,
+          label: t.name + ' 规模(亿)',
+          data: t.aum,
           borderColor: colors[i % colors.length],
           backgroundColor: 'transparent',
           tension: 0.15, pointRadius: 0, borderWidth: 1.5,
-          yAxisID: 'yShare',
+          yAxisID: 'yAum',
         }];
         if (t.price_values && t.price_values.length) {
           datasets.push({
@@ -686,19 +758,17 @@ const DATA = __DATA__;
             yAxisID: 'yPrice',
           });
         }
-        // X 轴标签用年份
-        const labels = t.price_values && t.price_values.length ? t.price_dates : t.dates;
-        const shareAligned = t.shares;
+        const subtitle = t.n_etfs ? ` (${t.n_etfs}只 ETF)` : '';
         new Chart(cvs, {
           type: 'line',
           data: { labels: t.dates, datasets: datasets },
           options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: true, labels: { color:'#8892a8', font:{size:9}, boxWidth:10 } }, title: { display:true, text: t.name, color:'#e2e8f0', font:{size:11} }, tooltip: { mode:'index', intersect:false } },
+            plugins: { legend: { display: true, labels: { color:'#8892a8', font:{size:9}, boxWidth:10 } }, title: { display:true, text: t.name + subtitle, color:'#e2e8f0', font:{size:11} }, tooltip: { mode:'index', intersect:false } },
             scales: {
               x: { ticks: { color:'#64748b', maxTicksLimit:6, callback: function(val,idx) { const d=this.getLabelForValue(val); return d?d.substring(0,4):''; } }, grid:{color:'#1e293b'} },
-              yShare: { position:'left', type:'logarithmic', ticks: { color: colors[i%colors.length], font:{size:9}, callback: function(v){ return (v/10000).toFixed(0)+'万'; } }, grid:{color:'#1e293b55'} },
-              yPrice: { position:'right', type:'linear', ticks: { color: (colors[i%colors.length]+'80'), font:{size:9} }, grid:{display:false} },
+              yAum: { position:'left', type:'logarithmic', title:{display:true, text:'规模(亿元)', color:'#8892a8', font:{size:8}}, ticks: { color: colors[i%colors.length], font:{size:9}, callback: function(v){ return v>=10000?((v/10000).toFixed(0)+'万亿'):(v>=1000?((v/1000).toFixed(0)+'k'):v.toFixed(0)); } }, grid:{color:'#1e293b55'} },
+              yPrice: { position:'right', type:'linear', title:{display:true, text:'净值(归一)', color:'#8892a880', font:{size:8}}, ticks: { color: (colors[i%colors.length]+'80'), font:{size:9} }, grid:{display:false} },
             },
             interaction: { mode:'index', intersect:false },
           }
