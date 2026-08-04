@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-08-04 10:48:59",
+  "data_dir": "/home/ubuntu/claw_etf_strategy/data/national_team",
+  "n_etfs_loaded": 6,
+  "n_etfs_signals": 6,
+  "market_overview": {
+    "date": "20260804",
+    "sector_exposure": {
+      "大盘核心": 0.5360697218436569,
+      "小盘": 1.9640425711528695,
+      "中盘": 0.4420410966621968,
+      "创业板": 0.8270325543496235
+    },
+    "rotation_heat": "小盘",
+    "direction_sign": "入场",
+    "concentration_hhi": 0.3536,
+    "index_growth_20d": {
+      "上证50": 0.463596,
+      "中证1000": 1.964043,
+      "中证500": 0.442041,
+      "创业板": 0.827033,
+      "沪深300": 0.608543
+    },
+    "n_indices_active": 5
+  },
+  "index_latest": {
+    "上证50": {
+      "date": "20260803",
+      "growth_20d": 0.463596,
+      "peak_ratio": 0.1257,
+      "hist_pctile": 0.9562,
+      "n_etfs": 2
+    },
+    "中证1000": {
+      "date": "20260803",
+      "growth_20d": 1.964043,
+      "peak_ratio": 0.3733,
+      "hist_pctile": 0.9818,
+      "n_etfs": 1
+    },
+    "中证500": {
+      "date": "20260803",
+      "growth_20d": 0.442041,
+      "peak_ratio": 0.2975,
+      "hist_pctile": 0.9845,
+      "n_etfs": 1
+    },
+    "创业板": {
+      "date": "20260804",
+      "growth_20d": 0.827033,
+      "peak_ratio": 0.3589,
+      "hist_pctile": 0.997,
+      "n_etfs": 1
+    },
+    "沪深300": {
+      "date": "20260803",
+      "growth_20d": 0.608543,
+      "peak_ratio": 0.2677,
+      "hist_pctile": 0.9884,
+      "n_etfs": 1
+    }
+  }
+}

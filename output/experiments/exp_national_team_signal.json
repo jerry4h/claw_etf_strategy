@@ -1,0 +1,120 @@
+{
+  "experiment": "national_team_signal_validation",
+  "generated_at": "2026-08-04 10:49:47",
+  "ic_analysis": {
+    "full_period": {
+      "rank_ic": 0.0151,
+      "p_value": 0.6948,
+      "t_stat": 0.392,
+      "n_weeks": 676,
+      "period": "2013-05-17~2026-07-24"
+    },
+    "recent_2020": {
+      "rank_ic": 0.035,
+      "p_value": 0.5225,
+      "t_stat": 0.64,
+      "n_weeks": 336,
+      "period": "2020-01-03~2026-07-24"
+    },
+    "rolling_52w": {
+      "ic_mean": 0.0435,
+      "ic_std": 0.0944,
+      "ir": 0.461,
+      "n_windows": 624
+    }
+  },
+  "event_attribution": {
+    "n_windows": 38,
+    "unconditional_weekly_mean": 0.002013,
+    "horizon_4w": {
+      "mean_return": 0.00044,
+      "median_return": 0.0129,
+      "win_rate": 0.595,
+      "unconditional_cum": 0.00805,
+      "excess_mean": -0.00761,
+      "t_stat": -0.554,
+      "p_value": 0.5827,
+      "n_events": 37
+    },
+    "horizon_8w": {
+      "mean_return": 0.00419,
+      "median_return": 0.0212,
+      "win_rate": 0.703,
+      "unconditional_cum": 0.0161,
+      "excess_mean": -0.01192,
+      "t_stat": -0.843,
+      "p_value": 0.4045,
+      "n_events": 37
+    },
+    "horizon_12w": {
+      "mean_return": 0.00333,
+      "median_return": 0.02202,
+      "win_rate": 0.595,
+      "unconditional_cum": 0.02416,
+      "excess_mean": -0.02082,
+      "t_stat": -1.182,
+      "p_value": 0.2451,
+      "n_events": 37
+    }
+  },
+  "announcement_alignment": {
+    "known_announcements": [
+      {
+        "date": "2023-10-23",
+        "desc": "汇金公告增持ETF",
+        "hit": false,
+        "matched": "未命中 (±14日最近: N/A)"
+      },
+      {
+        "date": "2024-02-06",
+        "desc": "证金公告增持",
+        "hit": true,
+        "matched": "2024-02-05"
+      },
+      {
+        "date": "2024-09-24",
+        "desc": "政策组合拳（央行+证监会+金融监管）",
+        "hit": false,
+        "matched": "未命中 (±14日最近: 2024-09-30)"
+      }
+    ],
+    "recall": 0.3333,
+    "precision": 0.0263,
+    "n_windows": 38,
+    "n_hit_windows": 1
+  },
+  "strategy_simulation": {
+    "baseline": {
+      "sharpe": 1.4963,
+      "max_drawdown": 0.0584,
+      "annual_return": 0.1459
+    },
+    "patched": {
+      "sharpe": 1.4551,
+      "max_drawdown": 0.0584,
+      "annual_return": 0.1424
+    },
+    "delta": {
+      "sharpe": -0.0412,
+      "max_drawdown": 0.0,
+      "annual_return": -0.0036
+    }
+  },
+  "gate_decision": {
+    "decision": "NO-GO",
+    "action": "终止策略集成方向，信号保留看板展示用途",
+    "evidence": [
+      "|rank_IC| = 0.0151 < 0.03 → FAIL",
+      "|t-stat| = 0.392 < 1.5 → FAIL",
+      "事件后收益正向显著: 否 → FAIL",
+      "Recall = 33.3% < 2/3 → FAIL (OBSERVATION 条件)"
+    ],
+    "criteria": {
+      "abs_rank_ic": 0.0151,
+      "abs_t_stat": 0.392,
+      "event_positive_significant": false,
+      "recall": 0.3333
+    },
+    "strategy_delta_sharpe": -0.0412
+  }
+}

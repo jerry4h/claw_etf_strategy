@@ -44,3 +44,6 @@ output/manifold/*.json
 
 # 防止外部工具误生成的嵌套工作区目录再次进入仓库
 /Users/
+
+# 主力追踪原始份额数据（敏感，不入库）
+data/national_team/

@@ -3,6 +3,7 @@
 
 import json, sys
 from pathlib import Path
+from datetime import datetime
 import numpy as np, pandas as pd
 
 PROJ = Path(__file__).resolve().parent.parent
@@ -14,6 +15,90 @@ from src.data_loader import OFFENSIVE, DEFENSIVE, load_nav_data, resample_weekly
 
 # 看板显示顺序：纳指 → 中证500 → 黄金 → 红利低波 → 国债（进攻在前，防御在后）
 DISPLAY_ORDER = ['纳指ETF', '中证500ETF', '黄金ETF', '红利低波ETF', '国债ETF']
+
+# 主力追踪优先标的（6 只）
+NT_PRIORITY_CODES = ['510300.SH', '510050.SH', '510500.SH', '512100.SH', '159915.SZ', '588000.SH']
+NT_PRIORITY_NAMES = {
+    '510300.SH': '沪深300ETF', '510050.SH': '上证50ETF',
+    '510500.SH': '中证500ETF', '512100.SH': '中证1000ETF',
+    '159915.SZ': '创业板ETF', '588000.SH': '科创50ETF',
+}
+
+
+def _build_national_team_data():
+    """
+    构建主力追踪看板数据。若数据目录不存在/为空则返回降级标记。
+    返回 dict 含 'available' 标记 + 数据字段，或 {'available': False, 'reason': ...}。
+    """
+    data_dir = PROJ / 'data' / 'national_team'
+    share_dir = data_dir / 'fund_share'
+
+    # 检测数据可用性
+    if not share_dir.exists() or not any(share_dir.glob('*.csv')):
+        return {'available': False, 'reason': '主力追踪数据未就绪，请先运行 scripts/fetch_national_team_share.py'}
+
+    try:
+        from src.national_team import build_position_model
+        overview = build_position_model(data_dir=data_dir, verbose=False)
+    except Exception as e:
+        return {'available': False, 'reason': f'仓位建模异常: {e}'}
+
+    if 'error' in overview:
+        return {'available': False, 'reason': overview['error']}
+
+    # 读取优先标的份额时序（近 1 年约 250 交易日）
+    share_trends = {}
+    for code in NT_PRIORITY_CODES:
+        fname = code.replace('.', '_') + '.csv'
+        fpath = share_dir / fname
+        if not fpath.exists():
+            continue
+        df = pd.read_csv(fpath, dtype={'trade_date': str})
+        df = df.sort_values('trade_date').reset_index(drop=True)
+        # 取最近 250 行
+        df_tail = df.tail(250)
+        share_trends[code] = {
+            'name': NT_PRIORITY_NAMES.get(code, code),
+            'dates': df_tail['trade_date'].tolist(),
+            'shares': df_tail['fd_share'].tolist(),
+        }
+
+    # 读取最近事件
+    events_path = data_dir / 'events.csv'
+    recent_events = []
+    if events_path.exists():
+        ev_df = pd.read_csv(events_path, dtype={'date': str})
+        ev_df = ev_df.sort_values('date', ascending=False).head(20)
+        for _, row in ev_df.iterrows():
+            recent_events.append({
+                'date': row.get('date', ''),
+                'etf': row.get('etf', ''),
+                'index': row.get('index', ''),
+                'trigger_type': row.get('trigger_type', ''),
+                'share_growth_20d': round(float(row['share_growth_20d']) * 100, 2) if pd.notna(row.get('share_growth_20d')) else None,
+                'hist_pctile': round(float(row['hist_pctile']) * 100, 1) if pd.notna(row.get('hist_pctile')) else None,
+            })
+
+    # 板块概览
+    sector_exposure = overview.get('sector_exposure', {})
+    sector_cards = []
+    for sector, growth in sorted(sector_exposure.items(), key=lambda x: abs(x[1]), reverse=True):
+        sector_cards.append({
+            'sector': sector,
+            'growth_20d': round(growth * 100, 1),
+        })
+
+    return {
+        'available': True,
+        'date': overview.get('date', ''),
+        'direction_sign': overview.get('direction_sign', ''),
+        'rotation_heat': overview.get('rotation_heat', ''),
+        'concentration_hhi': overview.get('concentration_hhi', 0),
+        'n_indices_active': overview.get('n_indices_active', 0),
+        'sector_cards': sector_cards,
+        'share_trends': share_trends,
+        'recent_events': recent_events,
+    }
 
 
 def _build_data(cfg):
@@ -111,7 +196,85 @@ def _build_data(cfg):
         "inv_vol_window": cfg.inv_vol_window,
         "pvd_enabled": cfg.pvd_enabled, "pvd_w": cfg.pvd_w,
     }
+
+    # 主力追踪数据
+    data["national_team"] = _build_national_team_data()
+
     return data
+
+
+def _generate_weekly_report(nt_data: dict):
+    """生成 output/national_team/weekly_report.md"""
+    out_dir = PROJ / 'output' / 'national_team'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report_path = out_dir / 'weekly_report.md'
+
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    if not nt_data.get('available'):
+        report_path.write_text(
+            f"# 主力追踪周报 — {today}\n\n> 数据未就绪: {nt_data.get('reason', '未知原因')}\n",
+            encoding='utf-8')
+        return report_path
+
+    lines = [f"# 主力追踪周报 — {today}\n"]
+    lines.append(f"**数据截至**: {nt_data.get('date', 'N/A')}\n")
+    lines.append(f"**总体方向**: {nt_data.get('direction_sign', 'N/A')} | "
+                 f"**轮动热点**: {nt_data.get('rotation_heat', 'N/A')} | "
+                 f"**集中度 HHI**: {nt_data.get('concentration_hhi', 0):.4f}\n")
+
+    # Top 5 板块变动
+    lines.append("\n## 本周主要变动 Top 5（按 20d 增幅排序）\n")
+    lines.append("| 板块 | 20d 增幅 | 方向 |")
+    lines.append("|------|---------|------|")
+    sector_cards = nt_data.get('sector_cards', [])
+    for card in sector_cards[:5]:
+        g = card['growth_20d']
+        direction = '↑ 入场' if g > 0 else '↓ 兑现' if g < 0 else '— 持平'
+        lines.append(f"| {card['sector']} | {g:+.1f}% | {direction} |")
+
+    # Rotation 判定
+    lines.append("\n## 板块 Rotation 判定\n")
+    lines.append(f"- **Direction Sign**: {nt_data.get('direction_sign', 'N/A')}")
+    lines.append(f"- **Rotation Heat（最大增幅板块）**: {nt_data.get('rotation_heat', 'N/A')}")
+    lines.append(f"- **活跃指数数**: {nt_data.get('n_indices_active', 0)}")
+    if sector_cards:
+        lines.append("\n全板块概览:\n")
+        for card in sector_cards:
+            g = card['growth_20d']
+            emoji = '🔴' if g > 5 else '🟡' if g > 0 else '🔵'
+            lines.append(f"  {emoji} {card['sector']}: {g:+.1f}%")
+
+    # 异常事件
+    lines.append("\n## 本周异常事件\n")
+    events = nt_data.get('recent_events', [])
+    if events:
+        lines.append("| 日期 | ETF | 板块 | 触发类型 | 份额增幅 | 百分位 |")
+        lines.append("|------|-----|------|---------|---------|--------|")
+        # 取最近 7 天的事件(近似本周)
+        if events:
+            latest_date = events[0].get('date', '')
+            # 简化：取最新 10 条作为"本周"
+            for ev in events[:10]:
+                g = f"{ev['share_growth_20d']:+.2f}%" if ev.get('share_growth_20d') is not None else '—'
+                p = f"{ev['hist_pctile']:.1f}%" if ev.get('hist_pctile') is not None else '—'
+                lines.append(f"| {ev['date']} | {ev['etf']} | {ev['index']} | {ev['trigger_type']} | {g} | {p} |")
+    else:
+        lines.append("*本周无异常事件*\n")
+
+    # 与上周对比（基于当前数据快照，简要说明）
+    lines.append("\n## 与上周对比\n")
+    lines.append(f"- 总体方向: **{nt_data.get('direction_sign', 'N/A')}**")
+    lines.append(f"- 轮动热点: **{nt_data.get('rotation_heat', 'N/A')}**")
+    if sector_cards:
+        positive = [c for c in sector_cards if c['growth_20d'] > 0]
+        negative = [c for c in sector_cards if c['growth_20d'] < 0]
+        lines.append(f"- 净入场板块数: {len(positive)} / 净兑现板块数: {len(negative)}")
+
+    lines.append(f"\n---\n*生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n")
+
+    report_path.write_text('\n'.join(lines), encoding='utf-8')
+    return report_path
 
 
 TPL = """<!DOCTYPE html>
@@ -147,7 +310,7 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .grid-2 {display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 .grid-2-1 {display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
 @media(max-width:900px){.grid-2,.grid-2-1{grid-template-columns:1fr;}}
-@media(max-width:600px){body{padding:14px;}.px{grid-template-columns:repeat(2,1fr);}.rc{grid-template-columns:1fr;}}
+@media(max-width:600px){body{padding:14px;}.px{grid-template-columns:repeat(2,1fr);}.rc{grid-template-columns:1fr;}.nt-cards{grid-template-columns:1fr 1fr !important;}}
 .ht {width:100%;border-collapse:collapse;font-size:0.82rem;}
 .ht th {text-align:left;color:var(--muted);padding:6px 8px;font-weight:500;border-bottom:1px solid var(--border);}
 .ht td {padding:6px 8px;border-bottom:1px solid var(--border);}
@@ -173,6 +336,14 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .chart-stack > .chart-wrap:nth-child(1) {flex:5;min-height:0;}
 .chart-stack > .chart-wrap:nth-child(2) {flex:3;min-height:0;}
 .chart-stack > .chart-wrap:nth-child(3) {flex:3;min-height:0;}
+.nt-section {margin-top:24px;border-top:1px solid var(--border);padding-top:24px;}
+.nt-section h2.section-title {font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:16px;}
+.nt-cards {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
+.nt-card {background:var(--card);border-radius:8px;padding:12px;border:1px solid var(--border);text-align:center;}
+.nt-card .sector {font-size:0.72rem;color:var(--muted);margin-bottom:4px;}
+.nt-card .growth {font-size:1.2rem;font-weight:700;}
+.nt-card .meta {font-size:0.65rem;color:var(--muted);margin-top:3px;}
+.nt-degraded {padding:32px;text-align:center;color:var(--orange);font-size:0.9rem;background:rgba(251,146,60,0.05);border:1px dashed var(--orange);border-radius:10px;margin-top:16px;}
 </style>
 </head>
 <body>
@@ -225,6 +396,12 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
   </div>
 </div>
 
+<!-- 主力追踪板块 -->
+<div class="nt-section" id="nt-section">
+  <h2 class="section-title">🏛️ 主力追踪</h2>
+  <div id="nt-content"></div>
+</div>
+
 </div>
 
 <script id="main-script">
@@ -234,7 +411,7 @@ const DATA = __DATA__;
   const d = DATA;
   const {meta,metrics:m,nav:nd,defense:dd,drawdown:dwd,
          holdings,annual_returns:ann,etf_stats:etfS,
-         recent_ytd:rytd,recent_year1:r1y,recent_month3:r3m,params} = d;
+         recent_ytd:rytd,recent_year1:r1y,recent_month3:r3m,params,national_team:nt} = d;
 
   // Header
   const endDate = (meta.data_range || '').split(' ~ ')[1] || '';
@@ -408,6 +585,75 @@ const DATA = __DATA__;
   document.getElementById('params-content').innerHTML =
     Object.entries(params).filter(([k])=>pl[k]).map(([k,v])=>`<div class="px-item"><div class="k">${pl[k]}</div><div class="v">${typeof v==='boolean'?(v?'✅':'❌'):v}</div></div>`).join('');
 
+  // ===== 主力追踪板块 =====
+  const ntEl = document.getElementById('nt-content');
+  if (!nt || !nt.available) {
+    const reason = (nt && nt.reason) ? nt.reason : '主力追踪数据未就绪，请先运行 scripts/fetch_national_team_share.py';
+    ntEl.innerHTML = `<div class="nt-degraded">⚠️ ${reason}</div>`;
+  } else {
+    let ntHtml = '';
+
+    // 板块增幅概览卡片
+    ntHtml += `<div style="margin-bottom:8px;font-size:0.8rem;color:var(--muted)">数据截至 ${nt.date} · 方向: <span style="color:${nt.direction_sign==='入场'?'var(--green)':'var(--red)'};font-weight:600">${nt.direction_sign}</span> · 轮动热点: <span style="color:var(--accent);font-weight:600">${nt.rotation_heat}</span></div>`;
+    ntHtml += '<div class="nt-cards">';
+    for (const sc of (nt.sector_cards||[])) {
+      const clr = sc.growth_20d > 5 ? 'var(--red)' : sc.growth_20d > 0 ? 'var(--green)' : 'var(--accent)';
+      const heat = sc.sector === nt.rotation_heat ? ' 🔥' : '';
+      ntHtml += `<div class="nt-card"><div class="sector">${sc.sector}${heat}</div><div class="growth" style="color:${clr}">${sc.growth_20d>0?'+':''}${sc.growth_20d}%</div><div class="meta">20d 增幅</div></div>`;
+    }
+    ntHtml += '</div>';
+
+    // 份额走势图容器
+    ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场份额走势（对数坐标 · 近 1 年）</h2><div class="chart-wrap" style="height:280px"><canvas id="ntShareChart"></canvas></div></div>';
+
+    // 事件表
+    ntHtml += '<div class="panel"><h2>⚡ 疑似主力介入事件（最近 20 条）</h2>';
+    if ((nt.recent_events||[]).length) {
+      ntHtml += '<table class="st"><thead><tr><th>日期</th><th>ETF</th><th>板块</th><th>触发类型</th><th>份额增幅</th><th>百分位</th></tr></thead><tbody>';
+      for (const ev of nt.recent_events) {
+        const g = ev.share_growth_20d !== null ? (ev.share_growth_20d > 0 ? '+' : '') + ev.share_growth_20d + '%' : '—';
+        const p = ev.hist_pctile !== null ? ev.hist_pctile + '%' : '—';
+        const gc = ev.share_growth_20d > 0 ? 'g' : (ev.share_growth_20d < 0 ? 'r' : '');
+        ntHtml += `<tr><td>${ev.date}</td><td>${ev.etf}</td><td>${ev.index}</td><td>${ev.trigger_type}</td><td class="${gc}">${g}</td><td>${p}</td></tr>`;
+      }
+      ntHtml += '</tbody></table>';
+    } else {
+      ntHtml += '<div style="padding:16px;color:var(--muted);text-align:center">暂无事件</div>';
+    }
+    ntHtml += '</div>';
+
+    ntEl.innerHTML = ntHtml;
+
+    // 绘制份额走势图
+    if (canChart && nt.share_trends && Object.keys(nt.share_trends).length) {
+      const colors = ['#60a5fa','#f87171','#34d399','#fb923c','#a78bfa','#f472b6'];
+      const trends = nt.share_trends;
+      const codes = Object.keys(trends);
+      // 统一日期轴（取第一个 ETF 的日期）
+      const baseDates = trends[codes[0]].dates;
+      const datasets = codes.map((code, i) => ({
+        label: trends[code].name,
+        data: trends[code].shares,
+        borderColor: colors[i % colors.length],
+        backgroundColor: 'transparent',
+        tension: 0.1,
+        pointRadius: 0,
+        borderWidth: 1.5,
+      }));
+      new Chart(document.getElementById('ntShareChart'), {
+        type: 'line',
+        data: { labels: baseDates, datasets: datasets },
+        options: {
+          ...CHART_OPT,
+          plugins: { ...CHART_OPT.plugins, legend: { display: true, labels: { color: '#8892a8', font: { size: 10 }, boxWidth: 12 } }, tooltip: { ...CHART_OPT.plugins.tooltip, mode: 'index' } },
+          scales: { ...CHART_OPT.scales, y: { ...CHART_OPT.scales.y, type: 'logarithmic', ticks: { ...CHART_OPT.scales.y.ticks, callback: function(v) { return (v/10000).toFixed(0)+'万亿'; } } } },
+          interaction: { mode: 'index', intersect: false },
+        },
+        plugins: [vline]
+      });
+    }
+  }
+
 })();
 </script>
 </body>
@@ -434,6 +680,17 @@ def main():
     print(f"   JSON: {out_dir / 'data.json'} ({Path(out_dir / 'data.json').stat().st_size / 1024:.1f} KB)")
     print(f"   HTML: {PROJ / 'index.html'} ({Path(PROJ / 'index.html').stat().st_size / 1024:.1f} KB)")
     print(f"   净值点数: {len(data['nav']['dates'])}  覆盖年份: {len(data['annual_returns'])}")
+
+    # 主力追踪状态
+    nt = data.get("national_team", {})
+    if nt.get("available"):
+        print(f"   主力追踪: ✅ {len(nt.get('share_trends', {}))} 只优先标的 | {len(nt.get('recent_events', []))} 条事件 | 方向={nt.get('direction_sign')}")
+    else:
+        print(f"   主力追踪: ⚠️ 降级 — {nt.get('reason', '未知')}")
+
+    # 生成周报
+    report_path = _generate_weekly_report(nt)
+    print(f"   周报: {report_path}")
 
 
 if __name__ == "__main__":

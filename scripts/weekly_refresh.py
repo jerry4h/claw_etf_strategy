@@ -275,6 +275,24 @@ def step2_update_cache():
     return added, f"共追加 {total} 行（{sum(1 for v in added.values() if v > 0)}/{len(added)} 个文件有增量）"
 
 
+def _step2_5_national_team_share() -> str:
+    """Soft failure 调用份额追踪采集脚本（增量模式）。失败仅警告，不阻塞主管线。"""
+    script = ROOT / 'scripts' / 'fetch_national_team_share.py'
+    if not script.exists():
+        return '份额追踪脚本不存在，跳过'
+    try:
+        cp = run_cmd([sys.executable, str(script)], timeout=1800)
+        if cp.returncode != 0:
+            return f'份额追踪脚本返回非零 (exit={cp.returncode})，已跳过（soft failure）'
+        # 提取统计行
+        for line in (cp.stdout or '').splitlines():
+            if '采集统计' in line:
+                return line.strip()
+        return '份额追踪完成'
+    except Exception as e:
+        return f'份额追踪失败: {str(e)[:80]}（soft failure，不阻塞）'
+
+
 def step3_validate(prev_nav_last: pd.Timestamp, cache_added: dict):
     """新数据基本合理性：NaN / 日期合法性 / 新增+尾部行收益率跳变。失败列出全部问题后中止。"""
     problems = []
@@ -399,6 +417,10 @@ def main() -> int:
         log('Step 2/5: tushare_cache 日频增量补齐')
         cache_added, detail = step2_update_cache()
         results.append(('2 缓存增量', detail)); log(f"  ✅ {detail}")
+
+        log('Step 2.5/5: 主力ETF份额追踪增量更新 (soft)')
+        detail = _step2_5_national_team_share()
+        results.append(('2.5 份额追踪', detail)); log(f"  {'✅' if '失败' not in detail else '⚠️'} {detail}")
 
         log('Step 3/5: 数据质量校验')
         detail = step3_validate(prev_last, cache_added)
