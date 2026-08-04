@@ -46,8 +46,9 @@ def _build_national_team_data():
     if 'error' in overview:
         return {'available': False, 'reason': overview['error']}
 
-    # 读取优先标的份额时序（近 1 年约 250 交易日）
+    # 读取优先标的份额时序（从 2018 年起，周频降采样）
     share_trends = {}
+    price_cache_dir = data_dir / 'fund_daily_cache'
     for code in NT_PRIORITY_CODES:
         fname = code.replace('.', '_') + '.csv'
         fpath = share_dir / fname
@@ -55,12 +56,40 @@ def _build_national_team_data():
             continue
         df = pd.read_csv(fpath, dtype={'trade_date': str})
         df = df.sort_values('trade_date').reset_index(drop=True)
-        # 取最近 250 行
-        df_tail = df.tail(250)
+        # 从 2018 年起
+        df = df[df['trade_date'] >= '20180101'].reset_index(drop=True)
+        if len(df) == 0:
+            continue
+        # 周频降采样：每 5 个交易日取最后一个点
+        df_weekly = df.iloc[::5].copy()
+        if len(df) > 0 and df.index[-1] not in df_weekly.index:
+            df_weekly = pd.concat([df_weekly, df.iloc[[-1]]])
+
+        # 加载价格数据（净值归一化）
+        price_dates = []
+        price_values = []
+        price_fpath = price_cache_dir / fname if price_cache_dir.exists() else None
+        if price_fpath and price_fpath.exists():
+            pdf = pd.read_csv(price_fpath, dtype={'trade_date': str})
+            pdf = pdf.sort_values('trade_date').reset_index(drop=True)
+            pdf = pdf[pdf['trade_date'] >= '20180101'].reset_index(drop=True)
+            if len(pdf) > 0:
+                # 同样周频降采样
+                pdf_weekly = pdf.iloc[::5].copy()
+                if len(pdf) > 0 and pdf.index[-1] not in pdf_weekly.index:
+                    pdf_weekly = pd.concat([pdf_weekly, pdf.iloc[[-1]]])
+                # 归一化到基期=1
+                base_price = pdf_weekly['close'].iloc[0]
+                if base_price > 0:
+                    price_dates = pdf_weekly['trade_date'].tolist()
+                    price_values = (pdf_weekly['close'] / base_price).round(4).tolist()
+
         share_trends[code] = {
             'name': NT_PRIORITY_NAMES.get(code, code),
-            'dates': df_tail['trade_date'].tolist(),
-            'shares': df_tail['fd_share'].tolist(),
+            'dates': df_weekly['trade_date'].tolist(),
+            'shares': df_weekly['fd_share'].tolist(),
+            'price_dates': price_dates,
+            'price_values': price_values,
         }
 
     # 读取最近事件
@@ -603,8 +632,9 @@ const DATA = __DATA__;
     }
     ntHtml += '</div>';
 
-    // 份额走势图容器
-    ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场份额走势（对数坐标 · 近 1 年）</h2><div class="chart-wrap" style="height:280px"><canvas id="ntShareChart"></canvas></div></div>';
+    // 量价对比图容器（2×3 小图 grid）
+    ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场量价对比（2018 年起 · 左轴=份额对数 · 右轴=净值归一化）</h2>';
+    ntHtml += '<div id="ntGridCharts" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"></div></div>';
 
     // 事件表
     ntHtml += '<div class="panel"><h2>⚡ 疑似主力介入事件（最近 20 条）</h2>';
@@ -624,32 +654,55 @@ const DATA = __DATA__;
 
     ntEl.innerHTML = ntHtml;
 
-    // 绘制份额走势图
+    // 绘制量价对比小图（2×3 grid，每只 ETF 双 Y 轴）
     if (canChart && nt.share_trends && Object.keys(nt.share_trends).length) {
       const colors = ['#60a5fa','#f87171','#34d399','#fb923c','#a78bfa','#f472b6'];
       const trends = nt.share_trends;
       const codes = Object.keys(trends);
-      // 统一日期轴（取第一个 ETF 的日期）
-      const baseDates = trends[codes[0]].dates;
-      const datasets = codes.map((code, i) => ({
-        label: trends[code].name,
-        data: trends[code].shares,
-        borderColor: colors[i % colors.length],
-        backgroundColor: 'transparent',
-        tension: 0.1,
-        pointRadius: 0,
-        borderWidth: 1.5,
-      }));
-      new Chart(document.getElementById('ntShareChart'), {
-        type: 'line',
-        data: { labels: baseDates, datasets: datasets },
-        options: {
-          ...CHART_OPT,
-          plugins: { ...CHART_OPT.plugins, legend: { display: true, labels: { color: '#8892a8', font: { size: 10 }, boxWidth: 12 } }, tooltip: { ...CHART_OPT.plugins.tooltip, mode: 'index' } },
-          scales: { ...CHART_OPT.scales, y: { ...CHART_OPT.scales.y, type: 'logarithmic', ticks: { ...CHART_OPT.scales.y.ticks, callback: function(v) { return (v/10000).toFixed(0)+'万亿'; } } } },
-          interaction: { mode: 'index', intersect: false },
-        },
-        plugins: [vline]
+      const gridEl = document.getElementById('ntGridCharts');
+      codes.forEach((code, i) => {
+        const t = trends[code];
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'height:200px;background:var(--panel-bg);border-radius:8px;padding:6px';
+        const cvs = document.createElement('canvas');
+        wrap.appendChild(cvs);
+        gridEl.appendChild(wrap);
+        const datasets = [{
+          label: t.name + ' 份额',
+          data: t.shares,
+          borderColor: colors[i % colors.length],
+          backgroundColor: 'transparent',
+          tension: 0.15, pointRadius: 0, borderWidth: 1.5,
+          yAxisID: 'yShare',
+        }];
+        if (t.price_values && t.price_values.length) {
+          datasets.push({
+            label: t.name + ' 净值',
+            data: t.price_values,
+            borderColor: colors[i % colors.length] + '80',
+            backgroundColor: 'transparent',
+            borderDash: [4,3],
+            tension: 0.15, pointRadius: 0, borderWidth: 1.2,
+            yAxisID: 'yPrice',
+          });
+        }
+        // X 轴标签用年份
+        const labels = t.price_values && t.price_values.length ? t.price_dates : t.dates;
+        const shareAligned = t.shares;
+        new Chart(cvs, {
+          type: 'line',
+          data: { labels: t.dates, datasets: datasets },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: true, labels: { color:'#8892a8', font:{size:9}, boxWidth:10 } }, title: { display:true, text: t.name, color:'#e2e8f0', font:{size:11} }, tooltip: { mode:'index', intersect:false } },
+            scales: {
+              x: { ticks: { color:'#64748b', maxTicksLimit:6, callback: function(val,idx) { const d=this.getLabelForValue(val); return d?d.substring(0,4):''; } }, grid:{color:'#1e293b'} },
+              yShare: { position:'left', type:'logarithmic', ticks: { color: colors[i%colors.length], font:{size:9}, callback: function(v){ return (v/10000).toFixed(0)+'万'; } }, grid:{color:'#1e293b55'} },
+              yPrice: { position:'right', type:'linear', ticks: { color: (colors[i%colors.length]+'80'), font:{size:9} }, grid:{display:false} },
+            },
+            interaction: { mode:'index', intersect:false },
+          }
+        });
       });
     }
   }
