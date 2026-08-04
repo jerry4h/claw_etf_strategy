@@ -634,7 +634,7 @@ const DATA = __DATA__;
 
     // 量价对比图容器（2×3 小图 grid）
     ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场量价对比（2018 年起 · 左轴=份额对数 · 右轴=净值归一化）</h2>';
-    ntHtml += '<div id="ntGridCharts" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"></div></div>';
+    ntHtml += '<div id="ntGridCharts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px"></div></div>';
 
     // 事件表
     ntHtml += '<div class="panel"><h2>⚡ 疑似主力介入事件（最近 20 条）</h2>';
