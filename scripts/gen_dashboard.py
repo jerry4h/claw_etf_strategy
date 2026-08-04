@@ -100,13 +100,15 @@ def _build_national_team_data():
                     member_codes.append(etf['ts_code'])
 
         # 读取各 ETF 份额与价格，逐只计算规模后求和
-        # 规模(亿元) = Σ(每只成员 份额_norm × 各自前复权价) / 10000
-        # share_norm = 份额 × adj_latest / adj (把份额归一到最新单位, 与 qfq 价同单位)
-        # 折算日(如纳指 2022-01 1拆5): 份额×5、qfq价不变 → 规模连续
+        # 规模(亿元) = Σ(每只成员 份额_norm × 价格) / 10000
+        # share_norm = 份额 × adj_latest / adj (把份额归一到最新单位)
+        # 有价格文件的成员(持仓标的): 用各自前复权价精确计算
+        # 无价格文件的成员(宽基指数): 用旗舰前复权价近似(成员价格≈指数价)
+        # 折算日(如纳指 2022-01 1拆5): 份额_norm × qfq价 规模连续
         # 关键: adj 用 bfill——份额折算日份额已切换新单位(×N), adj 也应取折算后值
         # (ffill 取旧值会双重×N)。qfq 价用 ffill(折算日无价格行时用前值)
         share_frames = []
-        price_frames = []   # 每只成员的前复权 close_qfq
+        member_prices = {}  # code -> 前复权价 Series（仅价格文件存在的成员）
         for code in member_codes:
             fname = code.replace('.', '_') + '.csv'
             fpath = share_dir / fname
@@ -129,52 +131,65 @@ def _build_national_team_data():
                     pser = pdf['close_qfq'].rename(code)
                 else:
                     pser = pdf['close'].rename(code)
-                price_frames.append(pser)
+                member_prices[code] = pser
 
         if not share_frames:
             continue
 
-        # 合并份额与价格（逐日对齐）
+        # 合并份额（逐日对齐）
         share_merged = pd.concat(share_frames, axis=1).sort_index()
-        if price_frames:
-            price_merged = pd.concat(price_frames, axis=1).sort_index()
-            # qfq 价: 折算日无价格行用前值(ffill)
-            price_merged = price_merged.ffill()
-            # 份额归一: share_norm = 份额 × adj_latest / adj (adj 用 bfill)
-            share_norm_series = []
-            for code in share_merged.columns:
-                pfile2 = price_cache_dir / (code.replace('.', '_') + '.csv')
-                if pfile2.exists():
-                    pdf2 = pd.read_csv(pfile2, dtype={'trade_date': str})
-                    pdf2 = pdf2[pdf2['trade_date'] >= '20180101'].sort_values('trade_date')
-                    if 'adj_factor' in pdf2.columns and pdf2['adj_factor'].notna().any():
-                        adj_s = pdf2.set_index('trade_date')['adj_factor']
-                        la = adj_s.iloc[-1]
-                        adj_aligned = adj_s.reindex(share_merged.index).bfill().ffill()
-                        norm = share_merged[code] * la / adj_aligned
-                        share_norm_series.append(norm.rename(code))
-                    else:
-                        share_norm_series.append(share_merged[code])
+
+        # 份额归一: share_norm = 份额 × adj_latest / adj (每只成员独立, adj 用 bfill)
+        share_norm_series = []
+        for code in share_merged.columns:
+            pfile2 = price_cache_dir / (code.replace('.', '_') + '.csv')
+            if pfile2.exists():
+                pdf2 = pd.read_csv(pfile2, dtype={'trade_date': str})
+                pdf2 = pdf2[pdf2['trade_date'] >= '20180101'].sort_values('trade_date')
+                if 'adj_factor' in pdf2.columns and pdf2['adj_factor'].notna().any():
+                    adj_s = pdf2.set_index('trade_date')['adj_factor']
+                    la = adj_s.iloc[-1]
+                    adj_aligned = adj_s.reindex(share_merged.index).bfill().ffill()
+                    norm = share_merged[code] * la / adj_aligned
+                    share_norm_series.append(norm.rename(code))
                 else:
                     share_norm_series.append(share_merged[code])
-            share_norm = pd.concat(share_norm_series, axis=1).sort_index()
-            # 逐只计算规模: share_norm × 前复权价, 再按日期求和
+            else:
+                # 无价格文件(无 adj): 份额不归一（未发生折算或视为 adj=1）
+                share_norm_series.append(share_merged[code])
+        share_norm = pd.concat(share_norm_series, axis=1).sort_index()
+
+        # 每只成员的定价: 有价格用各自 qfq, 无价格用旗舰 qfq (近似)
+        # 旗舰价: 先取前复权, 无则原始 close
+        flagship_price = None
+        pfname = flagship.replace('.', '_') + '.csv'
+        pfpath = price_cache_dir / pfname if price_cache_dir.exists() else None
+        if pfpath and pfpath.exists():
+            pdf = pd.read_csv(pfpath, dtype={'trade_date': str})
+            pdf = pdf[pdf['trade_date'] >= '20180101'].sort_values('trade_date')
+            pdf = pdf.set_index('trade_date')
+            flagship_price = pdf['close_qfq'] if 'close_qfq' in pdf.columns else pdf['close']
+            flagship_price = flagship_price.rename('__flagship__')
+
+        # 构造逐日价格矩阵: 每个成员用自己的价, 缺的用旗舰价
+        price_cols = {}
+        for code in share_norm.columns:
+            if code in member_prices:
+                price_cols[code] = member_prices[code]
+            elif flagship_price is not None:
+                price_cols[code] = flagship_price.rename(code)
+        if price_cols:
+            price_merged = pd.concat(price_cols.values(), axis=1).sort_index()
+            # qfq 价: 折算日无价格行用前值(ffill)
+            price_merged = price_merged.ffill()
+            # 逐只计算规模: share_norm × 各自价格, 再按日期求和
             aum_df = share_norm * price_merged.reindex(share_norm.index)
             aum_series = aum_df.sum(axis=1, min_count=1) / 10000  # 亿元
         else:
             aum_series = pd.Series(dtype=float)
 
         # 净值归一曲线: 用旗舰 ETF 前复权 close_qfq（消除分红/折算跳空）
-        pfname = flagship.replace('.', '_') + '.csv'
-        pfpath = price_cache_dir / pfname if price_cache_dir.exists() else None
-        nav_series = None
-        if pfpath and pfpath.exists():
-            pdf = pd.read_csv(pfpath, dtype={'trade_date': str})
-            pdf = pdf[pdf['trade_date'] >= '20180101'].sort_values('trade_date')
-            if 'close_qfq' in pdf.columns:
-                nav_series = pdf.set_index('trade_date')['close_qfq']
-            else:
-                nav_series = pdf.set_index('trade_date')['close']
+        nav_series = flagship_price.rename(None) if flagship_price is not None else None
 
         # 周频降采样：每 5 个交易日取一个点
         aum_valid = aum_series.dropna()
