@@ -111,14 +111,15 @@ def _build_national_team_data():
         merged = merged.sort_index()
         total_share = merged.sum(axis=1, min_count=1)  # 万份
 
-        # 加载旗舰 ETF 的 close 价格作为净值代理
+        # 加载旗舰 ETF 的 close 价格作为净值代理（优先前复权 close_qfq，回退原始 close）
         pfname = flagship.replace('.', '_') + '.csv'
         pfpath = price_cache_dir / pfname if price_cache_dir.exists() else None
         nav_series = None
         if pfpath and pfpath.exists():
             pdf = pd.read_csv(pfpath, dtype={'trade_date': str})
             pdf = pdf[pdf['trade_date'] >= '20180101'].sort_values('trade_date')
-            nav_series = pdf.set_index('trade_date')['close']
+            price_col = 'close_qfq' if 'close_qfq' in pdf.columns else 'close'
+            nav_series = pdf.set_index('trade_date')[price_col]
 
         # 计算规模(亿元) = 总份额(万份) × 净值(元) / 10000
         if nav_series is not None:
