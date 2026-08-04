@@ -2,7 +2,7 @@
   "meta": {
     "strategy": "虾池ETF轮动 v4.5-pvd — PVD条件激活因子",
     "version": "4.5-pvd",
-    "generated_at": "2026-08-04 01:20 (UTC+8)",
+    "generated_at": "2026-08-04 08:09 (UTC+8)",
     "data_range": "2013-08-30 ~ 2026-07-31",
     "data_as_of": "2026-07-31",
     "data_source": "Tushare",
@@ -2037,11 +2037,6 @@
       "category": "进攻"
     },
     {
-      "name": "红利低波ETF",
-      "weight": 23.2,
-      "category": "防御"
-    },
-    {
       "name": "中证500ETF",
       "weight": 0.0,
       "category": "进攻"
@@ -2050,6 +2045,11 @@
       "name": "黄金ETF",
       "weight": 20.2,
       "category": "进攻"
+    },
+    {
+      "name": "红利低波ETF",
+      "weight": 23.2,
+      "category": "防御"
     },
     {
       "name": "国债ETF",
@@ -2137,12 +2137,6 @@
       "held_pct": 73.5
     },
     {
-      "name": "红利低波ETF",
-      "avg_weight": 18.8,
-      "held_weeks": 639,
-      "held_pct": 96.4
-    },
-    {
       "name": "中证500ETF",
       "avg_weight": 8.7,
       "held_weeks": 285,
@@ -2153,6 +2147,12 @@
       "avg_weight": 23.8,
       "held_weeks": 554,
       "held_pct": 83.6
+    },
+    {
+      "name": "红利低波ETF",
+      "avg_weight": 18.8,
+      "held_weeks": 639,
+      "held_pct": 96.4
     },
     {
       "name": "国债ETF",

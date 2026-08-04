@@ -10,7 +10,10 @@ sys.path.insert(0, str(PROJ))
 
 from src.strategy import load_config
 from src.backtest import run_backtest
-from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data, resample_weekly
+from src.data_loader import OFFENSIVE, DEFENSIVE, load_nav_data, resample_weekly
+
+# 看板显示顺序：纳指 → 中证500 → 黄金 → 红利低波 → 国债（进攻在前，防御在后）
+DISPLAY_ORDER = ['纳指ETF', '中证500ETF', '黄金ETF', '红利低波ETF', '国债ETF']
 
 
 def _build_data(cfg):
@@ -53,7 +56,7 @@ def _build_data(cfg):
     data["holdings"] = [
         {"name": e, "weight": round(latest.get(f"weight_{e}", 0) * 100, 1),
          "category": "进攻" if e in OFFENSIVE else "防御"}
-        for e in ETFS
+        for e in DISPLAY_ORDER
     ]
 
     nav_c = nav.copy()
@@ -68,7 +71,7 @@ def _build_data(cfg):
         })
 
     data["etf_stats"] = []
-    for e in ETFS:
+    for e in DISPLAY_ORDER:
         col = f"weight_{e}"
         if col in nav.columns:
             aw = nav[col].mean()
