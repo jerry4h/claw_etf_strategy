@@ -111,20 +111,27 @@ def _build_national_team_data():
         merged = merged.sort_index()
         total_share = merged.sum(axis=1, min_count=1)  # 万份
 
-        # 加载旗舰 ETF 的 close 价格作为净值代理（优先前复权 close_qfq，回退原始 close）
+        # 加载旗舰 ETF 价格：AUM 用原始 close（份额×raw 折算日天然匹配，×5÷5抵消），
+        # 净值归一曲线用前复权 close_qfq（消除分红/折算跳空）
         pfname = flagship.replace('.', '_') + '.csv'
         pfpath = price_cache_dir / pfname if price_cache_dir.exists() else None
-        nav_series = None
+        nav_series = None       # qfq，用于净值曲线
+        aum_price_series = None  # raw，用于规模
         if pfpath and pfpath.exists():
             pdf = pd.read_csv(pfpath, dtype={'trade_date': str})
             pdf = pdf[pdf['trade_date'] >= '20180101'].sort_values('trade_date')
-            price_col = 'close_qfq' if 'close_qfq' in pdf.columns else 'close'
-            nav_series = pdf.set_index('trade_date')[price_col]
+            if 'close_qfq' in pdf.columns:
+                nav_series = pdf.set_index('trade_date')['close_qfq']
+            else:
+                nav_series = pdf.set_index('trade_date')['close']
+            aum_price_series = pdf.set_index('trade_date')['close']
 
-        # 计算规模(亿元) = 总份额(万份) × 净值(元) / 10000
-        if nav_series is not None:
-            nav_aligned = nav_series.reindex(total_share.index)
-            aum_series = total_share * nav_aligned / 10000  # 亿元
+        # 计算规模(亿元) = 总份额(万份) × 原始价格(元) / 10000
+        # 注意: 必须用原始价格而非前复权价——份额折算日(如纳指ETF 2022-01 1拆5)
+        # 份额×5、价格÷5 相互抵消, 规模才连续; 用 qfq 价格会因份额已×5而暴增
+        if aum_price_series is not None:
+            aum_aligned = aum_price_series.reindex(total_share.index)
+            aum_series = total_share * aum_aligned / 10000  # 亿元
         else:
             aum_series = pd.Series(dtype=float)
 
