@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-04 14:22:24",
+  "generated_at": "2026-08-04 21:44:20",
   "data_dir": "/home/ubuntu/claw_etf_strategy/data/national_team",
-  "n_etfs_loaded": 362,
+  "n_etfs_loaded": 366,
   "n_etfs_signals": 362,
   "market_overview": {
     "date": "20260804",

@@ -32,6 +32,11 @@ INDEX_AGG_CONFIG = [
     {'name': '中证1000', 'flagship': '512100.SH', 'keywords': ['中证1000', '000852'], 'sector': '小盘'},
     {'name': '创业板', 'flagship': '159915.SZ', 'keywords': ['创业板', '399006', '399673'], 'sector': '创业板'},
     {'name': '科创50', 'flagship': '588000.SH', 'keywords': ['科创板50', '000688'], 'sector': '科创'},
+    # 策略持仓关注 ETF（direct_codes 直接指定，不走 benchmark 关键词匹配）
+    {'name': '纳指ETF', 'flagship': '513100.SH', 'direct_codes': ['513100.SH'], 'sector': '海外科技'},
+    {'name': '红利低波ETF', 'flagship': '512890.SH', 'direct_codes': ['512890.SH'], 'sector': '红利防御'},
+    {'name': '黄金ETF', 'flagship': '518880.SH', 'direct_codes': ['518880.SH'], 'sector': '商品'},
+    {'name': '国债ETF', 'flagship': '511010.SH', 'direct_codes': ['511010.SH'], 'sector': '利率'},
 ]
 
 
@@ -69,17 +74,20 @@ def _build_national_team_data():
     for idx_cfg in INDEX_AGG_CONFIG:
         idx_name = idx_cfg['name']
         flagship = idx_cfg['flagship']
-        keywords = idx_cfg['keywords']
+        keywords = idx_cfg.get('keywords', [])
 
-        # 找属于该指数的所有 ETF
+        # 找属于该指数的所有 ETF（direct_codes 优先，否则按 benchmark 关键词匹配）
         member_codes = []
         exclude_kws = idx_cfg.get('exclude', [])
-        for etf in all_etfs:
-            bm = etf.get('benchmark', '') + ' ' + etf.get('name', '')
-            if any(kw in bm for kw in keywords):
-                if exclude_kws and any(ek in bm for ek in exclude_kws):
-                    continue
-                member_codes.append(etf['ts_code'])
+        if idx_cfg.get('direct_codes'):
+            member_codes = list(idx_cfg['direct_codes'])
+        else:
+            for etf in all_etfs:
+                bm = etf.get('benchmark', '') + ' ' + etf.get('name', '')
+                if any(kw in bm for kw in keywords):
+                    if exclude_kws and any(ek in bm for ek in exclude_kws):
+                        continue
+                    member_codes.append(etf['ts_code'])
 
         # 读取各 ETF 份额并按日期求和
         share_frames = []
@@ -704,9 +712,9 @@ const DATA = __DATA__;
     }
     ntHtml += '</div>';
 
-    // 量价对比图容器（2×3 小图 grid）
+    // 量价对比图容器（一行最多 2 列）
     ntHtml += '<div class="panel" style="margin-bottom:16px"><h2>📈 主战场量价对比（2018 年起 · 左轴=规模亿元 · 右轴=净值归一）</h2>';
-    ntHtml += '<div id="ntGridCharts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px"></div></div>';
+    ntHtml += '<div id="ntGridCharts" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px"></div></div>';
 
     // 事件表
     ntHtml += '<div class="panel"><h2>⚡ 疑似主力介入事件（最近 20 条）</h2>';
