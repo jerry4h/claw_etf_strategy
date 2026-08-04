@@ -32,11 +32,21 @@ INDEX_AGG_CONFIG = [
     {'name': '中证1000', 'flagship': '512100.SH', 'keywords': ['中证1000', '000852'], 'sector': '小盘'},
     {'name': '创业板', 'flagship': '159915.SZ', 'keywords': ['创业板', '399006', '399673'], 'sector': '创业板'},
     {'name': '科创50', 'flagship': '588000.SH', 'keywords': ['科创板50', '000688'], 'sector': '科创'},
-    # 策略持仓关注 ETF（direct_codes 直接指定，不走 benchmark 关键词匹配）
-    {'name': '纳指ETF', 'flagship': '513100.SH', 'direct_codes': ['513100.SH'], 'sector': '海外科技'},
-    {'name': '红利低波ETF', 'flagship': '512890.SH', 'direct_codes': ['512890.SH'], 'sector': '红利防御'},
-    {'name': '黄金ETF', 'flagship': '518880.SH', 'direct_codes': ['518880.SH'], 'sector': '商品'},
-    {'name': '国债ETF', 'flagship': '511010.SH', 'direct_codes': ['511010.SH'], 'sector': '利率'},
+    # 策略持仓关注 ETF（direct_codes 全市场同类基金，规模=Σ各只份额×各自价格）
+    {'name': '纳指100', 'flagship': '513100.SH',
+     'direct_codes': ['513100.SH', '513300.SH', '513390.SH', '159632.SZ', '159941.SZ',
+                      '159696.SZ', '159513.SZ', '159501.SZ', '513110.SH', '159659.SZ',
+                      '159660.SZ', '513870.SH'], 'sector': '海外科技'},
+    {'name': '黄金', 'flagship': '518880.SH',
+     'direct_codes': ['518880.SH', '159934.SZ', '159937.SZ', '518800.SH', '518660.SH',
+                      '518850.SH', '159812.SZ'], 'sector': '商品'},
+    {'name': '国债', 'flagship': '511010.SH',
+     'direct_codes': ['511010.SH', '511260.SH', '511020.SH', '511290.SH', '511310.SH',
+                      '159926.SZ'], 'sector': '利率'},
+    {'name': '红利低波', 'flagship': '512890.SH',
+     'direct_codes': ['512890.SH', '515100.SH', '515300.SH', '510890.SH', '515480.SH',
+                      '159547.SZ', '159525.SZ', '560520.SH', '159549.SZ', '560720.SH',
+                      '560730.SH'], 'sector': '红利防御'},
 ]
 
 
@@ -89,8 +99,14 @@ def _build_national_team_data():
                         continue
                     member_codes.append(etf['ts_code'])
 
-        # 读取各 ETF 份额并按日期求和
+        # 读取各 ETF 份额与价格，逐只计算规模后求和
+        # 规模(亿元) = Σ(每只成员 份额_norm × 各自前复权价) / 10000
+        # share_norm = 份额 × adj_latest / adj (把份额归一到最新单位, 与 qfq 价同单位)
+        # 折算日(如纳指 2022-01 1拆5): 份额×5、qfq价不变 → 规模连续
+        # 关键: adj 用 bfill——份额折算日份额已切换新单位(×N), adj 也应取折算后值
+        # (ffill 取旧值会双重×N)。qfq 价用 ffill(折算日无价格行时用前值)
         share_frames = []
+        price_frames = []   # 每只成员的前复权 close_qfq
         for code in member_codes:
             fname = code.replace('.', '_') + '.csv'
             fpath = share_dir / fname
@@ -103,20 +119,55 @@ def _build_national_team_data():
             sdf = sdf.rename(columns={'fd_share': code})
             share_frames.append(sdf.set_index('trade_date'))
 
+            # 成员的价格+复权因子（用于规模 + 净值曲线）
+            pfile = price_cache_dir / fname if price_cache_dir.exists() else None
+            if pfile and pfile.exists():
+                pdf = pd.read_csv(pfile, dtype={'trade_date': str})
+                pdf = pdf[pdf['trade_date'] >= '20180101'].sort_values('trade_date')
+                pdf = pdf.set_index('trade_date')
+                if 'close_qfq' in pdf.columns:
+                    pser = pdf['close_qfq'].rename(code)
+                else:
+                    pser = pdf['close'].rename(code)
+                price_frames.append(pser)
+
         if not share_frames:
             continue
 
-        # 合并求和
-        merged = pd.concat(share_frames, axis=1)
-        merged = merged.sort_index()
-        total_share = merged.sum(axis=1, min_count=1)  # 万份
+        # 合并份额与价格（逐日对齐）
+        share_merged = pd.concat(share_frames, axis=1).sort_index()
+        if price_frames:
+            price_merged = pd.concat(price_frames, axis=1).sort_index()
+            # qfq 价: 折算日无价格行用前值(ffill)
+            price_merged = price_merged.ffill()
+            # 份额归一: share_norm = 份额 × adj_latest / adj (adj 用 bfill)
+            share_norm_series = []
+            for code in share_merged.columns:
+                pfile2 = price_cache_dir / (code.replace('.', '_') + '.csv')
+                if pfile2.exists():
+                    pdf2 = pd.read_csv(pfile2, dtype={'trade_date': str})
+                    pdf2 = pdf2[pdf2['trade_date'] >= '20180101'].sort_values('trade_date')
+                    if 'adj_factor' in pdf2.columns and pdf2['adj_factor'].notna().any():
+                        adj_s = pdf2.set_index('trade_date')['adj_factor']
+                        la = adj_s.iloc[-1]
+                        adj_aligned = adj_s.reindex(share_merged.index).bfill().ffill()
+                        norm = share_merged[code] * la / adj_aligned
+                        share_norm_series.append(norm.rename(code))
+                    else:
+                        share_norm_series.append(share_merged[code])
+                else:
+                    share_norm_series.append(share_merged[code])
+            share_norm = pd.concat(share_norm_series, axis=1).sort_index()
+            # 逐只计算规模: share_norm × 前复权价, 再按日期求和
+            aum_df = share_norm * price_merged.reindex(share_norm.index)
+            aum_series = aum_df.sum(axis=1, min_count=1) / 10000  # 亿元
+        else:
+            aum_series = pd.Series(dtype=float)
 
-        # 加载旗舰 ETF 价格：AUM 用原始 close（份额×raw 折算日天然匹配，×5÷5抵消），
-        # 净值归一曲线用前复权 close_qfq（消除分红/折算跳空）
+        # 净值归一曲线: 用旗舰 ETF 前复权 close_qfq（消除分红/折算跳空）
         pfname = flagship.replace('.', '_') + '.csv'
         pfpath = price_cache_dir / pfname if price_cache_dir.exists() else None
-        nav_series = None       # qfq，用于净值曲线
-        aum_price_series = None  # raw，用于规模
+        nav_series = None
         if pfpath and pfpath.exists():
             pdf = pd.read_csv(pfpath, dtype={'trade_date': str})
             pdf = pdf[pdf['trade_date'] >= '20180101'].sort_values('trade_date')
@@ -124,16 +175,6 @@ def _build_national_team_data():
                 nav_series = pdf.set_index('trade_date')['close_qfq']
             else:
                 nav_series = pdf.set_index('trade_date')['close']
-            aum_price_series = pdf.set_index('trade_date')['close']
-
-        # 计算规模(亿元) = 总份额(万份) × 原始价格(元) / 10000
-        # 注意: 必须用原始价格而非前复权价——份额折算日(如纳指ETF 2022-01 1拆5)
-        # 份额×5、价格÷5 相互抵消, 规模才连续; 用 qfq 价格会因份额已×5而暴增
-        if aum_price_series is not None:
-            aum_aligned = aum_price_series.reindex(total_share.index)
-            aum_series = total_share * aum_aligned / 10000  # 亿元
-        else:
-            aum_series = pd.Series(dtype=float)
 
         # 周频降采样：每 5 个交易日取一个点
         aum_valid = aum_series.dropna()
