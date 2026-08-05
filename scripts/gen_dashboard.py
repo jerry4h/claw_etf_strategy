@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""Dashboard generator — runs backtest → JSON + embedded single-file index.html"""
+"""Dashboard generator — runs backtest → JSON + embedded single-file index.html
 
-import json, sys
+Usage:
+    python scripts/gen_dashboard.py              # 正常生成 index.html
+    python scripts/gen_dashboard.py --preview    # 生成后启动本地 HTTP 服务器预览
+"""
+
+import argparse, json, sys
 from pathlib import Path
 from datetime import datetime
 import numpy as np, pandas as pd
@@ -459,8 +464,9 @@ TPL = """<!DOCTYPE html>
 <style>
 :root {--bg:#0b1121;--card:#151e34;--card-hover:#1c2844;--text:#e8edf5;--muted:#8892a8;--accent:#60a5fa;--green:#34d399;--red:#f87171;--orange:#fb923c;--border:#1e2a45;}
 * {margin:0;padding:0;box-sizing:border-box;}
-body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);padding:24px;min-height:100vh;}
-.container {max-width:1280px;margin:0 auto;}
+html {overflow-x:hidden;}
+body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);padding:24px;min-height:100vh;overflow-x:hidden;}
+.container {max-width:1280px;margin:0 auto;width:100%;}
 .header {margin-bottom:28px;}
 .header h1 {font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
 .header .sub {color:var(--muted);font-size:0.85rem;margin-top:4px;}
@@ -479,21 +485,21 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .panel h2 .tgl {float:right;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.68rem;padding:2px 10px;border-radius:6px;cursor:pointer;letter-spacing:0;text-transform:none;transition:color .2s,border-color .2s;}
 .panel h2 .tgl:hover {color:var(--accent);border-color:var(--accent);}
 .chart-err {padding:48px 12px;text-align:center;color:var(--muted);font-size:0.85rem;border:1px dashed var(--border);border-radius:8px;}
-.grid-2 {display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-.grid-2-1 {display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
-@media(max-width:900px){.grid-2,.grid-2-1{grid-template-columns:1fr;}}
-@media(max-width:600px){body{padding:14px;}.px{grid-template-columns:repeat(2,1fr);}.rc{grid-template-columns:1fr;}.nt-cards{grid-template-columns:1fr 1fr !important;}.nt-grid{grid-template-columns:1fr;}}
+.grid-2 {display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:16px;margin-bottom:16px;}
+.grid-2-1 {display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin-bottom:16px;}
+@media(max-width:600px){body{padding:14px;}.rc{grid-template-columns:1fr;}.panel{padding:12px;overflow-x:auto;}}
+.table-wrap {width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .ht {width:100%;border-collapse:collapse;font-size:0.82rem;}
-.ht th {text-align:left;color:var(--muted);padding:6px 8px;font-weight:500;border-bottom:1px solid var(--border);}
-.ht td {padding:6px 8px;border-bottom:1px solid var(--border);}
+.ht th {text-align:left;color:var(--muted);padding:6px 8px;font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap;}
+.ht td {padding:6px 8px;border-bottom:1px solid var(--border);word-break:break-all;}
 .ht tr:last-child td {border:none;}
-.hbar {background:var(--border);border-radius:4px;height:16px;overflow:hidden;}
+.hbar {background:var(--border);border-radius:4px;height:16px;overflow:hidden;min-width:60px;}
 .hfill {height:100%;border-radius:4px;}
 .st {width:100%;border-collapse:collapse;font-size:0.8rem;}
-.st th {text-align:left;color:var(--muted);padding:5px 8px;font-weight:500;border-bottom:1px solid var(--border);}
-.st td {padding:5px 8px;border-bottom:1px solid var(--border);}
+.st th {text-align:left;color:var(--muted);padding:5px 8px;font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap;}
+.st td {padding:5px 8px;border-bottom:1px solid var(--border);word-break:break-all;}
 .st tr:hover td {background:rgba(96,165,250,0.04);}
-.rc {display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.rc {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
 .rc-item {background:rgba(11,17,33,0.6);border-radius:8px;padding:12px;text-align:center;}
 .rc-item .lbl {font-size:0.75rem;color:var(--muted);}
 .rc-item .val {font-size:1.15rem;font-weight:700;margin-top:4px;}
@@ -511,7 +517,7 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .nt-section {margin-top:24px;border-top:1px solid var(--border);padding-top:24px;}
 .nt-section h2.section-title {font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:16px;}
 .nt-cards {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
-.nt-grid {display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.nt-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;}
 .nt-card {background:var(--card);border-radius:8px;padding:12px;border:1px solid var(--border);text-align:center;}
 .nt-card .sector {font-size:0.72rem;color:var(--muted);margin-bottom:4px;}
 .nt-card .growth {font-size:1.2rem;font-weight:700;}
@@ -560,8 +566,8 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 <div class="grid-2">
   <div class="panel">
     <h2>📋 ETF 全周期统计</h2>
-    <table class="st"><thead><tr><th>ETF</th><th>平均权重</th><th>持有周</th><th>持有率</th></tr></thead>
-    <tbody id="etf-stats-body"></tbody></table>
+    <div class="table-wrap"><table class="st"><thead><tr><th>ETF</th><th>平均权重</th><th>持有周</th><th>持有率</th></tr></thead>
+    <tbody id="etf-stats-body"></tbody></table></div>
   </div>
   <div class="panel">
     <h2>⚙️ 策略参数</h2>
@@ -782,7 +788,8 @@ const DATA = __DATA__;
     ntHtml += '<div class="nt-grid" id="ntGridCharts"></div></div>';
 
     // 事件表
-    ntHtml += '<div class="panel"><h2>⚡ 疑似主力介入事件（最近 20 条）</h2>';
+    ntHtml += '<div class="panel"><h2>\u26a1 \u7591\u4f3c\u4e3b\u529b\u4ecb\u5165\u4e8b\u4ef6\uff08\u6700\u8fd1 20 \u6761\uff09</h2>';
+    ntHtml += '<div class="table-wrap">';
     if ((nt.recent_events||[]).length) {
       ntHtml += '<table class="st"><thead><tr><th>日期</th><th>ETF</th><th>板块</th><th>份额增幅</th><th>百分位</th></tr></thead><tbody>';
       for (const ev of nt.recent_events) {
@@ -795,6 +802,7 @@ const DATA = __DATA__;
     } else {
       ntHtml += '<div style="padding:16px;color:var(--muted);text-align:center">暂无事件</div>';
     }
+    ntHtml += '</div>';  // close table-wrap
     ntHtml += '</div>';
 
     ntEl.innerHTML = ntHtml;
@@ -861,6 +869,11 @@ def _html_template(data_json):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="生成虾池ETF轮动策略看板")
+    parser.add_argument("--preview", action="store_true",
+                        help="生成后启动本地 HTTP 服务器（http://localhost:8000）以便预览")
+    args = parser.parse_args()
+
     cfg = load_config(PROJ / "config" / "strategy_v4_5_pvd.yaml")
     data = _build_data(cfg)
     data["meta"]["version_note"] = "候选版（PVD 量价因子增强）"
@@ -887,6 +900,24 @@ def main():
     # 生成周报
     report_path = _generate_weekly_report(nt)
     print(f"   周报: {report_path}")
+
+    # --preview 模式：启动本地 HTTP 服务器
+    if args.preview:
+        import http.server
+        import os
+        os.chdir(str(PROJ))
+        port = 8000
+        print(f"\n{'='*60}")
+        print(f"🌐 本地预览服务器已启动")
+        print(f"   请在浏览器中打开 http://localhost:{port} 检查效果。")
+        print(f"   按 Ctrl+C 结束。")
+        print(f"{'='*60}\n")
+        handler = http.server.SimpleHTTPRequestHandler
+        with http.server.HTTPServer(('', port), handler) as httpd:
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                print("\n🛑 预览服务器已停止。")
 
 
 if __name__ == "__main__":
