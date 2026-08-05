@@ -360,6 +360,14 @@ def step4_dashboard():
     return '看板已生成（index.html + dashboard/data.json）'
 
 
+def step4_5_check_dashboard():
+    """看板门禁校验（9 项自动检查），不通过则中止提交。"""
+    cp = run_cmd([sys.executable, str(ROOT / 'scripts' / 'check_dashboard.py')])
+    if cp.returncode != 0:
+        raise StepError(EXIT_DASHBOARD, '看板门禁校验未通过，中止提交（详见上方 [FAIL] 输出）')
+    return '看板门禁 9 项全部通过'
+
+
 def step5_git(dry_run: bool):
     cp = run_cmd(['git', 'status', '--porcelain', '--'] + GIT_PATHS, echo=False)
     if cp.returncode != 0:
@@ -410,27 +418,31 @@ def main() -> int:
         log('=' * 62)
 
         force = os.environ.get('CLAW_REFRESH_FORCE_UPDATE') == '1'
-        log('Step 1/5: 周频 NAV 数据更新')
+        log('Step 1/6: 周频 NAV 数据更新')
         prev_last, n_new, detail = step1_update_nav(force)
         results.append(('1 NAV更新', detail)); log(f"  ✅ {detail}")
 
-        log('Step 2/5: tushare_cache 日频增量补齐')
+        log('Step 2/6: tushare_cache 日频增量补齐')
         cache_added, detail = step2_update_cache()
         results.append(('2 缓存增量', detail)); log(f"  ✅ {detail}")
 
-        log('Step 2.5/5: 主力ETF份额追踪增量更新 (soft)')
+        log('Step 2.5/6: 主力ETF份额追踪增量更新 (soft)')
         detail = _step2_5_national_team_share()
         results.append(('2.5 份额追踪', detail)); log(f"  {'✅' if '失败' not in detail else '⚠️'} {detail}")
 
-        log('Step 3/5: 数据质量校验')
+        log('Step 3/6: 数据质量校验')
         detail = step3_validate(prev_last, cache_added)
         results.append(('3 数据校验', detail)); log(f"  ✅ {detail}")
 
-        log('Step 4/5: 看板生成')
+        log('Step 4/6: 看板生成')
         detail = step4_dashboard()
         results.append(('4 看板生成', detail)); log(f"  ✅ {detail}")
 
-        log('Step 5/5: git 提交与推送')
+        log('Step 5/6: 看板门禁校验')
+        detail = step4_5_check_dashboard()
+        results.append(('5 看板门禁', detail)); log(f"  ✅ {detail}")
+
+        log('Step 6/6: git 提交与推送')
         detail = step5_git(args.dry_run)
         results.append(('5 git提交', detail)); log(f"  ✅ {detail}")
 
