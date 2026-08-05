@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""看板上线前校验门禁（9 项自动检查）。
+"""看板上线前校验门禁（13 项自动检查）。
 
 退出码 0=全部通过, 非0=至少一项失败。
 每项打印 [PASS] 或 [FAIL reason]。
@@ -149,10 +149,87 @@ def main() -> int:
         print(f"[FAIL] 9. 文件大小 {size_kb:.1f} KB >= {MAX_SIZE_KB} KB 上限")
         failed += 1
 
+    # ---------- 新增 10-13 项（图表数据完整性 & 可见性） ----------
+
+    # 10. 三主图有数据：DATA JSON 中 nav/drawdown/defense 数组长度 > 50
+    if data_match:
+        try:
+            data_10 = json.loads(data_match.group(1))
+            nav_len = len(data_10.get("nav", {}).get("dates", []))
+            dd_len = len(data_10.get("drawdown", {}).get("dates", []))
+            def_len = len(data_10.get("defense", {}).get("dates", []))
+            if nav_len > 50 and dd_len > 50 and def_len > 50:
+                print(f"[PASS] 10. 三主图有数据（nav={nav_len}, drawdown={dd_len}, defense={def_len}）")
+            else:
+                print(f"[FAIL] 10. 三主图数据不足: nav={nav_len}, drawdown={dd_len}, defense={def_len}（需>50）")
+                failed += 1
+        except (json.JSONDecodeError, ValueError):
+            print("[FAIL] 10. 三主图有数据: DATA JSON 解析失败")
+            failed += 1
+    else:
+        print("[FAIL] 10. 三主图有数据: 未找到 DATA JSON")
+        failed += 1
+
+    # 11. Chart.js 初始化代码存在：检查三个 new Chart 调用
+    init_missing = []
+    for chart_id in ("navChart", "ddChart", "defChart"):
+        pattern = rf"new Chart\(document\.getElementById\(['\"]" + chart_id + rf"['\"]\)"
+        if not re.search(pattern, html):
+            init_missing.append(chart_id)
+    if not init_missing:
+        print("[PASS] 11. Chart.js 初始化代码存在（navChart/ddChart/defChart）")
+    else:
+        print(f"[FAIL] 11. Chart.js 初始化缺失: {init_missing}")
+        failed += 1
+
+    # 12. 主力追踪图表有数据：share_trends 非空且至少 1 个指数 aum 长度 > 50
+    if data_match:
+        try:
+            data_12 = json.loads(data_match.group(1))
+            nt_data = data_12.get("national_team", {})
+            trends = nt_data.get("share_trends", {})
+            if not trends:
+                # 降级模式下 share_trends 可能缺失，检查 available
+                if nt_data.get("available") is False:
+                    print("[PASS] 12. 主力追踪图表数据（降级模式，share_trends 不要求）")
+                else:
+                    print("[FAIL] 12. 主力追踪图表: share_trends 为空")
+                    failed += 1
+            else:
+                max_aum = max(len(t.get("aum", [])) for t in trends.values())
+                if max_aum > 50:
+                    print(f"[PASS] 12. 主力追踪图表有数据（{len(trends)} 指数, 最长 aum={max_aum}）")
+                else:
+                    print(f"[FAIL] 12. 主力追踪图表数据不足: 最长 aum={max_aum}（需>50）")
+                    failed += 1
+        except (json.JSONDecodeError, ValueError):
+            print("[FAIL] 12. 主力追踪图表数据: DATA JSON 解析失败")
+            failed += 1
+    else:
+        print("[FAIL] 12. 主力追踪图表数据: 未找到 DATA JSON")
+        failed += 1
+
+    # 13. 所有 section 可见：CSS 中不对关键容器设置 display:none/visibility:hidden
+    hidden_issues = []
+    critical_selectors = [".panel", ".grid-2-1", "#navChart", "#ddChart", "#defChart",
+                          ".chart-stack", ".nt-section", "#nt-section"]
+    for sel in critical_selectors:
+        # 检查 CSS 中是否有 selector{...display:none...} 或 visibility:hidden
+        escaped = re.escape(sel)
+        pat = escaped + r'[^{}]*\{[^}]*(display\s*:\s*none|visibility\s*:\s*hidden)[^}]*\}'
+        if re.search(pat, html):
+            hidden_issues.append(sel)
+    if not hidden_issues:
+        print("[PASS] 13. 所有 section 可见（无 display:none/visibility:hidden）")
+    else:
+        print(f"[FAIL] 13. 关键容器被隐藏: {hidden_issues}")
+        failed += 1
+
     # 汇总
+    total_checks = 13
     print(f"\n{'='*50}")
     if failed == 0:
-        print(f"✅ 全部 9 项检查通过")
+        print(f"✅ 全部 {total_checks} 项检查通过")
     else:
         print(f"❌ {failed} 项检查失败")
     return 0 if failed == 0 else 1

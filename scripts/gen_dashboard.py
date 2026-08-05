@@ -510,10 +510,10 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .px-item .v {font-size:0.82rem;font-weight:600;margin-top:2px;color:var(--accent);}
 .chart-wrap {position:relative;width:100%;min-height:0;}
 .chart-wrap canvas {display:block;width:100% !important;height:100% !important;}
-.chart-stack {display:flex;flex-direction:column;width:100%;}
-.chart-stack > .chart-wrap:nth-child(1) {flex:5;min-height:0;}
-.chart-stack > .chart-wrap:nth-child(2) {flex:3;min-height:0;}
-.chart-stack > .chart-wrap:nth-child(3) {flex:3;min-height:0;}
+.chart-stack {display:flex;flex-direction:column;width:100%;min-height:480px;}
+.chart-stack > .chart-wrap:nth-child(1) {flex:5;min-height:180px;}
+.chart-stack > .chart-wrap:nth-child(2) {flex:3;min-height:120px;}
+.chart-stack > .chart-wrap:nth-child(3) {flex:3;min-height:120px;}
 .nt-section {margin-top:24px;border-top:1px solid var(--border);padding-top:24px;}
 .nt-section h2.section-title {font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:16px;}
 .nt-cards {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;}
