@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""看板上线前校验门禁（13 项自动检查）。
+"""看板上线前校验门禁（14 项自动检查）。
 
 退出码 0=全部通过, 非0=至少一项失败。
 每项打印 [PASS] 或 [FAIL reason]。
@@ -225,8 +225,20 @@ def main() -> int:
         print(f"[FAIL] 13. 关键容器被隐藏: {hidden_issues}")
         failed += 1
 
+    # 14. minmax 最小值不超过 300px（确保 375px 屏幕不溢出）
+    bad_minmax = []
+    for mm in re.finditer(r'minmax\((\d+)px', html):
+        val = int(mm.group(1))
+        if val > 300:
+            bad_minmax.append(f"minmax({val}px...)")
+    if not bad_minmax:
+        print("[PASS] 14. minmax 最小值均 ≤300px（375px 屏幕安全）")
+    else:
+        print(f"[FAIL] 14. minmax 最小值超标: {bad_minmax}")
+        failed += 1
+
     # 汇总
-    total_checks = 13
+    total_checks = 14
     print(f"\n{'='*50}")
     if failed == 0:
         print(f"✅ 全部 {total_checks} 项检查通过")
