@@ -18,6 +18,7 @@ scripts/_*.py
 # IDE wiki 缓存
 /.qoder/
 !/.qoder/rules/
+!/.qoder/skills/
 
 # Generated output artifacts
 output/*.html
