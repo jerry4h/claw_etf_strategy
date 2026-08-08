@@ -110,12 +110,12 @@ def log(msg: str):
         pass  # 日志文件写不进不影响主流程
 
 
-def run_cmd(args, extra_env=None, echo=True):
+def run_cmd(args, extra_env=None, echo=True, timeout=None):
     """运行子进程，合并 stdout/stderr，逐行掩码后转发到日志。"""
     env = dict(os.environ)
     if extra_env:
         env.update(extra_env)
-    cp = subprocess.run(args, cwd=str(ROOT), env=env,
+    cp = subprocess.run(args, cwd=str(ROOT), env=env, timeout=timeout,
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     if echo and cp.stdout:
         for line in cp.stdout.rstrip('\n').split('\n'):
@@ -361,11 +361,11 @@ def step4_dashboard():
 
 
 def step4_5_check_dashboard():
-    """看板门禁校验（9 项自动检查），不通过则中止提交。"""
+    """看板门禁校验（14 项自动检查），不通过则中止提交。"""
     cp = run_cmd([sys.executable, str(ROOT / 'scripts' / 'check_dashboard.py')])
     if cp.returncode != 0:
         raise StepError(EXIT_DASHBOARD, '看板门禁校验未通过，中止提交（详见上方 [FAIL] 输出）')
-    return '看板门禁 9 项全部通过'
+    return '看板门禁 14 项全部通过'
 
 
 def step5_git(dry_run: bool):
