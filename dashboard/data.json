@@ -2,23 +2,23 @@
   "meta": {
     "strategy": "虾池ETF轮动 v4.5-pvd — PVD条件激活因子",
     "version": "4.5-pvd",
-    "generated_at": "2026-08-05 15:48 (UTC+8)",
-    "data_range": "2013-08-30 ~ 2026-07-31",
-    "data_as_of": "2026-07-31",
+    "generated_at": "2026-08-08 08:59 (UTC+8)",
+    "data_range": "2013-08-30 ~ 2026-08-07",
+    "data_as_of": "2026-08-07",
     "data_source": "Tushare",
-    "weeks": 663,
+    "weeks": 664,
     "version_note": "候选版（PVD 量价因子增强）"
   },
   "metrics": {
-    "total_return": 521.52,
-    "annual_return": 15.41,
+    "total_return": 531.16,
+    "annual_return": 15.52,
     "max_drawdown": 5.8,
-    "current_drawdown": 2.46,
-    "sharpe": 1.59,
-    "calmar": 2.66,
-    "annual_vol": 7.63,
+    "current_drawdown": 0.94,
+    "sharpe": 1.603,
+    "calmar": 2.68,
+    "annual_vol": 7.64,
     "win_rate": 61.7,
-    "defensive_weeks": 648
+    "defensive_weeks": 649
   },
   "nav": {
     "dates": [
@@ -2125,58 +2125,58 @@
     },
     {
       "year": 2026,
-      "return": 9.6,
-      "avg_defense": 50.3
+      "return": 11.3,
+      "avg_defense": 50.7
     }
   ],
   "etf_stats": [
     {
       "name": "纳指ETF",
       "avg_weight": 17.3,
-      "held_weeks": 487,
+      "held_weeks": 488,
       "held_pct": 73.5
     },
     {
       "name": "中证500ETF",
-      "avg_weight": 8.7,
+      "avg_weight": 8.6,
       "held_weeks": 285,
-      "held_pct": 43.0
+      "held_pct": 42.9
     },
     {
       "name": "黄金ETF",
       "avg_weight": 23.8,
-      "held_weeks": 554,
+      "held_weeks": 555,
       "held_pct": 83.6
     },
     {
       "name": "红利低波ETF",
       "avg_weight": 18.8,
-      "held_weeks": 639,
+      "held_weeks": 640,
       "held_pct": 96.4
     },
     {
       "name": "国债ETF",
       "avg_weight": 31.5,
-      "held_weeks": 663,
+      "held_weeks": 664,
       "held_pct": 100.0
     }
   ],
   "recent_ytd": {
     "start": "2026-01-09",
-    "end": "2026-07-31",
-    "return": 8.17,
+    "end": "2026-08-07",
+    "return": 9.85,
     "max_drawdown": 5.0
   },
   "recent_year1": {
-    "start": "2025-08-01",
-    "end": "2026-07-31",
-    "return": 26.27,
+    "start": "2025-08-08",
+    "end": "2026-08-07",
+    "return": 26.37,
     "max_drawdown": 5.0
   },
   "recent_month3": {
-    "start": "2026-04-30",
-    "end": "2026-07-31",
-    "return": 1.11,
+    "start": "2026-05-08",
+    "end": "2026-08-07",
+    "return": 0.56,
     "max_drawdown": 3.88
   },
   "params": {
