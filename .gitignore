@@ -42,7 +42,7 @@ data/*.csv
 # 实验性替换数据集/原始抓取 (sp500_swap/溢价 E1 等), 由 _exp_ 脚本再生
 data/experiments/all_etfs_nav_*.csv
 data/experiments/raw_*.csv
-output/adversarial/_oos_*.csv
+output/adversarial/_*.csv
 
 .env
 
