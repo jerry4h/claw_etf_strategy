@@ -1,0 +1,323 @@
+{
+ "base_config": "strategy_v4_4.yaml",
+ "seeds": [
+  11,
+  22,
+  33,
+  44,
+  55,
+  66,
+  77
+ ],
+ "d_max": 0.12,
+ "variants": {
+  "B0_T0_C": {
+   "label": "基线 v4.4 现状 (T0+C)",
+   "trigger": "T0(生产)",
+   "application": "C",
+   "scenarios": {
+    "bond_bear": {
+     "n": 7,
+     "maxdd_med": 0.10798148920057106,
+     "maxdd_worst": 0.18299489618573328,
+     "sharpe_med": 0.8796641455291425,
+     "annual_med": 0.09070345641449729
+    },
+    "grey_corr_combo": {
+     "n": 7,
+     "maxdd_med": 0.1280098140065472,
+     "maxdd_worst": 0.32585141462393247,
+     "sharpe_med": 0.7514940280172019,
+     "annual_med": 0.11063656330793115
+    },
+    "corr_regime_shift": {
+     "n": 7,
+     "maxdd_med": 0.0785279266657989,
+     "maxdd_worst": 0.12349414021792063,
+     "sharpe_med": 1.3177678971480353,
+     "annual_med": 0.1331984589918891
+    },
+    "corr_crisis_combo": {
+     "n": 7,
+     "maxdd_med": 0.0969276679005364,
+     "maxdd_worst": 0.17732022628878188,
+     "sharpe_med": 1.0430362702722504,
+     "annual_med": 0.11566127562565742
+    }
+   },
+   "realized": {
+    "sharpe_ratio": 1.5197332590029353,
+    "max_drawdown": 0.05847189732050016,
+    "annual_return": 0.1469967146315838
+   },
+   "realized_trigger": {
+    "trigger_rate": 0.08895705521472393,
+    "mean_boost_on": 0.08331009753297547
+   }
+  },
+  "REF_T1_C": {
+   "label": "参照 M-C触发+现状应用 (T1+C)",
+   "trigger": "T1(thr0.45,slope0.75)",
+   "application": "C",
+   "scenarios": {
+    "bond_bear": {
+     "n": 7,
+     "maxdd_med": 0.12247772305069067,
+     "maxdd_worst": 0.1902234635135901,
+     "sharpe_med": 0.8079459310645569,
+     "annual_med": 0.08218676048879336
+    },
+    "grey_corr_combo": {
+     "n": 7,
+     "maxdd_med": 0.1145325294420263,
+     "maxdd_worst": 0.327851315561339,
+     "sharpe_med": 0.7794793549087983,
+     "annual_med": 0.1034914180727895
+    },
+    "corr_regime_shift": {
+     "n": 7,
+     "maxdd_med": 0.07852792666579894,
+     "maxdd_worst": 0.11204594165188528,
+     "sharpe_med": 1.3170272901816436,
+     "annual_med": 0.13508938958058736
+    },
+    "corr_crisis_combo": {
+     "n": 7,
+     "maxdd_med": 0.09246365198492158,
+     "maxdd_worst": 0.17848090019535198,
+     "sharpe_med": 1.0358946516322778,
+     "annual_med": 0.11313145401322622
+    }
+   },
+   "realized": {
+    "sharpe_ratio": 1.5246808834841608,
+    "max_drawdown": 0.058471897320499996,
+    "annual_return": 0.14555985088920953
+   },
+   "realized_trigger": {
+    "trigger_rate": 0.3374233128834356,
+    "mean_boost_on": 0.07562726209799167
+   }
+  },
+  "T0_V1": {
+   "label": "比例式 (T0+V1)",
+   "trigger": "T0(生产)",
+   "application": "V1",
+   "scenarios": {
+    "bond_bear": {
+     "n": 7,
+     "maxdd_med": 0.10710364515000317,
+     "maxdd_worst": 0.18052637856921655,
+     "sharpe_med": 0.8960531125525054,
+     "annual_med": 0.09228150827125448
+    },
+    "grey_corr_combo": {
+     "n": 7,
+     "maxdd_med": 0.12972826004884844,
+     "maxdd_worst": 0.32305172505545615,
+     "sharpe_med": 0.7454974290937024,
+     "annual_med": 0.11444946425840175
+    },
+    "corr_regime_shift": {
+     "n": 7,
+     "maxdd_med": 0.0911956476441729,
+     "maxdd_worst": 0.13515330319911154,
+     "sharpe_med": 1.2897769126999958,
+     "annual_med": 0.13489268938032017
+    },
+    "corr_crisis_combo": {
+     "n": 7,
+     "maxdd_med": 0.10509531684996795,
+     "maxdd_worst": 0.1773210728045073,
+     "sharpe_med": 1.0236987639335766,
+     "annual_med": 0.11629744595106528
+    }
+   },
+   "realized": {
+    "sharpe_ratio": 1.5150343172064884,
+    "max_drawdown": 0.05847189732050013,
+    "annual_return": 0.1470163620722693
+   },
+   "realized_trigger": {
+    "trigger_rate": 0.08895705521472393,
+    "mean_boost_on": 0.08331009753297547
+   }
+  },
+  "T1_V1": {
+   "label": "比例式+灰区触发 (T1+V1)",
+   "trigger": "T1(thr0.45,slope0.75)",
+   "application": "V1",
+   "scenarios": {
+    "bond_bear": {
+     "n": 7,
+     "maxdd_med": 0.11083800803155486,
+     "maxdd_worst": 0.18276830903622246,
+     "sharpe_med": 0.8880849436166935,
+     "annual_med": 0.08474317520878105
+    },
+    "grey_corr_combo": {
+     "n": 7,
+     "maxdd_med": 0.11948075072138829,
+     "maxdd_worst": 0.3230220487573756,
+     "sharpe_med": 0.7321773606320288,
+     "annual_med": 0.11206948477412815
+    },
+    "corr_regime_shift": {
+     "n": 7,
+     "maxdd_med": 0.09119564764417303,
+     "maxdd_worst": 0.13463536878583593,
+     "sharpe_med": 1.2895450744542611,
+     "annual_med": 0.13759504764771702
+    },
+    "corr_crisis_combo": {
+     "n": 7,
+     "maxdd_med": 0.10509531684996781,
+     "maxdd_worst": 0.1718564098470688,
+     "sharpe_med": 1.0113652116591227,
+     "annual_med": 0.11413667063031618
+    }
+   },
+   "realized": {
+    "sharpe_ratio": 1.5156902783613195,
+    "max_drawdown": 0.05847189732050021,
+    "annual_return": 0.1463211429665412
+   },
+   "realized_trigger": {
+    "trigger_rate": 0.3374233128834356,
+    "mean_boost_on": 0.07562726209799167
+   }
+  },
+  "T0_V2": {
+   "label": "现金缓冲 (T0+V2)",
+   "trigger": "T0(生产)",
+   "application": "V2",
+   "scenarios": {
+    "bond_bear": {
+     "n": 7,
+     "maxdd_med": 0.10937283459358713,
+     "maxdd_worst": 0.18339276015648057,
+     "sharpe_med": 0.8991570749534538,
+     "annual_med": 0.09239350197348983
+    },
+    "grey_corr_combo": {
+     "n": 7,
+     "maxdd_med": 0.12923319128368924,
+     "maxdd_worst": 0.3197612931734041,
+     "sharpe_med": 0.7226365380086172,
+     "annual_med": 0.1098727175836196
+    },
+    "corr_regime_shift": {
+     "n": 7,
+     "maxdd_med": 0.09072470999541961,
+     "maxdd_worst": 0.13313425745679408,
+     "sharpe_med": 1.2804949633944593,
+     "annual_med": 0.13413916766099088
+    },
+    "corr_crisis_combo": {
+     "n": 7,
+     "maxdd_med": 0.10659937556052572,
+     "maxdd_worst": 0.17637299249493343,
+     "sharpe_med": 1.006485168224146,
+     "annual_med": 0.11363141489380024
+    }
+   },
+   "realized": {
+    "sharpe_ratio": 1.5104205730648352,
+    "max_drawdown": 0.05847189732050031,
+    "annual_return": 0.14648332977847933
+   },
+   "realized_trigger": {
+    "trigger_rate": 0.08895705521472393,
+    "mean_boost_on": 0.08331009753297547
+   }
+  },
+  "T1_V2": {
+   "label": "现金缓冲+灰区触发 (T1+V2)",
+   "trigger": "T1(thr0.45,slope0.75)",
+   "application": "V2",
+   "scenarios": {
+    "bond_bear": {
+     "n": 7,
+     "maxdd_med": 0.11097135359085546,
+     "maxdd_worst": 0.1834324329517999,
+     "sharpe_med": 0.8943944989680184,
+     "annual_med": 0.0840201467105719
+    },
+    "grey_corr_combo": {
+     "n": 7,
+     "maxdd_med": 0.11983915848874292,
+     "maxdd_worst": 0.32007041322164975,
+     "sharpe_med": 0.7800454790326111,
+     "annual_med": 0.11621437705092585
+    },
+    "corr_regime_shift": {
+     "n": 7,
+     "maxdd_med": 0.09072470999541977,
+     "maxdd_worst": 0.13187358081026979,
+     "sharpe_med": 1.2687679956372757,
+     "annual_med": 0.13528964722743186
+    },
+    "corr_crisis_combo": {
+     "n": 7,
+     "maxdd_med": 0.10655711372669206,
+     "maxdd_worst": 0.1797518740422054,
+     "sharpe_med": 0.993165440708379,
+     "annual_med": 0.11078878309924711
+    }
+   },
+   "realized": {
+    "sharpe_ratio": 1.514125183619389,
+    "max_drawdown": 0.058471897320500045,
+    "annual_return": 0.14532319407373318
+   },
+   "realized_trigger": {
+    "trigger_rate": 0.3374233128834356,
+    "mean_boost_on": 0.07562726209799167
+   }
+  },
+  "T1_V3": {
+   "label": "混合应用+灰区触发 (T1+V3)",
+   "trigger": "T1(thr0.45,slope0.75)",
+   "application": "V3",
+   "scenarios": {
+    "bond_bear": {
+     "n": 7,
+     "maxdd_med": 0.10934073831410576,
+     "maxdd_worst": 0.18739580005828713,
+     "sharpe_med": 0.860332305557355,
+     "annual_med": 0.0825622040454923
+    },
+    "grey_corr_combo": {
+     "n": 7,
+     "maxdd_med": 0.11815744420134051,
+     "maxdd_worst": 0.32588929866634037,
+     "sharpe_med": 0.7889843924581899,
+     "annual_med": 0.10631040702238592
+    },
+    "corr_regime_shift": {
+     "n": 7,
+     "maxdd_med": 0.07852792666579891,
+     "maxdd_worst": 0.11201471477178467,
+     "sharpe_med": 1.3101070963670263,
+     "annual_med": 0.13552208855201453
+    },
+    "corr_crisis_combo": {
+     "n": 7,
+     "maxdd_med": 0.09279503624773087,
+     "maxdd_worst": 0.17185640984706854,
+     "sharpe_med": 1.0231863500983716,
+     "annual_med": 0.11268362126080045
+    }
+   },
+   "realized": {
+    "sharpe_ratio": 1.5261559575075538,
+    "max_drawdown": 0.058471897320500066,
+    "annual_return": 0.14638718823177288
+   },
+   "realized_trigger": {
+    "trigger_rate": 0.3374233128834356,
+    "mean_boost_on": 0.07562726209799167
+   }
+  }
+ }
+}
