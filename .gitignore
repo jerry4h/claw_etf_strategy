@@ -54,3 +54,6 @@ output/manifold/*.json
 
 # 主力追踪原始份额数据（敏感，不入库）
 data/national_team/
+premium_513100_daily.csv
+weekly_base.csv
+weekly_swap.csv
