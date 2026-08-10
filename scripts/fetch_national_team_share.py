@@ -210,6 +210,10 @@ def main():
     parser = argparse.ArgumentParser(description='主力ETF份额追踪数据采集')
     parser.add_argument('--priority-only', action='store_true', help='仅拉取 ★ 优先标的')
     parser.add_argument('--validate-only', action='store_true', help='仅做数据质量校验（不拉取）')
+    parser.add_argument('--strategy-pool-only', action='store_true',
+                        help='仅拉取 ◆ 策略池 5 只（快速模式）')
+    parser.add_argument('--no-strategy-pool', action='store_true',
+                        help='不自动追加策略池标的')
     args = parser.parse_args()
 
     # 读取标的清单
@@ -217,13 +221,26 @@ def main():
         cfg = yaml.safe_load(f)
     all_etfs = cfg['etfs']
     priority_codes = cfg.get('priority_codes', [])
+    # 策略池标的不在 etfs 中（非宽基，不参与板块聚合），但份额必须随管线刷新
+    strategy_pool = [dict(e, strategy_pool=True) for e in cfg.get('strategy_pool', [])]
 
-    if args.priority_only:
+    if args.strategy_pool_only:
+        targets = list(strategy_pool)
+        print(f"📋 策略池模式: {len(targets)} 只")
+    elif args.priority_only:
         targets = [e for e in all_etfs if e['ts_code'] in priority_codes]
         print(f"📋 优先标的模式: {len(targets)} 只")
     else:
-        targets = all_etfs
+        targets = list(all_etfs)
         print(f"📋 全量模式: {len(targets)} 只")
+
+    # 除 --strategy-pool-only 外，默认把策略池追加进标的（按 ts_code 去重）
+    if not args.strategy_pool_only and not args.no_strategy_pool:
+        have = {e['ts_code'] for e in targets}
+        extra = [e for e in strategy_pool if e['ts_code'] not in have]
+        if extra:
+            targets += extra
+            print(f"   ◆ 追加策略池标的 {len(extra)} 只 → 共 {len(targets)} 只")
 
     if args.validate_only:
         codes = [e['ts_code'] for e in targets]
@@ -237,7 +254,7 @@ def main():
     for i, etf in enumerate(targets, 1):
         code = etf['ts_code']
         name = etf.get('name', '')
-        pri = '★' if etf.get('priority') else ' '
+        pri = '◆' if etf.get('strategy_pool') else ('★' if etf.get('priority') else ' ')
         try:
             status, detail, fpath = fetch_one(pro, code, name)
             results[status] += 1
