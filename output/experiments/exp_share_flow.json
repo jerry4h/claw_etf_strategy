@@ -1,0 +1,584 @@
+{
+  "generated_at": "2026-08-08 11:40:25",
+  "nav_last": "2026-08-07",
+  "e0_quality": {
+    "纳指ETF": {
+      "n_obs": 2869,
+      "start": "2013-04-25",
+      "end": "2026-08-07",
+      "lag_vs_nav_days": 0,
+      "gap_median_days": 1.0,
+      "gap_max_days": 75.0,
+      "unchanged_rate_2020plus": 0.5536,
+      "n_jump_gt50pct": 2,
+      "n_jump_gt20pct": 3,
+      "exact_ratio_jumps": [
+        {
+          "date": "2022-01-13",
+          "ratio": 5.0,
+          "factor": 5,
+          "kind": "拆分/单位放大",
+          "pct_change": 400.0
+        }
+      ],
+      "stagnation_runs": [
+        {
+          "start": "2025-09-11",
+          "end": "2026-06-25",
+          "n_days": 187,
+          "frozen_value": 946611.06
+        },
+        {
+          "start": "2024-11-22",
+          "end": "2025-07-11",
+          "n_days": 154,
+          "frozen_value": 949911.06
+        },
+        {
+          "start": "2020-04-01",
+          "end": "2020-06-29",
+          "n_days": 58,
+          "frozen_value": 28662.21
+        },
+        {
+          "start": "2025-07-15",
+          "end": "2025-09-10",
+          "n_days": 42,
+          "frozen_value": 946711.06
+        },
+        {
+          "start": "2020-08-10",
+          "end": "2020-09-29",
+          "n_days": 37,
+          "frozen_value": 28062.21
+        }
+      ],
+      "weekend_rows": [
+        "2013-06-30",
+        "2016-12-31",
+        "2017-09-30",
+        "2017-12-31",
+        "2018-03-31",
+        "2018-06-30",
+        "2018-09-30",
+        "2019-03-31",
+        "2019-06-30",
+        "2022-12-31",
+        "2023-09-30",
+        "2023-12-31",
+        "2024-03-31",
+        "2024-06-30"
+      ]
+    },
+    "红利低波ETF": {
+      "n_obs": 1841,
+      "start": "2018-12-19",
+      "end": "2026-08-07",
+      "lag_vs_nav_days": 0,
+      "gap_median_days": 1.0,
+      "gap_max_days": 17.0,
+      "unchanged_rate_2020plus": 0.2525,
+      "n_jump_gt50pct": 1,
+      "n_jump_gt20pct": 5,
+      "exact_ratio_jumps": [
+        {
+          "date": "2021-10-22",
+          "ratio": 2.0,
+          "factor": 2,
+          "kind": "拆分/单位放大",
+          "pct_change": 100.0
+        }
+      ],
+      "stagnation_runs": [],
+      "weekend_rows": [
+        "2019-03-31",
+        "2019-06-30",
+        "2022-12-31",
+        "2023-09-30",
+        "2023-12-31",
+        "2024-03-31",
+        "2024-06-30"
+      ]
+    },
+    "中证500ETF": {
+      "n_obs": 3179,
+      "start": "2013-02-06",
+      "end": "2026-08-07",
+      "lag_vs_nav_days": 0,
+      "gap_median_days": 1.0,
+      "gap_max_days": 36.0,
+      "unchanged_rate_2020plus": 0.0019,
+      "n_jump_gt50pct": 3,
+      "n_jump_gt20pct": 8,
+      "exact_ratio_jumps": [],
+      "stagnation_runs": [],
+      "weekend_rows": [
+        "2013-06-30",
+        "2016-12-31",
+        "2017-09-30",
+        "2017-12-31",
+        "2018-03-31",
+        "2018-06-30",
+        "2018-09-30",
+        "2019-03-31",
+        "2019-06-30",
+        "2022-12-31",
+        "2023-09-30",
+        "2023-12-31",
+        "2024-03-31",
+        "2024-06-30"
+      ]
+    },
+    "黄金ETF": {
+      "n_obs": 3009,
+      "start": "2013-07-18",
+      "end": "2026-08-07",
+      "lag_vs_nav_days": 0,
+      "gap_median_days": 1.0,
+      "gap_max_days": 12.0,
+      "unchanged_rate_2020plus": 0.0131,
+      "n_jump_gt50pct": 1,
+      "n_jump_gt20pct": 4,
+      "exact_ratio_jumps": [],
+      "stagnation_runs": [],
+      "weekend_rows": [
+        "2016-12-31",
+        "2017-09-30",
+        "2017-12-31",
+        "2018-03-31",
+        "2018-06-30",
+        "2018-09-30",
+        "2019-03-31",
+        "2019-06-30",
+        "2022-12-31",
+        "2023-09-30",
+        "2023-12-31",
+        "2024-03-31",
+        "2024-06-30"
+      ]
+    },
+    "国债ETF": {
+      "n_obs": 2824,
+      "start": "2013-03-05",
+      "end": "2026-08-07",
+      "lag_vs_nav_days": 0,
+      "gap_median_days": 1.0,
+      "gap_max_days": 90.0,
+      "unchanged_rate_2020plus": 0.5175,
+      "n_jump_gt50pct": 1,
+      "n_jump_gt20pct": 19,
+      "exact_ratio_jumps": [
+        {
+          "date": "2013-03-06",
+          "ratio": 0.01,
+          "factor": 100,
+          "kind": "折算/单位缩小",
+          "pct_change": -99.0
+        }
+      ],
+      "stagnation_runs": [
+        {
+          "start": "2018-04-02",
+          "end": "2018-06-29",
+          "n_days": 60,
+          "frozen_value": 200.0
+        },
+        {
+          "start": "2018-01-02",
+          "end": "2018-03-30",
+          "n_days": 59,
+          "frozen_value": 200.0
+        },
+        {
+          "start": "2017-10-09",
+          "end": "2017-12-15",
+          "n_days": 50,
+          "frozen_value": 300.0
+        },
+        {
+          "start": "2017-07-27",
+          "end": "2017-09-29",
+          "n_days": 47,
+          "frozen_value": 300.0
+        },
+        {
+          "start": "2017-01-26",
+          "end": "2017-03-30",
+          "n_days": 41,
+          "frozen_value": 400.0
+        }
+      ],
+      "weekend_rows": [
+        "2013-06-30",
+        "2016-12-31",
+        "2017-09-30",
+        "2017-12-31",
+        "2018-03-31",
+        "2018-06-30",
+        "2018-09-30",
+        "2019-03-31",
+        "2019-06-30",
+        "2022-12-31",
+        "2023-09-30",
+        "2023-12-31",
+        "2024-03-31",
+        "2024-06-30"
+      ]
+    }
+  },
+  "e1_ic": {
+    "raw_w2_lag0": {
+      "n_weeks": 676,
+      "mean_ic": -0.0003,
+      "std_ic": 0.5344,
+      "ir": -0.0006,
+      "t_stat": -0.015,
+      "p_value": 0.9879,
+      "pct_positive": 0.4704,
+      "period": "2013-05-31~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0226,
+        "vol_tapered14": 0.0135
+      }
+    },
+    "raw_w4_lag0": {
+      "n_weeks": 674,
+      "mean_ic": -0.0073,
+      "std_ic": 0.5352,
+      "ir": -0.0136,
+      "t_stat": -0.353,
+      "p_value": 0.7243,
+      "pct_positive": 0.4807,
+      "period": "2013-06-14~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0493,
+        "vol_tapered14": 0.0302
+      }
+    },
+    "raw_w8_lag0": {
+      "n_weeks": 670,
+      "mean_ic": -0.0195,
+      "std_ic": 0.5481,
+      "ir": -0.0355,
+      "t_stat": -0.919,
+      "p_value": 0.3583,
+      "pct_positive": 0.4597,
+      "period": "2013-07-12~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0552,
+        "vol_tapered14": 0.0858
+      }
+    },
+    "raw_w13_lag0": {
+      "n_weeks": 665,
+      "mean_ic": 0.014,
+      "std_ic": 0.538,
+      "ir": 0.0261,
+      "t_stat": 0.673,
+      "p_value": 0.5013,
+      "pct_positive": 0.4782,
+      "period": "2013-08-16~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0428,
+        "vol_tapered14": 0.1338
+      }
+    },
+    "raw_w2_lag1": {
+      "n_weeks": 676,
+      "mean_ic": 0.0021,
+      "std_ic": 0.5391,
+      "ir": 0.0039,
+      "t_stat": 0.101,
+      "p_value": 0.9199,
+      "pct_positive": 0.4734,
+      "period": "2013-05-31~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0286,
+        "vol_tapered14": 0.0279
+      }
+    },
+    "raw_w4_lag1": {
+      "n_weeks": 674,
+      "mean_ic": -0.0008,
+      "std_ic": 0.5377,
+      "ir": -0.0015,
+      "t_stat": -0.038,
+      "p_value": 0.9695,
+      "pct_positive": 0.4763,
+      "period": "2013-06-14~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0485,
+        "vol_tapered14": 0.0356
+      }
+    },
+    "raw_w8_lag1": {
+      "n_weeks": 670,
+      "mean_ic": -0.0163,
+      "std_ic": 0.5518,
+      "ir": -0.0295,
+      "t_stat": -0.765,
+      "p_value": 0.4446,
+      "pct_positive": 0.4537,
+      "period": "2013-07-12~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0451,
+        "vol_tapered14": 0.0898
+      }
+    },
+    "raw_w13_lag1": {
+      "n_weeks": 665,
+      "mean_ic": 0.0091,
+      "std_ic": 0.5249,
+      "ir": 0.0173,
+      "t_stat": 0.446,
+      "p_value": 0.656,
+      "pct_positive": 0.4722,
+      "period": "2013-08-16~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0302,
+        "vol_tapered14": 0.144
+      }
+    },
+    "adj_w2_lag0": {
+      "n_weeks": 676,
+      "mean_ic": 0.0022,
+      "std_ic": 0.5351,
+      "ir": 0.0041,
+      "t_stat": 0.107,
+      "p_value": 0.9148,
+      "pct_positive": 0.4734,
+      "period": "2013-05-31~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0199,
+        "vol_tapered14": 0.0111
+      }
+    },
+    "adj_w4_lag0": {
+      "n_weeks": 674,
+      "mean_ic": -0.0037,
+      "std_ic": 0.5352,
+      "ir": -0.0069,
+      "t_stat": -0.18,
+      "p_value": 0.8571,
+      "pct_positive": 0.4852,
+      "period": "2013-06-14~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0433,
+        "vol_tapered14": 0.0242
+      }
+    },
+    "adj_w8_lag0": {
+      "n_weeks": 670,
+      "mean_ic": -0.0205,
+      "std_ic": 0.5495,
+      "ir": -0.0373,
+      "t_stat": -0.966,
+      "p_value": 0.3342,
+      "pct_positive": 0.4567,
+      "period": "2013-07-12~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0452,
+        "vol_tapered14": 0.0744
+      }
+    },
+    "adj_w13_lag0": {
+      "n_weeks": 665,
+      "mean_ic": 0.0122,
+      "std_ic": 0.5407,
+      "ir": 0.0226,
+      "t_stat": 0.583,
+      "p_value": 0.5598,
+      "pct_positive": 0.4767,
+      "period": "2013-08-16~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0424,
+        "vol_tapered14": 0.1189
+      }
+    },
+    "adj_w2_lag1": {
+      "n_weeks": 676,
+      "mean_ic": 0.0028,
+      "std_ic": 0.5391,
+      "ir": 0.0052,
+      "t_stat": 0.136,
+      "p_value": 0.8917,
+      "pct_positive": 0.4749,
+      "period": "2013-05-31~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0263,
+        "vol_tapered14": 0.0259
+      }
+    },
+    "adj_w4_lag1": {
+      "n_weeks": 674,
+      "mean_ic": 0.0007,
+      "std_ic": 0.538,
+      "ir": 0.0013,
+      "t_stat": 0.033,
+      "p_value": 0.9734,
+      "pct_positive": 0.4777,
+      "period": "2013-06-14~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.042,
+        "vol_tapered14": 0.029
+      }
+    },
+    "adj_w8_lag1": {
+      "n_weeks": 670,
+      "mean_ic": -0.0191,
+      "std_ic": 0.5523,
+      "ir": -0.0347,
+      "t_stat": -0.897,
+      "p_value": 0.37,
+      "pct_positive": 0.4507,
+      "period": "2013-07-12~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0374,
+        "vol_tapered14": 0.0776
+      }
+    },
+    "adj_w13_lag1": {
+      "n_weeks": 665,
+      "mean_ic": 0.0073,
+      "std_ic": 0.5271,
+      "ir": 0.0138,
+      "t_stat": 0.355,
+      "p_value": 0.7223,
+      "pct_positive": 0.4692,
+      "period": "2013-08-16~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0313,
+        "vol_tapered14": 0.1295
+      }
+    },
+    "adj2016_w4_lag0": {
+      "n_weeks": 536,
+      "mean_ic": 0.0007,
+      "std_ic": 0.5242,
+      "ir": 0.0013,
+      "t_stat": 0.03,
+      "p_value": 0.9762,
+      "pct_positive": 0.4907,
+      "period": "2016-02-05~2026-07-31",
+      "orthogonality": {
+        "momentum6": 0.006,
+        "vol_tapered14": 0.0277
+      }
+    },
+    "adj2016_w8_lag0": {
+      "n_weeks": 532,
+      "mean_ic": -0.0124,
+      "std_ic": 0.5465,
+      "ir": -0.0227,
+      "t_stat": -0.524,
+      "p_value": 0.6002,
+      "pct_positive": 0.468,
+      "period": "2016-03-11~2026-07-31",
+      "orthogonality": {
+        "momentum6": 0.0125,
+        "vol_tapered14": 0.0743
+      }
+    },
+    "adj2016_w13_lag0": {
+      "n_weeks": 527,
+      "mean_ic": 0.0082,
+      "std_ic": 0.5236,
+      "ir": 0.0156,
+      "t_stat": 0.358,
+      "p_value": 0.7207,
+      "pct_positive": 0.4763,
+      "period": "2016-04-15~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0059,
+        "vol_tapered14": 0.1133
+      }
+    },
+    "adj2016_w4_lag1": {
+      "n_weeks": 536,
+      "mean_ic": 0.0005,
+      "std_ic": 0.5222,
+      "ir": 0.0009,
+      "t_stat": 0.021,
+      "p_value": 0.9834,
+      "pct_positive": 0.4795,
+      "period": "2016-02-05~2026-07-31",
+      "orthogonality": {
+        "momentum6": 0.014,
+        "vol_tapered14": 0.0252
+      }
+    },
+    "adj2016_w8_lag1": {
+      "n_weeks": 532,
+      "mean_ic": -0.0094,
+      "std_ic": 0.5462,
+      "ir": -0.0171,
+      "t_stat": -0.395,
+      "p_value": 0.6927,
+      "pct_positive": 0.4662,
+      "period": "2016-03-11~2026-07-31",
+      "orthogonality": {
+        "momentum6": 0.0134,
+        "vol_tapered14": 0.0749
+      }
+    },
+    "adj2016_w13_lag1": {
+      "n_weeks": 527,
+      "mean_ic": 0.0105,
+      "std_ic": 0.5221,
+      "ir": 0.0201,
+      "t_stat": 0.462,
+      "p_value": 0.6446,
+      "pct_positive": 0.4782,
+      "period": "2016-04-15~2026-07-31",
+      "orthogonality": {
+        "momentum6": -0.0014,
+        "vol_tapered14": 0.12
+      }
+    },
+    "healthy3_w4_lag0": {
+      "n_weeks": 386,
+      "mean_ic": 0.0142,
+      "std_ic": 0.7165,
+      "ir": 0.0199,
+      "t_stat": 0.391,
+      "p_value": 0.6962,
+      "pct_positive": 0.5155,
+      "period": "2019-01-18~2026-07-31"
+    },
+    "healthy3_w8_lag0": {
+      "n_weeks": 382,
+      "mean_ic": 0.017,
+      "std_ic": 0.7129,
+      "ir": 0.0239,
+      "t_stat": 0.466,
+      "p_value": 0.6411,
+      "pct_positive": 0.5131,
+      "period": "2019-02-22~2026-07-31"
+    },
+    "healthy3_w13_lag0": {
+      "n_weeks": 377,
+      "mean_ic": 0.0133,
+      "std_ic": 0.707,
+      "ir": 0.0188,
+      "t_stat": 0.364,
+      "p_value": 0.7159,
+      "pct_positive": 0.4907,
+      "period": "2019-03-29~2026-07-31"
+    }
+  },
+  "gate": {
+    "verdict": "NO-GO",
+    "best_variant": "adj_w8_lag0",
+    "evidence": [
+      "最佳现实口径变体(lag=0) = adj_w8_lag0",
+      "|mean_IC| = 0.0205 < 0.03 → FAIL",
+      "|t-stat| = 0.97 < 1.5 → FAIL",
+      "正交性 corr(momentum6)=-0.045 corr(vol_tapered14)=+0.074 → PASS"
+    ],
+    "thresholds": {
+      "abs_ic": 0.03,
+      "abs_t": 1.5,
+      "ortho": 0.3
+    }
+  }
+}

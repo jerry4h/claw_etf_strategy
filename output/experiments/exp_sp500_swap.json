@@ -1,0 +1,320 @@
+{
+  "task": "T16 sp500 swap experiment (513100 -> 513500)",
+  "data_source": "东方财富公开K线 fqt=1 前复权 (tushare token 被服务端拒绝 code=40101)",
+  "build_info": {
+    "splice_date": "2014-01-17",
+    "n_backfill_weeks": 35,
+    "first_513500_trade_date": "2014-01-15",
+    "overlap_weekly_corr_513100_513500": 0.785119806152057,
+    "scale_factor": 0.43609503539803934
+  },
+  "windows": {
+    "full": [
+      "2013-08-30",
+      "2026-07-24",
+      662
+    ],
+    "oos": [
+      "2024-04-03",
+      "2026-07-24",
+      120
+    ],
+    "oos_start_spec": "2024-04-01",
+    "nobackfill_start": "2014-01-20"
+  },
+  "metrics": {
+    "base_full": {
+      "total_return": 4.615172091065821,
+      "annual_return": 0.1451499435594903,
+      "max_drawdown": 0.05847189732050016,
+      "sharpe_ratio": 1.4984554869975593,
+      "calmar_ratio": 2.48238812508314,
+      "win_rate": 0.6057401812688822,
+      "avg_weekly_return": 0.002664764900482481,
+      "std_weekly_return": 0.01051016655599228,
+      "annual_volatility": 0.07578988886259386,
+      "total_weeks": 662,
+      "defensive_weeks": 647,
+      "rebalance_count": 378,
+      "final_nav": 5.615172091065821
+    },
+    "swap_full": {
+      "total_return": 3.8649538231171725,
+      "annual_return": 0.13232195961035353,
+      "max_drawdown": 0.07050386205447767,
+      "sharpe_ratio": 1.3669412678501442,
+      "calmar_ratio": 1.8768044154532924,
+      "win_rate": 0.6072507552870091,
+      "avg_weekly_return": 0.00244616618119672,
+      "std_weekly_return": 0.010368169647188868,
+      "annual_volatility": 0.07476593459129768,
+      "total_weeks": 662,
+      "defensive_weeks": 590,
+      "rebalance_count": 368,
+      "final_nav": 4.8649538231171725
+    },
+    "base_oos": {
+      "total_return": 0.5514752763269812,
+      "annual_return": 0.2096399057443168,
+      "max_drawdown": 0.058471897320500205,
+      "sharpe_ratio": 1.8544620046774225,
+      "calmar_ratio": 3.5853104713743775,
+      "win_rate": 0.625,
+      "avg_weekly_return": 0.0037459142865059044,
+      "std_weekly_return": 0.012696564168575796,
+      "annual_volatility": 0.09155622626403769,
+      "total_weeks": 120,
+      "defensive_weeks": 120,
+      "rebalance_count": 81,
+      "final_nav": 1.5514752763269812
+    },
+    "swap_oos": {
+      "total_return": 0.46919958326104316,
+      "annual_return": 0.18141281787912744,
+      "max_drawdown": 0.05677542401868781,
+      "sharpe_ratio": 1.6335213862979978,
+      "calmar_ratio": 3.1952701545551614,
+      "win_rate": 0.6,
+      "avg_weekly_return": 0.003286328325991457,
+      "std_weekly_return": 0.012385007333259045,
+      "annual_volatility": 0.08930955797412601,
+      "total_weeks": 120,
+      "defensive_weeks": 118,
+      "rebalance_count": 76,
+      "final_nav": 1.4691995832610432
+    },
+    "base_nobackfill": {
+      "total_return": 4.530276712642025,
+      "annual_return": 0.15265097618684087,
+      "max_drawdown": 0.05847189732050012,
+      "sharpe_ratio": 1.576530206331867,
+      "calmar_ratio": 2.6106725312866113,
+      "win_rate": 0.6134185303514377,
+      "avg_weekly_return": 0.002791251757428411,
+      "std_weekly_return": 0.010568225318455643,
+      "annual_volatility": 0.07620855655269713,
+      "total_weeks": 626,
+      "defensive_weeks": 611,
+      "rebalance_count": 361,
+      "final_nav": 5.530276712642025
+    },
+    "swap_nobackfill": {
+      "total_return": 3.6018814611895973,
+      "annual_return": 0.13518885476334153,
+      "max_drawdown": 0.07050386205447778,
+      "sharpe_ratio": 1.3848599151245484,
+      "calmar_ratio": 1.9174673673746008,
+      "win_rate": 0.610223642172524,
+      "avg_weekly_return": 0.0024962220092386244,
+      "std_weekly_return": 0.010494661960656454,
+      "annual_volatility": 0.07567808363561658,
+      "total_weeks": 626,
+      "defensive_weeks": 556,
+      "rebalance_count": 356,
+      "final_nav": 4.601881461189597
+    },
+    "ew_base_full": {
+      "total_return": 3.098812989702184,
+      "annual_return": 0.11718269909313306,
+      "max_drawdown": 0.20198315146528836,
+      "sharpe_ratio": 0.9055765841738279,
+      "calmar_ratio": 0.5801607621379815,
+      "win_rate": 0.6042296072507553,
+      "avg_weekly_return": 0.0022305604265542276,
+      "std_weekly_return": 0.0139335799710723,
+      "annual_volatility": 0.10047647407295845,
+      "total_weeks": 662,
+      "defensive_weeks": 0,
+      "rebalance_count": 0,
+      "final_nav": 4.098812989702184
+    },
+    "ew_swap_full": {
+      "total_return": 2.6028355753999706,
+      "annual_return": 0.10592159088951192,
+      "max_drawdown": 0.2044704624671512,
+      "sharpe_ratio": 0.8260414749510626,
+      "calmar_ratio": 0.5180288126287607,
+      "win_rate": 0.5966767371601208,
+      "avg_weekly_return": 0.002029671620151898,
+      "std_weekly_return": 0.013521468727556933,
+      "annual_volatility": 0.09750469763357869,
+      "total_weeks": 662,
+      "defensive_weeks": 0,
+      "rebalance_count": 0,
+      "final_nav": 3.6028355753999706
+    },
+    "ew_base_oos": {
+      "total_return": 0.38999591434510905,
+      "annual_return": 0.1533802937780797,
+      "max_drawdown": 0.058888549174996536,
+      "sharpe_ratio": 1.270112348151793,
+      "calmar_ratio": 2.6045860515647306,
+      "win_rate": 0.6416666666666667,
+      "avg_weekly_return": 0.002836337514644862,
+      "std_weekly_return": 0.013373812549305723,
+      "annual_volatility": 0.09643993378993111,
+      "total_weeks": 120,
+      "defensive_weeks": 0,
+      "rebalance_count": 0,
+      "final_nav": 1.389995914345109
+    },
+    "ew_swap_oos": {
+      "total_return": 0.3517220784393724,
+      "annual_return": 0.13950930673562034,
+      "max_drawdown": 0.06718472667725353,
+      "sharpe_ratio": 1.1750519560868053,
+      "calmar_ratio": 2.0765033012012455,
+      "win_rate": 0.625,
+      "avg_weekly_return": 0.0025980827607437725,
+      "std_weekly_return": 0.012993608425588483,
+      "annual_volatility": 0.09369824286352038,
+      "total_weeks": 120,
+      "defensive_weeks": 0,
+      "rebalance_count": 0,
+      "final_nav": 1.3517220784393724
+    }
+  },
+  "attribution": {
+    "asset_overlap": {
+      "overlap_window": [
+        "2014-01-24",
+        "2026-07-24"
+      ],
+      "overlap_weeks": 641,
+      "nasdaq_ann_return": 0.19399736320404437,
+      "sp500_ann_return": 0.14080781818781518,
+      "ann_return_diff": 0.05318954501622919,
+      "nasdaq_ann_vol": 0.18588118799389025,
+      "sp500_ann_vol": 0.16435293491166167,
+      "ann_vol_diff": 0.021528253082228582,
+      "corr_513100_513500": 0.785119806152057,
+      "corr_with_others_nasdaq": {
+        "红利低波ETF": 0.16384273482034553,
+        "中证500ETF": 0.25123932477848776,
+        "黄金ETF": 0.017300340251656776,
+        "国债ETF": -0.0669349311668154
+      },
+      "corr_with_others_sp500": {
+        "红利低波ETF": 0.1718922022332005,
+        "中证500ETF": 0.20405221830972387,
+        "黄金ETF": 0.029959363823209007,
+        "国债ETF": -0.09206854947759062
+      }
+    },
+    "position_base": {
+      "weeks_held_pct": 0.7235649546827795,
+      "avg_weight_overall": 0.1707035329977536,
+      "avg_weight_when_held": 0.2359201228486699,
+      "cum_contrib_arith": 0.5118351666311258,
+      "ann_contrib_arith": 0.04020457502238451
+    },
+    "position_swap": {
+      "weeks_held_pct": 0.7870090634441088,
+      "avg_weight_overall": 0.2206621941341505,
+      "avg_weight_when_held": 0.2803807533911854,
+      "cum_contrib_arith": 0.42889127957543904,
+      "ann_contrib_arith": 0.03368934522344839
+    },
+    "theoretical_loss_upper_bound": {
+      "note": "基线版实际纳指仓位 x (513100-513500)周收益差, 重叠期(不含回填段); 上限含义: 假设选择/防御路径完全不变, 实际引擎会自适应(vol更低->防御更少), 实际损失可能低于此值",
+      "cum_loss_arith": 0.2124909099069744,
+      "ann_loss_arith": 0.017211101737013502,
+      "overlap_years": 12.346153846153847
+    }
+  },
+  "premium": {
+    "premium_distribution": {
+      "full": {
+        "mean": 0.01429454243783441,
+        "median": 0.004443349450662604,
+        "p25": -0.004329526644432646,
+        "p75": 0.02109654792321325,
+        "p90": 0.053655383354092145,
+        "p99": 0.14570227645433825,
+        "max": 0.2798552472858866,
+        "n_days": 3166
+      },
+      "recent_1y": {
+        "mean": 0.05589784873505519,
+        "median": 0.05719237435008662,
+        "p25": 0.03594445298887006,
+        "p75": 0.07727739868326167,
+        "p90": 0.09297800784688835,
+        "p99": 0.12492468442938565,
+        "max": 0.13899056058562897,
+        "n_days": 243
+      },
+      "recent_3m": {
+        "mean": 0.08164022376818843,
+        "median": 0.08384454173666611,
+        "p25": 0.06392523458587251,
+        "p75": 0.10071605433322173,
+        "p90": 0.11517020573176244,
+        "p99": 0.1336478976801707,
+        "max": 0.13899056058562897,
+        "n_days": 62
+      },
+      "note": "东财未复权收盘价 / 单位净值 - 1; QDII净值T+1披露存在时差噪声, 分布统计仍可用"
+    },
+    "buy_turnover": {
+      "n_buy_events": 148,
+      "ann_buy_notional": 0.6042110672244142,
+      "years": 12.73076923076923
+    },
+    "tier_costs": {
+      "0.5%": {
+        "premium": 0.005,
+        "ann_cost": 0.003021055336122071
+      },
+      "1.0%": {
+        "premium": 0.01,
+        "ann_cost": 0.006042110672244142
+      },
+      "2.0%": {
+        "premium": 0.02,
+        "ann_cost": 0.012084221344488284
+      }
+    },
+    "breakeven": {
+      "ann_loss_backtest_diff": 0.012827983949136756,
+      "ann_loss_theoretical_ub": 0.017211101737013502,
+      "breakeven_premium_backtest": 0.021230964881304014,
+      "breakeven_premium_theoretical": 0.028485247408785063,
+      "note": "p* = 年化替换损失 / 年均纳指列买入名义仓位; 每次买入平均多付溢价超过 p* 时, 换标普划算 (保守假设: 买入溢价在卖出前完全回落; 若溢价持续存在则实际成本更低, p*应视为下限)"
+    }
+  },
+  "defense_diagnosis": {
+    "params": {
+      "step_low": 0.075,
+      "step_high": 0.38,
+      "def_alloc": 0.35,
+      "max_def": 0.83
+    },
+    "base": {
+      "vol_mean": 0.16523982377094845,
+      "vol_median": 0.15557732013252779,
+      "vol_p90": 0.24524142252881467,
+      "vol_max": 0.4072154428810467,
+      "pct_below_step_low": 0.02118003025718608,
+      "pct_in_ramp": 0.9636913767019667,
+      "pct_above_step_high": 0.015128593040847202,
+      "def_ratio_mean": 0.4990368410650931,
+      "def_ratio_median": 0.4788527508582313,
+      "defensive_weeks_pct": 0.9773413897280967,
+      "def_ratio_p90": 0.6355363722650627
+    },
+    "swap": {
+      "vol_mean": 0.141887779999884,
+      "vol_median": 0.13036140982923902,
+      "vol_p90": 0.21765003807312566,
+      "vol_max": 0.5029539989606299,
+      "pct_below_step_low": 0.10892586989409984,
+      "pct_in_ramp": 0.875945537065053,
+      "pct_above_step_high": 0.015128593040847202,
+      "def_ratio_mean": 0.46306704708932034,
+      "def_ratio_median": 0.44132387101354786,
+      "defensive_weeks_pct": 0.8912386706948641,
+      "def_ratio_p90": 0.5930481133832278
+    }
+  }
+}

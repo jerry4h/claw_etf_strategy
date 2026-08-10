@@ -1,0 +1,72 @@
+strategy:
+  name: 虾池ETF轮动 v4.4 — E1溢价侵蚀实验口径B (纳指列=513100复权净值adj_nav)
+  version: '4.4-premium-e1-navds'
+  note: "实验配置(任务#19 E1): 与 strategy_v4_4.yaml 完全一致, 仅 data.nav_path 指向净值数据集(纳指ETF列数值换为 tushare fund_nav 的 adj_nav 复权净值周线, 列名不变, engine零改动)。关键背景: 核查发现生产 CSV 纳指列实为前复权市场收盘价(含溢价), 本数据集是'无溢价世界'的反事实 — 因子/防御/止损全部基于净值。见 scripts/_exp_premium_e1.py 与 output/experiments/premium_e1_erosion.md。"
+scoring:
+  mom_w: 1.0
+  vol_w: 1.1
+selection:
+  top_n: 2
+  score_margin: 0.02
+  dynamic_margin_sensitivity: 1.0
+  dynamic_margin_window: 3
+  trend_confirm_weeks: 0
+factors:
+  mom_window: 6
+  vol_window: 10          # taper 开启时此硬窗口不生效(仅历史占位; 有效窗口见 vol_taper_window)
+  pe_window_years: 5
+  ewma_factors_enabled: false
+  ewma_mom_halflife: 16
+  ewma_vol_halflife: 6
+  vol_taper_enabled: true
+  vol_taper_window: 14
+  vol_taper_len: 7
+defense:
+  def_alloc: 0.35
+  step_low: 0.075
+  step_high: 0.38
+  max_def: 0.83
+  hongli_ratio: 0.5
+crisis_correlation:
+  window: 26
+  corr_threshold: 0.6
+  boost_slope: 1.875
+  max_boost: 0.15
+# v4.4: Layer 3.5 EWMA 相关估计(半衰期加权,快速捕捉相关性飙升)
+crisis_correlation_ewma:
+  ewma_enabled: true
+  ewma_halflife: 8
+hongli_formula:
+  intercept: 0.8
+  vol_coeff: 2.67
+rebalance:
+  threshold: 0.025
+  fee_rate: 5.0e-05
+  anchor: W-MON
+risk_control:
+  stop_loss: 0.08
+  recovery_weeks: 4
+allocation:
+  max_single_alloc: 0.4
+  overflow_to_defense_only: true
+  dynamic_weight_cap: false
+inv_vol_allocation:
+  enabled: true
+  window: 14
+d4_individual_filter:
+  enabled: false
+softmax_allocation:
+  enabled: false
+dynamic_weighting:
+  enabled: false
+constituent_signals:
+  enabled: false
+regime_classifier:
+  enabled: false
+data:
+  nav_path: data/experiments/all_etfs_nav_513100nav.csv
+  pe_path: data/300etf_pe_percentile_weekly.csv
+  start_date: 2013-05-17
+  end_date: null
+reporting:
+  risk_free_rate: 0.025
