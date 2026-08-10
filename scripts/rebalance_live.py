@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-虾池ETF轮动 实时调仓计算 (版本跟随 config.version, 当前默认 v4.2 生产 config)
+虾池ETF轮动 实时调仓计算 (版本跟随 config.version, 当前默认 v4.5-pvd 生产 config)
 =================================
 用法:
   python scripts/rebalance_live.py                     # 最新数据 → 下周一调仓
@@ -77,8 +77,9 @@ def _apply_cfg(c):
         _START_IDX = max(MOM_WINDOW, VOL_WINDOW)
 
 
-# 默认生产 config = v4.3 (tapered-vol); main() 可用 --config 切换 (如回退 v4.2/v4.1)
-_apply_cfg(load_config(PROJECT / 'config/strategy_v4_3.yaml'))
+# 默认生产 config = v4.5-pvd (PVD 条件激活, 全门禁通过); main() 可用 --config 切换
+# (回退前代 v4.3: config/strategy_v4_3.yaml)
+_apply_cfg(load_config(PROJECT / 'config/strategy_v4_5_pvd.yaml'))
 
 STATE_FILE = PROJECT / 'data' / '.last_alloc.json'
 
@@ -407,8 +408,8 @@ def print_rebalance(prev_al, curr_al):
 def main():
     p = argparse.ArgumentParser(description=f'{cfg.name} 实时调仓')
     p.add_argument('csv', nargs='?', default=None, help='CSV路径(默认取 config.nav_path)')
-    p.add_argument('--config', default='config/strategy_v4_3.yaml',
-                   help='策略配置(默认 v4.3 生产; 回退 v4.2 用 config/strategy_v4_2.yaml)')
+    p.add_argument('--config', default='config/strategy_v4_5_pvd.yaml',
+                   help='策略配置(默认 v4.5-pvd 生产; 回退 v4.3 用 config/strategy_v4_3.yaml)')
     p.add_argument('--verify', action='store_true', help='全量回测 vs 引擎验证')
     p.add_argument('--week', type=str, default=None, help='指定日期 YYYY-MM-DD')
     p.add_argument('--amount', type=float, default=500000, help='总资金(元)')
@@ -418,7 +419,7 @@ def main():
     a = p.parse_args()
 
     # P0-3: 按 --config 切换生产配置 (重派生模块常量 + taper-aware 预热)
-    if a.config and a.config != 'config/strategy_v4_3.yaml':
+    if a.config and a.config != 'config/strategy_v4_5_pvd.yaml':
         _apply_cfg(load_config(PROJECT / a.config))
     csv = a.csv or cfg.nav_path
 

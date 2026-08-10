@@ -107,7 +107,8 @@ def main():
                    help='指定单段回测起始日；缺省输出 全期 + OOS(2024-01-01) 两段')
     args = p.parse_args()
 
-    cfg = load_config(PROJECT / 'config/strategy_v4_3.yaml')
+    # 生产默认 config = v4.5-pvd (历史版本对比用 git 旧版或显式改此路径)
+    cfg = load_config(PROJECT / 'config/strategy_v4_5_pvd.yaml')
     if args.start:
         blocks = {'CUSTOM': compute_benchmarks(cfg, start_date=args.start)}
     else:

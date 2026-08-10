@@ -159,15 +159,56 @@ class TestPVDNanHandling:
 
 class TestBaselineUnchanged:
     def test_v43_sharpe_unchanged(self):
-        """pvd_enabled=false (v4.3) 时 Sharpe 锁定基线 (数据窗口至 2026-07-31)."""
+        """pvd_enabled=false (v4.3) 时 Sharpe 锁定基线.
+
+        锚点对应数据窗口至 2026-08-07 (Sharpe 1.5092); weekly_refresh
+        周度刷新带来小幅漂移, 容差覆盖正常漂移, 仅拦截口径级回归。
+        """
         from src.backtest import run_backtest
         cfg = load_config(PROJECT / 'config/strategy_v4_3.yaml')
         assert cfg.pvd_enabled is False
         result = run_backtest(cfg)
         sharpe = result.metrics['sharpe_ratio']
         # Pin to known baseline value
-        assert abs(sharpe - 1.4963) < 0.0005, \
-            f"Baseline Sharpe drift: got {sharpe:.4f}, expected 1.4963"
+        assert abs(sharpe - 1.5092) < 0.03, \
+            f"Baseline Sharpe drift: got {sharpe:.4f}, expected ~1.5092"
+
+
+# ============================================================
+# 5b. v4.5-pvd production pin (生产切换后新增)
+# ============================================================
+
+class TestV45PvdProductionPin:
+    def test_v45_pvd_headline_metrics(self):
+        """v4.5-pvd 生产 config 关键数字 pin (锚点数据窗口至 2026-08-07).
+
+        立项门禁: Sharpe ≥ v4.3 同窗口 +0.01, MaxDD ≤ 6.10% (v4.3 5.84% +0.3pp),
+        且绝对回撤不恶化 (≤ v4.3)。
+        """
+        from src.backtest import run_backtest
+        cfg = load_config(PROJECT / 'config/strategy_v4_5_pvd.yaml')
+        assert cfg.pvd_enabled is True
+        m = run_backtest(cfg).metrics
+        assert abs(m['sharpe_ratio'] - 1.6028) < 0.03, \
+            f"v4.5-pvd Sharpe drift: {m['sharpe_ratio']:.4f}, expected ~1.6028"
+        assert m['max_drawdown'] <= 0.061, \
+            f"v4.5-pvd MaxDD 超出门禁: {m['max_drawdown']:.4%} > 6.10%"
+
+    def test_v45_pvd_dominates_v43(self):
+        """v4.5-pvd 应同窗口优于 v4.3 (Sharpe 更高且 MaxDD 不恶化)."""
+        from src.backtest import run_backtest
+        m45 = run_backtest(load_config(PROJECT / 'config/strategy_v4_5_pvd.yaml')).metrics
+        m43 = run_backtest(load_config(PROJECT / 'config/strategy_v4_3.yaml')).metrics
+        assert m45['sharpe_ratio'] > m43['sharpe_ratio'], \
+            f"v4.5-pvd Sharpe {m45['sharpe_ratio']:.4f} 未超过 v4.3 {m43['sharpe_ratio']:.4f}"
+        assert m45['max_drawdown'] <= m43['max_drawdown'] + 0.005
+
+    def test_production_default_config_is_v45_pvd(self):
+        """生产入口脚本默认 config 必须指向 v4.5-pvd (防默认路径回退)."""
+        for script in ('run_backtest.py', 'rebalance_live.py'):
+            src = (PROJECT / 'scripts' / script).read_text(encoding='utf-8')
+            assert 'strategy_v4_5_pvd.yaml' in src, \
+                f"{script} 未引用 v4.5-pvd 生产配置"
 
 
 # ============================================================

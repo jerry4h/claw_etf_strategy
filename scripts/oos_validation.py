@@ -223,7 +223,7 @@ def verdict(v41, v42, n_bucket, d_max_slack=0.13,
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--cfg-baseline",  default="config/strategy_v4_1.yaml")
-    p.add_argument("--cfg-candidate", default="config/strategy_v4_3.yaml")
+    p.add_argument("--cfg-candidate", default="config/strategy_v4_5_pvd.yaml")
     p.add_argument("--oos-seeds",     default="100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116")
     p.add_argument("--block-len",     type=int, default=8)
     p.add_argument("--n-paths",       type=int, default=30)

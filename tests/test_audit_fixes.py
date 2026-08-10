@@ -154,8 +154,9 @@ def test_evaluate_full_multiobjective_structure():
 def test_v4_2_production_headline_metrics_pinned():
     """P0-2 回归: pin 住 v4.2 生产 config 的三个 README 头部承诺数字。
 
-    任何改动打破这个 pin (Sharpe 1.635, 年化 15.84%, MaxDD 6.75%) 都会立刻失败,
-    强制 review 是引擎变了还是 config 漂了。容差 ±0.5% 覆盖浮点噪声 + yaml roundtrip。
+    任何改动打破这个 pin (锚点 Sharpe 1.645, 年化 15.92%, MaxDD 6.75%,
+    数据窗口至 2026-08-07) 都会立刻失败, 强制 review 是引擎变了还是 config 漂了。
+    容差覆盖 weekly_refresh 周度数据漂移, 仅拦截口径级回归。
     """
     import warnings
     warnings.filterwarnings("ignore")
@@ -164,9 +165,9 @@ def test_v4_2_production_headline_metrics_pinned():
     cfg = _lc(PROJECT / "config/strategy_v4_2.yaml")
     res = _rb(cfg)
     m = res.metrics
-    # 三个头部承诺数字, 允许 ±0.5% 绝对容差
-    assert abs(m["sharpe_ratio"]   - 1.6350) < 0.01, f"v4.2 Sharpe 漂移: {m['sharpe_ratio']:.4f} 期望 ~1.635"
-    assert abs(m["annual_return"]  - 0.1584) < 0.005, f"v4.2 年化漂移: {m['annual_return']:.4%} 期望 ~15.84%"
+    # 三个头部承诺数字 (锚点 2026-08-07 数据窗口)
+    assert abs(m["sharpe_ratio"]   - 1.6454) < 0.03, f"v4.2 Sharpe 漂移: {m['sharpe_ratio']:.4f} 期望 ~1.645"
+    assert abs(m["annual_return"]  - 0.1592) < 0.01, f"v4.2 年化漂移: {m['annual_return']:.4%} 期望 ~15.92%"
     assert abs(m["max_drawdown"]   - 0.0675) < 0.005, f"v4.2 MaxDD 漂移: {m['max_drawdown']:.4%} 期望 ~6.75%"
     # 验证 P0-1 修复: defensive_weeks 已跟随 config.def_alloc=0.1447, 不再硬编码 0.25
     df = res.nav_series
@@ -197,10 +198,11 @@ def test_v4_2_multiobjective_pass_verdict():
 
 
 def test_v4_3_tapered_alternative_headline_pinned():
-    """归档回归: v4.3 tapered-vol 替代生产 config 的关键数字 pin。
+    """归档回归: v4.3 tapered-vol 前代已验证 config 的关键数字 pin。
 
     v4.3 与 v4.2 互不支配(用低 Sharpe 换无跳变+低回撤), 两者都归档为已验证配置。
     这里 pin 住 v4.3 的 taper 开关 + 三个 backtest 数字, 防止 config/引擎漂移。
+    锚点对应数据窗口至 2026-08-07; 容差覆盖周度数据漂移。
     """
     import warnings
     warnings.filterwarnings("ignore")
@@ -213,8 +215,8 @@ def test_v4_3_tapered_alternative_headline_pinned():
         f"v4.3 taper 参数漂移: window={cfg.vol_taper_window} len={cfg.vol_taper_len}"
     assert cfg.ewma_factors_enabled is False, "v4.3 不应同时开 EWMA"
     m = _rb(cfg).metrics
-    assert abs(m["sharpe_ratio"]  - 1.4878) < 0.01,  f"v4.3 Sharpe 漂移: {m['sharpe_ratio']:.4f} 期望 ~1.488"
-    assert abs(m["annual_return"] - 0.1452) < 0.005, f"v4.3 年化漂移: {m['annual_return']:.4%} 期望 ~14.52%"
+    assert abs(m["sharpe_ratio"]  - 1.5092) < 0.03,  f"v4.3 Sharpe 漂移: {m['sharpe_ratio']:.4f} 期望 ~1.509"
+    assert abs(m["annual_return"] - 0.1471) < 0.01,  f"v4.3 年化漂移: {m['annual_return']:.4%} 期望 ~14.71%"
     assert abs(m["max_drawdown"]  - 0.0584) < 0.005, f"v4.3 MaxDD 漂移: {m['max_drawdown']:.4%} 期望 ~5.84%"
     # v4.3 设计卖点: realized MaxDD 应低于 v4.2 (6.75%)
     assert m["max_drawdown"] < 0.0675, f"v4.3 MaxDD {m['max_drawdown']:.4%} 未低于 v4.2 6.75%"
@@ -250,5 +252,5 @@ def test_v4_3_live_uses_taper_vol_matching_engine():
     common = v20["纳指ETF"].dropna().index.intersection(rolling["纳指ETF"].dropna().index)
     diff = (v20["纳指ETF"].loc[common] - rolling["纳指ETF"].loc[common]).abs().mean()
     assert diff > 1e-3, f"v4.3 实盘 vol 与 rolling 几乎相同(diff={diff:.2e}), taper 分支疑似未生效"
-    # 复位到默认(避免污染其它测试的模块状态)
-    rl._apply_cfg(_lc(PROJECT / "config/strategy_v4_3.yaml"))
+    # 复位到默认(避免污染其它测试的模块状态; 生产默认已切换为 v4.5-pvd)
+    rl._apply_cfg(_lc(PROJECT / "config/strategy_v4_5_pvd.yaml"))

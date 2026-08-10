@@ -168,7 +168,7 @@ def _print_report(ev, cfg_name):
 
 def main():
     p = argparse.ArgumentParser(description="v4.0 统一评估(realized+adversarial+约束)")
-    p.add_argument("--config", default="config/strategy_v4_3.yaml")
+    p.add_argument("--config", default="config/strategy_v4_5_pvd.yaml")
     p.add_argument("--dmax", type=float, default=0.12, help="全情景最大回撤上限")
     p.add_argument("--seeds", default="11,22,33,44,55,66,77")
     p.add_argument("--json", action="store_true")

@@ -1,19 +1,21 @@
-# 虾池ETF轮动策略 v4.3 — tapered-vol 生产版（无窗口跳变）
+# 虾池ETF轮动策略 v4.5-pvd — PVD 条件激活生产版
 
 基于 **5只ETF** 的周频动量轮动策略，全连续/零门控/四层架构（含 DefAlloc）。
-**Sharpe 1.488 / 年化 14.52% / 最大回撤 5.84% / Calmar 2.49**（realized 2013-08 ~ 2026-07）；
-**tapered vol 消除 rolling 窗口跳变（-27~42%）；对抗 3 通道 OOS 通过率全 ≥ 前代 v4.2**。
+**Sharpe 1.603 / 年化 15.52% / 最大回撤 5.80% / Calmar 2.68**（realized 2013-08 ~ 2026-08）；
+**在 v4.3 tapered-vol 基座上新增 PVD（量价背离）条件激活 tiebreaker，block bootstrap
+200 路径胜率 94.5%、alpha P10 +0.082，全门禁通过后于 2026-08 切换为生产默认**。
 
-v4.3 由 **v4.0 对抗鲁棒性框架 + max-Sharpe 目标 + OOS 泛化门** 产出。经**控制变量消融实验**
-确认：在相同优化方法下，rolling 找不到任何可泛化的鲁棒配置（0/3 过 OOS 门），唯 tapered vol
-能（1/5）——**taper 是因子级的真实优势，不是方法的假象**。方法学详见
+v4.5-pvd 由 **v4.0 对抗鲁棒性框架 + 量价因子专项研究管线（E0→E1→E2b→T1-T3）** 产出：
+PVD 在"纳指 amount 处 [p25,p75] 平静环境 + top-2 动量 gap<0.05"时以权重 0.15 注入，
+否则完全退化为 v4.3 基座（零副作用）。前视偏差已清除（expanding-only 门限）。
+方法学详见 [`docs/v4_5_pvd_factor_closure.md`](docs/v4_5_pvd_factor_closure.md) 与
 [`docs/adversarial_robustness_methodology.md`](docs/adversarial_robustness_methodology.md)。
 
-**生产状态**：`config/strategy_v4_3.yaml` 为**默认生产 config**（`rebalance_live.py` /
-`run_backtest.py` / `evaluate.py` 等默认路径已全部切换，实盘脚本已支持 tapered vol 且经
-`--verify` 确认与回测引擎一致 ΔSharpe<0.01）。前代 `config/strategy_v4_2.yaml`（rolling，
-Sharpe 1.635/更高年化但 vol 有跳变）保留为**已验证替代配置**；如需切回：
-`python scripts/rebalance_live.py --config config/strategy_v4_2.yaml`。
+**生产状态**：`config/strategy_v4_5_pvd.yaml` 为**默认生产 config**（`rebalance_live.py` /
+`run_backtest.py` / `evaluate.py` 等默认路径已全部切换，实盘脚本经 `--verify` 确认与回测
+引擎一致 ΔSharpe<0.01）。前代 `config/strategy_v4_3.yaml`（tapered-vol，无跳变/低回撤）
+保留为**前代已验证配置**与回归基线 pin；如需切回：
+`python scripts/rebalance_live.py --config config/strategy_v4_3.yaml`。
 
 ## 版本演进（一）：v4.1（历史基线）→ v4.2（前代生产）
 
@@ -44,11 +46,11 @@ Sharpe 1.635/更高年化但 vol 有跳变）保留为**已验证替代配置**�
 | `max_def` | 0.95 | 0.811 | 峰值防御更低 |
 | `vol_window` | 11 | 10 | vol 信号更快 |
 
-**版本沿革**：`config/strategy_v4_2.yaml`（rolling）曾是生产配置，现已被 **v4.3 取代**、降为
+**版本沿革**：`config/strategy_v4_2.yaml`（rolling）曾是生产配置，现已被后续版本取代、降为
 **前代已验证配置**（对抗 OOS 对照 + 回归 pin 保留）；`config/strategy_v4_1.yaml` 仍作**历史基线**
-（对抗 OOS 验证的对照组、回归测试的历史行为参照）。当前默认生产 = v4.3（见顶部）。
+（对抗 OOS 验证的对照组、回归测试的历史行为参照）。当前默认生产 = v4.5-pvd（见顶部）。
 
-## 版本演进（二）：v4.2 → v4.3（当前生产）
+## 版本演进（二）：v4.2 → v4.3（前代生产，当前回归基线）
 
 rolling `vol_window` 有一个**设计层面的固有缺陷**：当最老一周滚出窗口时波动率会阶跃跳变。
 v4.3 用 **tapered vol**（窗口内最老若干周线性降权）替代硬截断窗口，实测把纳指 vol 的
@@ -73,8 +75,9 @@ OOS 泛化门** 优化得到。方法学上有两个关键教训（详见 method
 | OOS 三通道通过率 | 基线 | **全 ≥ v4.2**（A 80%>70%, B 100%=, C 93%>90%） |
 | def_alloc | 0.145 | 0.349（更防御） |
 
-**选型**：**v4.3 已是默认生产**（无跳变 + 更低回撤 + 更高 Calmar，且经消融确认因子级鲁棒优势）。
-若更偏好风险调整收益（更高 Sharpe/年化），可切回前代 v4.2：
+**选型**：**v4.3 已被 v4.5-pvd 取代为默认生产**（v4.5-pvd 以 v4.3 为基座，PVD 条件激活
+进一步提升 Sharpe 且 MaxDD 不恶化）。v4.3 保留为前代已验证配置（无跳变 + 更低回撤 + 高 Calmar，
+且经消融确认因子级鲁棒优势）；若更偏好风险调整收益（更高 Sharpe/年化），可切回前代 v4.2：
 `python scripts/rebalance_live.py --config config/strategy_v4_2.yaml`。
 
 ## 版本演进（三）：v4.3 → v4.4（相关性危机轴闭环，已就绪待切换）
@@ -86,7 +89,7 @@ v4.3 的 Layer 3.5（危机相关性加成）存在一个**方法论缺口**：C
 （halflife=8）+ corr_crisis 硬门禁 + 防御四参数圆整**。EWMA 默认关闭时 v4.3 配置在新代码上
 **逐位复现**。
 
-| 维度 | v4.3（当前默认生产） | v4.4（已就绪） |
+| 维度 | v4.3（前代生产，当前回归基线） | v4.4（已就绪） |
 |---|---|---|
 | realized Sharpe / 年化 / MaxDD | 1.488 / 14.52% / 5.84% | **1.498 / 14.51% / 5.85%** |
 | 防御参数 | 0.3492 / 0.0764 / 0.384 / 0.8299 | **圆整 0.35 / 0.075 / 0.38 / 0.83**（三轴校验无损） |
@@ -98,20 +101,21 @@ v4.3 的 Layer 3.5（危机相关性加成）存在一个**方法论缺口**：C
 | 联合鲁棒性 Test1/2/3 | 全 PASS | **全 PASS**（胜率 96.5%、α P10 +0.086、方差比 0.793） |
 | 测试套件 | 全绿 | **171 passed 全绿** |
 
-**生产状态**：`config/strategy_v4_4.yaml` 已通过全链路校验（影子对照、全管线、一致性终检），
-**v4.4 已就绪，生产默认切换待人工确认**——`run_backtest.py` / `rebalance_live.py` 等脚本默认
-仍为 v4.3，试用 v4.4：`--config config/strategy_v4_4.yaml`。完整动机、选型、实现与验收记录见
-[`docs/v4_4_crisis_correlation_closure.md`](docs/v4_4_crisis_correlation_closure.md)。
+**生产状态**：`config/strategy_v4_4.yaml` 已通过全链路校验（影子对照、全管线、一致性终检）；
+v4.4 的 EWMA Layer3.5 成果已随 v4.5-pvd 配置继承（crisis_correlation_ewma 段）并切换为生产
+默认的一部分。单独试用 v4.4：`--config config/strategy_v4_4.yaml`。完整动机、选型、实现与验收
+记录见 [`docs/v4_4_crisis_correlation_closure.md`](docs/v4_4_crisis_correlation_closure.md)。
 
 > **v4.5 灰区相关保护**：曾评估降阈值(M-C)与条件门控(M-D)两条路径修复 grey_corr_combo
 > （持续中相关×σ1.5, MaxDD 12.81%>12%），经 36 格实验证实结构性不可行（bond_bear DGP
 > 自然相关≈0.40 与灰区物理冲突），**立项中止**。grey_corr_combo 保留为监控情景。
 > 详见 [`docs/v4_5_grey_corr_abort.md`](docs/v4_5_grey_corr_abort.md)。
 
-> **v4.5-pvd PVD 条件激活因子**：量价背离(Price-Volume Divergence)作为动量接近时的 tiebreaker。
-> 条件：纳指成交量 ∈ [p25, p75] 且 top-2 动量 gap < 0.05 时注入 `0.15×PVD`，否则完全退化为
-> baseline。Realized Sharpe 1.588（+0.10 vs v4.3），MaxDD 5.80%，block bootstrap 200 路径胜率 95%。
-> **默认仍为 v4.3**，试用：`python scripts/run_backtest.py --config config/strategy_v4_5_pvd.yaml`。
+> **v4.5-pvd PVD 条件激活因子（当前生产）**：量价背离(Price-Volume Divergence)作为动量接近时的 tiebreaker。
+> 条件：纳指成交额 ∈ [p25, p75]（expanding 无前视门限）且 top-2 动量 gap < 0.05 时注入
+> `0.15×PVD`，否则完全退化为 v4.3 基座。Realized Sharpe 1.603（同窗口 +0.09 vs v4.3），
+> MaxDD 5.80%，block bootstrap 200 路径胜率 94.5%。**2026-08 切换为生产默认**；
+> 回退前代：`python scripts/run_backtest.py --config config/strategy_v4_3.yaml`。
 > 详见 [`docs/v4_5_pvd_factor_closure.md`](docs/v4_5_pvd_factor_closure.md)。
 
 > **周内波动(High/Low)探索**：评估 Parkinson/GK 估计器替代 CC-tapered vol，经 E1 信息增量
@@ -131,16 +135,16 @@ v4.3 的 Layer 3.5（危机相关性加成）存在一个**方法论缺口**：C
 
 ### 四层架构
 
-| 层次 | 决策 | 方法（v4.3 生产） |
+| 层次 | 决策 | 方法（v4.5-pvd 生产） |
 |------|------|------|
-| **Layer 1** 买什么 | 进攻层选 TOP2 | `score = mom6 − 1.10×tapered_vol`（mom_w=1 固定，vol_w=1.10；vol 用 tapered14+7 无跳变） |
+| **Layer 1** 买什么 | 进攻层选 TOP2 | `score = 1.10×mom6 − 1.10×tapered_vol`，PVD 条件激活时 `+0.15×PVD`（纳指 amount ∈[p25,p75] 且 top-2 gap<0.05）；vol 用 tapered14+7 无跳变 |
 | **Layer 2** 买多少 | 进攻层权重分配 | inv-vol14（波动率倒数加权，ddof=0，窗口 14 周，与 taper 窗口一致） |
 | **Layer 3** 防多少 | 进攻 vs 防御比例 | 纳指 tapered_vol ∈ [**0.076**, **0.384**] → 防御 [**0.349**, **0.830**] 线性插值 |
 | **DefAlloc** 防什么 | 红利低波 vs 国债 | `hl_ratio = clip(0.80 − 2.67 × tapered_vol_红利低波, 0, 0.80)` — T=0.30（vol>30%→全国债） |
 
-### 最终参数（v4.3 生产，附前代对照）
+### 最终参数（v4.5-pvd 生产，附前代对照；v4.5 相对 v4.3 仅 mom_w 1.0→1.1 + pvd_factor 段）
 
-| 参数 | v4.3（当前生产） | v4.2（前代） | v4.1（基线） | 说明 |
+| 参数 | v4.3（前代生产） | v4.2（前代） | v4.1（基线） | 说明 |
 |------|:--:|:--:|:--:|------|
 | `mom_w` | **1.0** | 1.0 | 1.0 | 动量权重（Morris μ*≈0，不敏感） |
 | `vol_w` | **1.10** | 1.10 | 1.10 | 波动率惩罚权重（Morris μ*≈0，不敏感） |
@@ -189,32 +193,32 @@ T 是领域选择，非超参数：
 
 ## 核心指标
 
-三个口径均由 `scripts/benchmark_compare.py` 统一生成（净值对齐到策略有效区间、共同起点归一化、同一 `compute_metrics`，risk_free=2.5%，默认加载 v4.3 生产 config），可复现。
+三个口径均由 `scripts/benchmark_compare.py` 统一生成（净值对齐到策略有效区间、共同起点归一化、同一 `compute_metrics`，risk_free=2.5%，默认加载 v4.5-pvd 生产 config），可复现。
 
-| 指标 | 策略 v4.3 | 等权(每周再均衡) | 买入持有(不调仓) |
+| 指标 | 策略 v4.5-pvd | 等权(每周再均衡) | 买入持有(不调仓) |
 |------|:---:|:---:|:---:|
-| Sharpe（标准） | **1.488** | 0.906 | 0.812 |
-| 年化收益 | **14.52%** | 11.72% | 12.54% |
-| 累计收益 | **461.9%** | 309.9% | 350.1% |
-| 最大回撤 | **5.84%** | 20.20% | 29.93% |
-| 年化波动 | **7.64%** | 10.05% | 12.46% |
-| Calmar | **2.49** | 0.58 | 0.42 |
-| 周胜率 | 60.7% | 60.4% | 59.2% |
-| 回测区间 | 2013-08-30 ~ 2026-07-24（662周） | 同左 | 同左 |
+| Sharpe（标准） | **1.603** | 0.931 | 0.838 |
+| 年化收益 | **15.52%** | 12.02% | 12.93% |
+| 累计收益 | **531.2%** | 326.0% | 372.6% |
+| 最大回撤 | **5.80%** | 20.20% | 29.93% |
+| 年化波动 | **7.64%** | 10.07% | 12.48% |
+| Calmar | **2.68** | 0.60 | 0.43 |
+| 周胜率 | 61.8% | 60.5% | 59.3% |
+| 回测区间 | 2013-08-30 ~ 2026-08-07（664周，随周度刷新延伸） | 同左 | 同左 |
 | 数据源 | QFQ 前复权 | 同左 | 同左 |
 
-> 注：v4.3 `def_alloc=0.349` 是防御**下限**（vol<step_low 时的基础防御比例），
+> 注：v4.5-pvd 继承 v4.3 的 `def_alloc=0.349` 防御**下限**（vol<step_low 时的基础防御比例），
 > 故防御盘常态占比较高（"防御周数"口径下几乎每周都在基线之上，不再是有区分度的指标）；
-> 这也是 v4.3 realized 波动 7.64%、MaxDD 5.84% 显著低于前代的结构性原因。
+> 这也是 realized 波动 7.64%、MaxDD 5.80% 显著低于前代的结构性原因。
 
-> **两个"什么都不做"基准的对比**：真·买入持有累计收益（350.1%）高于每周再平衡（309.9%），
+> **两个"什么都不做"基准的对比**：真·买入持有累计收益（372.6%）高于每周再平衡（326.0%），
 > 但代价是最大回撤高出近 10pp（29.9% vs 20.2%）、年化波动更大，风险调整后 Sharpe 反而更低
-> （0.812 vs 0.906）。原因是买入持有让权重自然漂移、越来越集中于涨幅最大也波动最大的纳指——
+> （0.838 vs 0.931）。原因是买入持有让权重自然漂移、越来越集中于涨幅最大也波动最大的纳指——
 > 赢在牛市复利，输在回撤深度；每周再平衡靠强制"高抛低吸 + 维持分散"压住风险、牺牲部分收益。
 > 故风险调整后排序为 **策略 > 每周再平衡 > 买入持有**。买入持有的收益优势高度依赖本轮单边科技牛，
 > 在 OOS（2024+）段该优势消失（收益反低于再平衡、Sharpe 亦更低），详见 `benchmark_compare.py` 输出。
 
-## 鲁棒性评估（v4.0 对抗框架，v4.3 生产）
+## 鲁棒性评估（v4.0 对抗框架；以下为 v4.3 口径历史评估记录，v4.5-pvd 验收见 closure 文档）
 
 当前主鲁棒性口径 = **v4.0 对抗鲁棒框架**（`scripts/evaluate.py` + `scripts/oos_validation.py`），
 取代了 v4.1 时代的 DSR/MC/PSS 静态评估。v4.3 的评估结果：
@@ -263,8 +267,9 @@ T 是领域选择，非超参数：
 claw_etf_strategy/
 ├── README.md
 ├── config/
-│   ├── strategy_v4_4.yaml               # 已就绪待切换 (EWMA Layer3.5 + 圆整参数, 全链路校验通过)
-│   ├── strategy_v4_3.yaml               # 当前生产配置 (tapered-vol, 无跳变/低回撤)
+│   ├── strategy_v4_5_pvd.yaml           # 当前生产配置 (PVD 条件激活, 基于 v4.3+v4.4 成果)
+│   ├── strategy_v4_4.yaml               # 已验证配置 (EWMA Layer3.5 + 圆整参数, 全链路校验通过)
+│   ├── strategy_v4_3.yaml               # 前代生产/回归基线 (tapered-vol, 无跳变/低回撤)
 │   ├── strategy_v4_2.yaml               # 前代已验证配置 (rolling, 高 Sharpe)
 │   ├── strategy_v4_1.yaml               # 历史基线 (对抗 OOS 对照, 回归测试参照)
 │   └── strategy_v3_1.yaml               # 更早历史版本
@@ -325,11 +330,11 @@ claw_etf_strategy/
 ### 单次回测
 ```bash
 cd /home/ubuntu/claw_etf_strategy
-python scripts/run_backtest.py                                        # 默认 = v4.3 生产 config
-python scripts/run_backtest.py --config config/strategy_v4_4.yaml    # v4.4（EWMA Layer3.5，已就绪待切换）
+python scripts/run_backtest.py                                        # 默认 = v4.5-pvd 生产 config
+python scripts/run_backtest.py --config config/strategy_v4_3.yaml    # 回退前代 v4.3
 ```
-> `config/strategy_v4_4.yaml` 已通过全链路校验可用；各脚本**默认仍为 v4.3**，
-> v4.4 的生产默认切换待人工确认（见上方版本演进（三））。
+> `config/strategy_v4_5_pvd.yaml` 已全门禁通过并于 2026-08 切换为生产默认；
+> 前代 v4.3/v4.4/v4.2 配置保留，可用 `--config` 随时回退对比。
 
 ### 绩效对比（当年/近1年/当前回撤）
 ```bash
@@ -366,8 +371,8 @@ python scripts/update_etf_data_tushare.py
 ### v4.0 对抗鲁棒框架运行入口
 
 ```bash
-# 统一评估: realized + adversarial 双维度 + 多目标约束判定 (默认已切换到 v4_3)
-python scripts/evaluate.py --dmax 0.12                                     # 默认 = v4_3 生产 config
+# 统一评估: realized + adversarial 双维度 + 多目标约束判定 (默认已切换到 v4_5_pvd)
+python scripts/evaluate.py --dmax 0.12                                     # 默认 = v4_5_pvd 生产 config
 python scripts/evaluate.py --config config/strategy_v4_1.yaml --dmax 0.12  # 历史基线复现
 python scripts/evaluate.py --save-baseline                                 # 覆盖 baseline_metrics.json
 python scripts/evaluate.py --config <某新yaml> --vs-baseline               # 与基线快照对比
@@ -419,15 +424,15 @@ python scripts/premium_sentinel.py                 # 手工诊断入口（仅溢
 ## 注意事项
 
 - 数据列顺序：`日期,纳指ETF,红利低波ETF,中证500ETF,黄金ETF,国债ETF`
-- **v4.3 生产用 tapered vol**（`vol_taper_enabled: true`, window14+len7），非 rolling、非 EWMA。
-  三种 vol 估计器互斥，引擎优先级 ewma > taper > rolling；v4.3 关 ewma、开 taper。前代 v4.2 用 rolling(10)、v4.1 用 rolling(11)，EWMA 分支保留但默认关闭
+- **v4.5-pvd 生产沿用 tapered vol**（`vol_taper_enabled: true`, window14+len7），非 rolling、非 EWMA。
+  三种 vol 估计器互斥，引擎优先级 ewma > taper > rolling；v4.5-pvd 关 ewma、开 taper。前代 v4.2 用 rolling(10)、v4.1 用 rolling(11)，EWMA 分支保留但默认关闭
 - 阈值基准使用状态文件 `data/.last_alloc.json`（上次实仓），首次无状态文件时降级到上周理论仓位
 - 确认调仓后请带 `--save-state` 参数保存仓位状态，下次阈值判断更准
 - 如有多日频分析需求，日频 DD 比周频高约 0.3~2pp
-- 纳指ETF如出现 QDII 溢价 >2%，需人工判断是否延迟买入
+- 纳指ETF如出现 QDII 溢价 >1.5%，新增按 SOP §3 纪律表走场外联接（哨兵阈值已与纪律线对齐）
 - PE 分位因子(pe_percentile)已算但**未接入决策**——策略为纯价量(动量+波动率)，无估值逻辑
 - 数据更新脚本基线为 `data/all_etfs_nav_latest.csv`(可用 `ETF_BASE_FILE` 覆盖)，勿指向已弃用的 h20269_scaled 文件
 - 策略基于历史回测，**不保证未来收益**
 - **v4.0 对抗鲁棒框架**基于 CCC-GARCH 合成 + block bootstrap 的重采样评估，覆盖同分布下的路径不确定性；不能内生地产生 regime switching / DCC / 非对称尾相依（详见 methodology 文档第 8 节）。σ×1.4 类极端复合冲击处于策略族架构上界，需资产池/杠杆结构层面解决而非超参调整
-- **v4.3 是当前生产 config**：所有默认路径已切换（实盘脚本已支持 tapered vol 并经 `--verify` 与引擎对齐）。回退前代 v4.2：`--config config/strategy_v4_2.yaml`；用历史基线 v4.1：`--config config/strategy_v4_1.yaml`。完整取向对比见上方版本演进章节
-- **v4.4 已就绪待切换**：`config/strategy_v4_4.yaml`（EWMA Layer3.5 + 圆整参数）已通过全链路校验（evaluate PASS / OOS TRUE_ROBUST / 171 测试全绿），生产默认切换待人工确认；EWMA 默认关，v4.3 配置在新代码上逐位复现。新增压测入口：`evaluate.py --corr-scenarios`（corr_crisis 硬门禁）、`oos_validation.py --corr-variants`。详见 `docs/v4_4_crisis_correlation_closure.md`
+- **v4.5-pvd 是当前生产 config**：所有默认路径已切换（实盘脚本支持 PVD 条件激活并经 `--verify` 与引擎对齐，Δ≤0.02）。回退前代 v4.3：`--config config/strategy_v4_3.yaml`；v4.2：`--config config/strategy_v4_2.yaml`；历史基线 v4.1：`--config config/strategy_v4_1.yaml`。完整取向对比见上方版本演进章节
+- **v4.4 成果已随 v4.5-pvd 继承**：EWMA Layer3.5 + 圆整防御参数均包含在 v4.5-pvd 配置中（v4.4 单独配置保留作对照）。压测入口：`evaluate.py --corr-scenarios`（corr_crisis 硬门禁）、`oos_validation.py --corr-variants`。详见 `docs/v4_4_crisis_correlation_closure.md`
