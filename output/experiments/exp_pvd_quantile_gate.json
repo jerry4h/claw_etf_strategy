@@ -1,0 +1,65 @@
+{
+ "q_gate": 0.5,
+ "variants": {
+  "BASE": {
+   "realized": {
+    "sharpe": 1.6028272832661652,
+    "maxdd": 0.05796487766108727,
+    "annual": 0.15521096844264792,
+    "turnover": 0.10322425435567173
+   },
+   "boot_sharpe_med": 1.2629898747700627,
+   "boot_sharpe_p10": 0.912234484096184
+  },
+  "V1": {
+   "realized": {
+    "sharpe": 1.5813239940209611,
+    "maxdd": 0.057964877661087266,
+    "annual": 0.15315500713395447,
+    "turnover": 0.10176320673165919
+   },
+   "boot_sharpe_med": 1.2540857912168075,
+   "boot_sharpe_p10": 0.9161653917736808
+  },
+  "V2": {
+   "realized": {
+    "sharpe": 1.5746322962667678,
+    "maxdd": 0.05796487766108727,
+    "annual": 0.15317783341024982,
+    "turnover": 0.10126810860250307
+   },
+   "boot_sharpe_med": 1.2452998198678826,
+   "boot_sharpe_p10": 0.9210901081828126
+  },
+  "V3": {
+   "realized": {
+    "sharpe": 1.573759133505899,
+    "maxdd": 0.061831643271568974,
+    "annual": 0.15205059029518786,
+    "turnover": 0.09890120952713377
+   },
+   "boot_sharpe_med": 1.2439458799685297,
+   "boot_sharpe_p10": 0.9323649206029668
+  }
+ },
+ "gates": {
+  "V1": {
+   "d_sharpe": -0.02150328924520406,
+   "d_maxdd_pp": -6.938893903907228e-16,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  },
+  "V2": {
+   "d_sharpe": -0.028194986999397376,
+   "d_maxdd_pp": 0.0,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  },
+  "V3": {
+   "d_sharpe": -0.029068149760266282,
+   "d_maxdd_pp": 0.3866765610481701,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  }
+ }
+}

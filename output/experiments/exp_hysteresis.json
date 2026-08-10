@@ -1,0 +1,115 @@
+{
+ "spread_diag": {
+  "spread_p50": 0.15318718639760248,
+  "spread_p90": 0.3323356361561612,
+  "spread_p95": 0.4343384479772908,
+  "spread_max": 0.9797016383826165
+ },
+ "variants": {
+  "BASE": {
+   "realized": {
+    "sharpe": 1.6028272832661652,
+    "maxdd": 0.05796487766108727,
+    "annual": 0.15521096844264792,
+    "turnover": 0.10322425435567173
+   },
+   "params": {},
+   "boot_sharpe_med": 1.2648954430093031
+  },
+  "M0_无margin对照": {
+   "realized": {
+    "sharpe": 1.5795935706900128,
+    "maxdd": 0.08846473494129492,
+    "annual": 0.1543572778748019,
+    "turnover": 0.1525256455966069
+   },
+   "params": {},
+   "boot_sharpe_med": 1.2449633430206197
+  },
+  "H1a_eps0.01": {
+   "realized": {
+    "sharpe": 1.528753001561483,
+    "maxdd": 0.05796487766108736,
+    "annual": 0.14850111068742056,
+    "turnover": 0.10040000816709334
+   },
+   "params": {
+    "_HB_EPS": 0.01
+   },
+   "boot_sharpe_med": 1.239755641965743
+  },
+  "H1b_eps0.02": {
+   "realized": {
+    "sharpe": 1.5392035176996044,
+    "maxdd": 0.057964877661087405,
+    "annual": 0.1488597704996284,
+    "turnover": 0.0960347110766108
+   },
+   "params": {
+    "_HB_EPS": 0.02
+   },
+   "boot_sharpe_med": 1.2340230190590191
+  },
+  "H2a_band0.35": {
+   "realized": {
+    "sharpe": 1.5789366377741474,
+    "maxdd": 0.06344383573261084,
+    "annual": 0.1555269165023827,
+    "turnover": 0.1026645950617185
+   },
+   "params": {
+    "_SPREAD_BAND": 0.35
+   },
+   "boot_sharpe_med": 1.2602782750324915
+  },
+  "H2b_band0.50": {
+   "realized": {
+    "sharpe": 1.6028272832661652,
+    "maxdd": 0.05796487766108727,
+    "annual": 0.15521096844264792,
+    "turnover": 0.10322425435567173
+   },
+   "params": {
+    "_SPREAD_BAND": 0.5
+   },
+   "boot_sharpe_med": 1.2648954430093031
+  }
+ },
+ "gates": {
+  "M0_无margin对照": {
+   "d_sharpe": -0.023233712576152366,
+   "d_maxdd_pp": 3.0499857280207645,
+   "d_turnover": 0.04930139124093516,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  },
+  "H1a_eps0.01": {
+   "d_sharpe": -0.07407428170468222,
+   "d_maxdd_pp": 9.020562075079397e-15,
+   "d_turnover": -0.0028242461885783915,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  },
+  "H1b_eps0.02": {
+   "d_sharpe": -0.0636237655665608,
+   "d_maxdd_pp": 1.3183898417423734e-14,
+   "d_turnover": -0.007189543279060934,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  },
+  "H2a_band0.35": {
+   "d_sharpe": -0.023890645492017804,
+   "d_maxdd_pp": 0.5478958071523564,
+   "d_turnover": -0.0005596592939532269,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  },
+  "H2b_band0.50": {
+   "d_sharpe": 0.0,
+   "d_maxdd_pp": 0.0,
+   "d_turnover": 0.0,
+   "boot_not_worse": true,
+   "verdict": "NO-GO"
+  }
+ }
+}
