@@ -13,9 +13,9 @@ from src.data_loader import (
     ETFS, OFFENSIVE_IDX, DEFENSIVE_IDX,
     load_nav_data, load_pe_percentile, resample_weekly, classify_etfs
 )
-from src.factors import compute_all_factors
+from src.factors import compute_all_factors, calculate_pe_percentile
 from src.engine_core import (
-    compute_crisis_boost, compute_dynamic_hongli,
+    compute_crisis_boost, compute_crisis_boost_directed, compute_dynamic_hongli,
     compute_ashare_vol_boost,
     compute_inv_vol_weights, compute_score_margin, compute_snr_margin,
     apply_trend_confirmation, compute_pvd_vol_gates,
@@ -123,6 +123,14 @@ def run_backtest(
         weekly_nav = weekly_nav[weekly_nav.index <= pd.to_datetime(end)]
 
     # === 3. 因子计算 ===
+    # --- v4.6 PE 防御调制预计算 (慢变量, pe_defense_enabled 时才计算; 对齐口径
+    #     同 C1/E2 探针: 5年滚动分位 + shift(1) 防前视 + ffill asof 周一→周五标签) ---
+    _pe_defense_values = None
+    if config.pe_defense_enabled and pe_df is not None and not pe_df.empty:
+        _pe_pct = calculate_pe_percentile(pe_df, window_years=config.pe_window_years)
+        _pe_pct = _pe_pct.shift(1).reindex(weekly_nav.index, method="ffill")
+        _pe_defense_values = _pe_pct["pe_percentile"].values
+
     # --- PVD: 加载周频成交量数据（仅 pvd_enabled 时）---
     weekly_vol = None
     if config.pvd_enabled:
@@ -405,15 +413,34 @@ def run_backtest(
         def_ratio = calculate_defense_ratio(nasdaq_vol, config, base_def_alloc=eff_def_alloc)
 
         # --- Layer 3.5: 危机相关性收敛保护 ---
-        # 使用共享函数 (engine_core.compute_crisis_boost)
-        crisis_boost = compute_crisis_boost(w_rets, i, off_idx, config)
-        if crisis_boost > 0:
-            def_ratio = min(def_ratio + crisis_boost, 1.0)
+        # v4.6: directed_boost 分级应用 (预研 exp_directed_boost.md T1+V3):
+        #   显性危机 (EWMA corr > corr_split) 满额防御 boost;
+        #   灰区 (≤ corr_split) 定向降进攻 def += b×(1−def), 避免 bond_bear 中
+        #   把权重推向下跌中的防御资产。
+        if config.directed_boost_enabled:
+            crisis_boost, _corr_level = compute_crisis_boost_directed(
+                w_rets, i, off_idx, config)
+            if crisis_boost > 0:
+                if _corr_level > config.directed_boost_corr_split:
+                    def_ratio = min(def_ratio + crisis_boost, 1.0)
+                else:
+                    def_ratio = min(def_ratio + crisis_boost * (1.0 - def_ratio), 1.0)
+        else:
+            # 使用共享函数 (engine_core.compute_crisis_boost)
+            crisis_boost = compute_crisis_boost(w_rets, i, off_idx, config)
+            if crisis_boost > 0:
+                def_ratio = min(def_ratio + crisis_boost, 1.0)
 
         # --- M3: 中证500 vol 危机加成 ---
         ashare_boost = compute_ashare_vol_boost(vol_values, i, CSI500_IDX, config)
         if ashare_boost > 0:
             def_ratio = min(def_ratio + ashare_boost, 1.0)
+
+        # --- v4.6: PE 估值防御调制 (慢变量; 高估值期抬升防御下限, E2 门禁 PASS) ---
+        if _pe_defense_values is not None:
+            _pe_v = _pe_defense_values[i]
+            if not np.isnan(_pe_v) and _pe_v > config.pe_defense_pct_threshold:
+                def_ratio = min(def_ratio + config.pe_defense_delta, config.max_def)
 
         # --- 市场状态感知止损（P1 Fix #1, 替代三层止损）---
         if config.stateful_stop_loss:

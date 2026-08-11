@@ -139,6 +139,57 @@ def _compute_crisis_boost_ewma(
     return 0.0
 
 
+def compute_crisis_boost_directed(
+    w_rets: np.ndarray,
+    i: int,
+    off_idx: list[int],
+    config: StrategyConfig,
+) -> tuple[float, float]:
+    """v4.6 Layer 3.5 定向 boost: EWMA corr 估计, 返回 (boost, corr_level)。
+
+    触发口径同 _compute_crisis_boost_ewma (窗口/半衰期沿用 config), 但阈值与斜率
+    取 directed_boost 段 (默认 thr 0.45 / slope 0.75, 覆盖灰区 0.3-0.5)。
+    返回 corr_level 供回测/实盘循环做分级应用 (预研 exp_directed_boost.md T1+V3):
+        corr_level > directed_boost_corr_split → def += boost (显性危机满额保护)
+        corr_level ≤ split                    → def += boost×(1−def) (灰区定向降进攻)
+    无前视: 窗口 [i-window, i) 已完成收益, EWMA 权重同生产。
+    """
+    window = config.crisis_corr_window
+    threshold = config.directed_boost_threshold
+    slope = config.directed_boost_slope
+    max_boost = config.crisis_corr_max_boost
+
+    if i < window or not off_idx or len(off_idx) < 2:
+        return 0.0, 0.0
+
+    halflife = max(config.crisis_corr_ewma_halflife, 1)
+    off_ret_win = w_rets[i - window:i, off_idx]
+    max_pair_corr = 0.0
+    n_off = off_ret_win.shape[1]
+
+    t = np.arange(window)
+    weights = 0.5 ** ((window - 1 - t) / halflife)
+
+    for a in range(n_off):
+        for b in range(a + 1, n_off):
+            mask = ~(np.isnan(off_ret_win[:, a]) | np.isnan(off_ret_win[:, b]))
+            if mask.sum() >= 5:
+                x = off_ret_win[mask, a]
+                y = off_ret_win[mask, b]
+                w = weights[mask]
+                w = w / w.sum()
+                x_bar = float(np.sum(w * x))
+                y_bar = float(np.sum(w * y))
+                cov = float(np.sum(w * (x - x_bar) * (y - y_bar)))
+                var_x = float(np.sum(w * (x - x_bar) ** 2))
+                var_y = float(np.sum(w * (y - y_bar) ** 2))
+                c = cov / (np.sqrt(var_x * var_y) + 1e-12)
+                if not np.isnan(c):
+                    max_pair_corr = max(max_pair_corr, abs(c))
+
+    if max_pair_corr > threshold:
+        return min((max_pair_corr - threshold) * slope, max_boost), max_pair_corr
+    return 0.0, max_pair_corr
 
 
 def compute_ashare_vol_boost(

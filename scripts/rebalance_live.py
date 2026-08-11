@@ -30,14 +30,14 @@ import numpy as np, pandas as pd
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
-from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data, load_weekly_volume_from_cache
+from src.data_loader import ETFS, OFFENSIVE, DEFENSIVE, load_nav_data, load_weekly_volume_from_cache, load_pe_percentile
 from src.utils import compute_sharpe, annualize_return
 from src.factors import (calculate_momentum, calculate_volatility, calculate_momentum_ewma,
                          calculate_volatility_ewma, calculate_volatility_tapered,
-                         compute_pvd_factor)
+                         compute_pvd_factor, calculate_pe_percentile)
 from src.strategy import load_config, calculate_defense_ratio, check_stop_loss
 from src.engine_core import (
-    compute_crisis_boost, compute_dynamic_hongli,
+    compute_crisis_boost, compute_crisis_boost_directed, compute_dynamic_hongli,
     compute_inv_vol_weights, compute_score_margin,
     apply_trend_confirmation, compute_ashare_vol_boost,
     compute_pvd_vol_gates,
@@ -112,6 +112,9 @@ def load(csv):
 _pvd_cache = {"loaded": False, "pvd_df": None, "pvd_active": False,
               "gate_lo": None, "gate_hi": None}
 
+# --- v4.6 PE 防御调制模块级缓存（同 PVD 模式: 首次加载后复用, 失败降级）---
+_pe_def_cache = {"loaded": False, "values": None, "active": False}
+
 
 def engine_factors(nav):
     if cfg.ewma_factors_enabled:
@@ -158,6 +161,22 @@ def engine_factors(nav):
             _pvd_cache["pvd_active"] = False
         _pvd_cache["loaded"] = True
 
+    # --- v4.6: PE 防御调制序列加载（pe_defense_enabled 时首次加载; 口径同 backtest.py:
+    #     5年滚动分位 + shift(1) 防前视 + ffill asof 对齐周频标签）---
+    if getattr(cfg, 'pe_defense_enabled', False) and not _pe_def_cache["loaded"]:
+        try:
+            _pe_path = PROJECT / cfg.pe_path if not Path(cfg.pe_path).is_absolute() else Path(cfg.pe_path)
+            _pe_raw = load_pe_percentile(_pe_path)
+            _pe_pct = calculate_pe_percentile(_pe_raw, window_years=cfg.pe_window_years)
+            _pe_pct = _pe_pct.shift(1).reindex(nav.index, method="ffill")
+            _pe_def_cache["values"] = _pe_pct.values[:, 0]
+            _pe_def_cache["active"] = True
+        except Exception as e:
+            import warnings as _w
+            _w.warn(f"PE 防御调制降级: PE 数据加载失败({e}), pe_defense 降级为 False")
+            _pe_def_cache["active"] = False
+        _pe_def_cache["loaded"] = True
+
     return wr_df, wr_np, m4, v20
 
 def score_etf(etf, m4, v20, i):
@@ -175,9 +194,19 @@ def compute_defense_with_crisis(v_nasdaq, wr_np, i, v20=None):
     # off_idx for live script: OFFENSIVE = ['纳指ETF', '中证500ETF', '黄金ETF']
     # ETFS = ['纳指ETF', '红利低波ETF', '中证500ETF', '黄金ETF', '国债ETF']
     off_idx = [ETFS.index(e) for e in OFFENSIVE]
-    boost = compute_crisis_boost(wr_np, i, off_idx, cfg)
-    if boost > 0:
-        dr = min(dr + boost, 1.0)
+    # v4.6 定向 boost 分级应用 (同 backtest.py 口径, 共享 engine_core 函数):
+    #   corr_level > corr_split → 显性危机满额防御; 否则灰区定向降进攻
+    if getattr(cfg, 'directed_boost_enabled', False):
+        boost, corr_lvl = compute_crisis_boost_directed(wr_np, i, off_idx, cfg)
+        if boost > 0:
+            if corr_lvl > cfg.directed_boost_corr_split:
+                dr = min(dr + boost, 1.0)
+            else:
+                dr = min(dr + boost * (1.0 - dr), 1.0)
+    else:
+        boost = compute_crisis_boost(wr_np, i, off_idx, cfg)
+        if boost > 0:
+            dr = min(dr + boost, 1.0)
 
     # M3: 中证500 vol 危机加成（与引擎 backtest.py:356 一致；默认关，审计 M-1）
     if v20 is not None:
@@ -186,6 +215,15 @@ def compute_defense_with_crisis(v_nasdaq, wr_np, i, v20=None):
         ab = compute_ashare_vol_boost(vol_values, i, ashare_idx, cfg)
         if ab > 0:
             dr = min(dr + ab, 1.0)
+
+    # v4.6: PE 估值防御调制（同 backtest.py 口径; 高估值期抬升防御下限）
+    # cfg 双重检查: 防 --config 切换后模块级缓存残留 (如 v4.6→v4.3 回退)
+    if getattr(cfg, 'pe_defense_enabled', False) and _pe_def_cache["active"] \
+            and _pe_def_cache["values"] is not None \
+            and i < len(_pe_def_cache["values"]):
+        _pe_v = _pe_def_cache["values"][i]
+        if not np.isnan(_pe_v) and _pe_v > cfg.pe_defense_pct_threshold:
+            dr = min(dr + cfg.pe_defense_delta, cfg.max_def)
 
     return dr
 

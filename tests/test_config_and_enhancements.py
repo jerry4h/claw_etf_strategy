@@ -215,6 +215,11 @@ class TestFieldCompleteness:
             # v4.5: PVD 条件激活因子 — 默认关；YAML 段 pvd_factor 可启用
             'pvd_enabled', 'pvd_w', 'pvd_window', 'pvd_min_periods',
             'pvd_score_gap_threshold', 'pvd_vol_pct_range',
+            # v4.6: 定向 boost + PE 防御调制 — 默认关；YAML 段 directed_boost/pe_defense 可启用
+            # (接线在 test_v46_directed_boost 验证)
+            'directed_boost_enabled', 'directed_boost_threshold', 'directed_boost_slope',
+            'directed_boost_corr_split',
+            'pe_defense_enabled', 'pe_defense_pct_threshold', 'pe_defense_delta',
         }
 
         mismatches = []

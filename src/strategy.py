@@ -71,6 +71,13 @@ class StrategyConfig:
     crisis_corr_max_boost: float = 0.15  # 最大防御加成(pp)
     crisis_corr_ewma_enabled: bool = False   # v4.4: Layer 3.5 EWMA 相关估计(默认关=v4.3行为)
     crisis_corr_ewma_halflife: int = 8       # EWMA 半衰期(周)
+    # v4.6: 定向 boost (Layer 3.5 分级应用, 默认关=v4.5 行为)
+    # 预研依据: exp_directed_boost.md — T1+V3 混合分级 (灰区定向降进攻,
+    # 显性危机满额防御), 需 EWMA 相关估计前置 (directed 依赖 EWMA corr_level)
+    directed_boost_enabled: bool = False
+    directed_boost_threshold: float = 0.45    # EWMA corr 触发阈值 (覆盖灰区 0.3-0.5)
+    directed_boost_slope: float = 0.75        # 斜率 (0.65 处达满格)
+    directed_boost_corr_split: float = 0.60   # 分级边界: >split 满额 def+=b; ≤split 定向 def+=b(1-def)
     ashare_vol_boost_enabled: bool = False   # M3: 中证500 vol 危机加成(默认关)
     ashare_vol_crisis_threshold: float = 0.90  # 中证500 vol 过去2年百分位触发阈值
     ashare_vol_max_boost: float = 0.15         # 最大防御加成
@@ -213,6 +220,12 @@ class StrategyConfig:
     pvd_score_gap_threshold: float = 0.05
     pvd_vol_pct_range: tuple = (0.25, 0.75)
 
+    # === PE 估值防御调制 (v4.6) === DISABLED by default
+    # E2 依据: exp_pe_defense_e2.md — pe_pct(t-1)>阈值 时 def_ratio +δ (封顶 max_def)
+    pe_defense_enabled: bool = False
+    pe_defense_pct_threshold: float = 0.90
+    pe_defense_delta: float = 0.10
+
     # 数据路径
     nav_path: str = 'data/all_etfs_nav_2013_2026_h20269_scaled.csv'
     pe_path: str = 'data/300etf_pe_percentile_weekly.csv'
@@ -328,6 +341,8 @@ def load_config(config_path: str | Path) -> StrategyConfig:
     constituent_cfg = raw.get('constituent_signals', {})
     regime_cfg = raw.get('regime_classifier', {})
     pvd_cfg = raw.get('pvd_factor', {})
+    directed_boost_cfg = raw.get('directed_boost', {})
+    pe_defense_cfg = raw.get('pe_defense', {})
     data_cfg = raw.get('data', {})
     reporting = raw.get('reporting', {})
 
@@ -511,12 +526,25 @@ def load_config(config_path: str | Path) -> StrategyConfig:
         pvd_min_periods=pvd_cfg.get('min_periods', 6),
         pvd_score_gap_threshold=pvd_cfg.get('score_gap_threshold', 0.05),
         pvd_vol_pct_range=(pvd_cfg.get('vol_pct_low', 0.25), pvd_cfg.get('vol_pct_high', 0.75)),
+        # v4.6: 定向 boost + PE 防御调制 (默认全关, 零扰动基线)
+        directed_boost_enabled=directed_boost_cfg.get('enabled', False),
+        directed_boost_threshold=directed_boost_cfg.get('threshold', 0.45),
+        directed_boost_slope=directed_boost_cfg.get('slope', 0.75),
+        directed_boost_corr_split=directed_boost_cfg.get('corr_split', 0.60),
+        pe_defense_enabled=pe_defense_cfg.get('enabled', False),
+        pe_defense_pct_threshold=pe_defense_cfg.get('pct_threshold', 0.90),
+        pe_defense_delta=pe_defense_cfg.get('delta', 0.10),
         nav_path=data_cfg.get('nav_path', ''),
         pe_path=data_cfg.get('pe_path', ''),
         start_date=data_cfg.get('start_date'),
         end_date=data_cfg.get('end_date'),
         risk_free_rate=reporting.get('risk_free_rate', 0.025),
     )
+    # v4.6 前置校验: 定向 boost 依赖 EWMA 相关估计 (corr_level 分级判断)
+    if cfg.directed_boost_enabled and not cfg.crisis_corr_ewma_enabled:
+        raise ValueError("directed_boost 需要 crisis_correlation_ewma.ewma_enabled=true "
+                         "(分级应用依赖 EWMA corr_level)")
+    return cfg
 
 
 # ETF definitions — single source of truth in data_loader.py, re-exported here
