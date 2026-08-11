@@ -59,7 +59,7 @@ from src.data_loader import _ETF_CACHE_CODE_MAP  # noqa: E402  ETF名 -> '513100
 DATA_DIR = ROOT / 'data'
 NAV_FILE = DATA_DIR / 'all_etfs_nav_latest.csv'
 CACHE_DIR = DATA_DIR / 'experiments' / 'tushare_cache'
-DASHBOARD_CFG = ROOT / 'config' / 'strategy_v4_5_pvd.yaml'
+DASHBOARD_CFG = ROOT / 'config' / 'strategy_v4_6.yaml'
 LOCK_FILE = Path('/tmp/claw_refresh.lock')
 LOCK_MAX_AGE_SEC = 2 * 3600
 LOG_FILE = ROOT / 'output' / f"refresh_log_{datetime.now().strftime('%Y%m%d')}.log"

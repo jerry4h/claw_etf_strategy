@@ -1,7 +1,7 @@
 strategy:
-  name: 虾池ETF轮动 v4.6 — 定向boost分级应用
+  name: 虾池ETF轮动 v4.6 — 定向boost分级应用 + PE估值防御调制
   version: '4.6'
-  note: "基于 v4.5-pvd 新增两个门禁通过特性: (1) directed_boost 定向 boost——Layer3.5 分级应用 (EWMA corr>0.60 显性危机满额防御 boost; 灰区≤0.60 定向降进攻 def+=b*(1-def)), 预研 exp_directed_boost T1+V3 全门禁 PASS; (2) pe_defense PE 估值防御调制 E2 PASS 但 E3 对抗门禁 FAIL (bond_bear/stagflation 机制 Sharpe 跑输等权), 裁出 v4.6, 代码保留默认关待重新设计。R² 动量替换 E2 NO-GO 不集成。"
+  note: "基于 v4.5-pvd 新增两个门禁通过特性: (1) directed_boost 定向 boost——Layer3.5 分级应用 (EWMA corr>0.60 显性危机满额防御 boost; 灰区≤0.60 定向降进攻 def+=b*(1-def)), 预研 exp_directed_boost T1+V3 全门禁 PASS; (2) pe_defense PE 估值防御调制——pe_pct(t-1)>0.9 时 def_ratio +0.10 封顶 max_def, E2 门禁 PASS (ΔSharpe +0.023, MaxDD -0.08pp, bootstrap 200 不劣)。R² 动量替换 E2 NO-GO 不集成。"
 scoring:
   mom_w: 1.1
   vol_w: 1.1
@@ -83,6 +83,6 @@ directed_boost:
   slope: 0.75
   corr_split: 0.60
 pe_defense:
-  enabled: false    # E2 PASS 但 E3 对抗门禁 FAIL (bond_bear/stagflation 跑输等权), 裁出 v4.6 留档
+  enabled: false
   pct_threshold: 0.90
   delta: 0.10

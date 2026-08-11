@@ -1,0 +1,13 @@
+{
+ "n": 30,
+ "v45_sharpe_med": 0.7278233735414465,
+ "v46_sharpe_med": 0.7226941528261327,
+ "delta_sharpe_med": -0.004399822312655399,
+ "delta_sharpe_p10": -0.02711436936138658,
+ "v46_win_rate": 0.4,
+ "v45_maxdd_med": 0.15103767524766498,
+ "v46_maxdd_med": 0.14144658866869086,
+ "verdict": {
+  "no_structural_harm": true
+ }
+}

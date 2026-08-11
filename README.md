@@ -1,21 +1,25 @@
-# 虾池ETF轮动策略 v4.5-pvd — PVD 条件激活生产版
+# 虾池ETF轮动策略 v4.6 — 定向 boost 分级应用生产版
 
 基于 **5只ETF** 的周频动量轮动策略，全连续/零门控/四层架构（含 DefAlloc）。
-**Sharpe 1.603 / 年化 15.52% / 最大回撤 5.80% / Calmar 2.68**（realized 2013-08 ~ 2026-08）；
-**在 v4.3 tapered-vol 基座上新增 PVD（量价背离）条件激活 tiebreaker，block bootstrap
-200 路径胜率 94.5%、alpha P10 +0.082，全门禁通过后于 2026-08 切换为生产默认**。
+**Sharpe 1.609 / 年化 15.46% / 最大回撤 5.76% / Calmar 2.68**（realized 2013-08 ~ 2026-08）；
+**在 v4.5-pvd 基座上新增定向 boost：Layer 3.5 危机相关性保护分级应用——显性危机
+（EWMA corr>0.60）满额防御 boost，灰区（≤0.60）定向降进攻不推高防御绝对水平，
+修复持续中相关灰区缺口（合成对抗 grey_corr_combo 中位 MaxDD 12.79%→11.80%，回到 12% 红线内）**。
 
-v4.5-pvd 由 **v4.0 对抗鲁棒性框架 + 量价因子专项研究管线（E0→E1→E2b→T1-T3）** 产出：
-PVD 在"纳指 amount 处 [p25,p75] 平静环境 + top-2 动量 gap<0.05"时以权重 0.15 注入，
-否则完全退化为 v4.3 基座（零副作用）。前视偏差已清除（expanding-only 门限）。
-方法学详见 [`docs/v4_5_pvd_factor_closure.md`](docs/v4_5_pvd_factor_closure.md) 与
+v4.6 由 **E0→E1→E2→Gate→E3 研究管线 + 完整对抗验证管线** 产出（定向 boost 预研
+7 变体矩阵中唯一全门禁 PASS 的 T1+V3 混合分级；PE 估值防御调制 E2 通过但 E3 对抗
+门禁失败已裁出；R² 动量替换 E2 未过门禁）。完整验证链：evaluate --corr-scenarios
+verdict PASS（worst 11.80%≤12%，机制门禁全过）+ block bootstrap 200 路径胜率 96.0%
+（alpha P10 +0.091）+ OOS B 通道 PASS + 联合鲁棒性 t1/t3 PASS + 量价联合 DGP 复核
+无结构性损害 + --verify Δ=0.0066。详见
+[`docs/v4_6_directed_boost_closure.md`](docs/v4_6_directed_boost_closure.md) 与
 [`docs/adversarial_robustness_methodology.md`](docs/adversarial_robustness_methodology.md)。
 
-**生产状态**：`config/strategy_v4_5_pvd.yaml` 为**默认生产 config**（`rebalance_live.py` /
+**生产状态**：`config/strategy_v4_6.yaml` 为**默认生产 config**（`rebalance_live.py` /
 `run_backtest.py` / `evaluate.py` 等默认路径已全部切换，实盘脚本经 `--verify` 确认与回测
-引擎一致 ΔSharpe<0.01）。前代 `config/strategy_v4_3.yaml`（tapered-vol，无跳变/低回撤）
-保留为**前代已验证配置**与回归基线 pin；如需切回：
-`python scripts/rebalance_live.py --config config/strategy_v4_3.yaml`。
+引擎一致 Δ=0.0066）。前代 `config/strategy_v4_5_pvd.yaml`（PVD 条件激活）保留为
+**前代已验证配置**与影子对照（周度调仓并行输出，4-8 周复盘）；如需切回：
+`python scripts/rebalance_live.py --config config/strategy_v4_5_pvd.yaml`。
 
 ## 版本演进（一）：v4.1（历史基线）→ v4.2（前代生产）
 
@@ -111,12 +115,21 @@ v4.4 的 EWMA Layer3.5 成果已随 v4.5-pvd 配置继承（crisis_correlation_e
 > 自然相关≈0.40 与灰区物理冲突），**立项中止**。grey_corr_combo 保留为监控情景。
 > 详见 [`docs/v4_5_grey_corr_abort.md`](docs/v4_5_grey_corr_abort.md)。
 
-> **v4.5-pvd PVD 条件激活因子（当前生产）**：量价背离(Price-Volume Divergence)作为动量接近时的 tiebreaker。
+> **v4.5-pvd PVD 条件激活因子（前代生产，当前影子对照）**：量价背离(Price-Volume Divergence)作为动量接近时的 tiebreaker。
 > 条件：纳指成交额 ∈ [p25, p75]（expanding 无前视门限）且 top-2 动量 gap < 0.05 时注入
 > `0.15×PVD`，否则完全退化为 v4.3 基座。Realized Sharpe 1.603（同窗口 +0.09 vs v4.3），
-> MaxDD 5.80%，block bootstrap 200 路径胜率 94.5%。**2026-08 切换为生产默认**；
-> 回退前代：`python scripts/run_backtest.py --config config/strategy_v4_3.yaml`。
+> MaxDD 5.80%，block bootstrap 200 路径胜率 94.5%。**2026-08 曾切换为生产默认，
+> 2026-08-11 由 v4.6 接续**；回退：`python scripts/run_backtest.py --config config/strategy_v4_5_pvd.yaml`。
 > 详见 [`docs/v4_5_pvd_factor_closure.md`](docs/v4_5_pvd_factor_closure.md)。
+
+> **v4.6 定向 boost 分级应用（当前生产）**：Layer 3.5 危机相关性保护的**应用点重构**（预研
+> 7 变体矩阵唯一全门禁 PASS 的 T1+V3 混合分级）：EWMA(hl=8) corr 触发（thr 0.45 / slope 0.75，
+> 覆盖灰区 0.3-0.5）；corr>0.60 显性危机满额防御 boost，corr≤0.60 灰区定向降进攻
+> `def += b×(1−def)` 不推高防御绝对水平——修复 v4.5 的灰区缺口（grey_corr_combo 中位
+> MaxDD 12.79%→11.80% 回到 12% 红线内）且 bond_bear 不恶化。Realized Sharpe 1.609 /
+> MaxDD 5.76%；同期 PE 估值防御调制 E2 通过但 E3 对抗门禁失败已裁出（代码保留默认关），
+> R² 动量替换 E2 未过门禁。完整验证链与裁决见
+> [`docs/v4_6_directed_boost_closure.md`](docs/v4_6_directed_boost_closure.md)。
 
 > **周内波动(High/Low)探索**：评估 Parkinson/GK 估计器替代 CC-tapered vol，经 E1 信息增量
 > 评估（纳指 QDII 溢价扭曲 corr=0.30）+ E2 分资产回测（Mixed Sharpe -0.38）双 NO-GO，
@@ -193,23 +206,23 @@ T 是领域选择，非超参数：
 
 ## 核心指标
 
-三个口径均由 `scripts/benchmark_compare.py` 统一生成（净值对齐到策略有效区间、共同起点归一化、同一 `compute_metrics`，risk_free=2.5%，默认加载 v4.5-pvd 生产 config），可复现。
+三个口径均由 `scripts/benchmark_compare.py` 统一生成（净值对齐到策略有效区间、共同起点归一化、同一 `compute_metrics`，risk_free=2.5%，默认加载 v4.6 生产 config），可复现。
 
-| 指标 | 策略 v4.5-pvd | 等权(每周再均衡) | 买入持有(不调仓) |
+| 指标 | 策略 v4.6 | 等权(每周再均衡) | 买入持有(不调仓) |
 |------|:---:|:---:|:---:|
-| Sharpe（标准） | **1.603** | 0.931 | 0.838 |
-| 年化收益 | **15.52%** | 12.02% | 12.93% |
-| 累计收益 | **531.2%** | 326.0% | 372.6% |
-| 最大回撤 | **5.80%** | 20.20% | 29.93% |
-| 年化波动 | **7.64%** | 10.07% | 12.48% |
+| Sharpe（标准） | **1.609** | 0.931 | 0.838 |
+| 年化收益 | **15.46%** | 12.02% | 12.93% |
+| 累计收益 | **526.7%** | 326.0% | 372.5% |
+| 最大回撤 | **5.76%** | 20.20% | 29.93% |
+| 年化波动 | **7.57%** | 10.07% | 12.48% |
 | Calmar | **2.68** | 0.60 | 0.43 |
-| 周胜率 | 61.8% | 60.5% | 59.3% |
+| 周胜率 | 62.3% | 60.5% | 59.3% |
 | 回测区间 | 2013-08-30 ~ 2026-08-07（664周，随周度刷新延伸） | 同左 | 同左 |
 | 数据源 | QFQ 前复权 | 同左 | 同左 |
 
-> 注：v4.5-pvd 继承 v4.3 的 `def_alloc=0.349` 防御**下限**（vol<step_low 时的基础防御比例），
+> 注：v4.6 继承 v4.3 的 `def_alloc=0.349` 防御**下限**（vol<step_low 时的基础防御比例），
 > 故防御盘常态占比较高（"防御周数"口径下几乎每周都在基线之上，不再是有区分度的指标）；
-> 这也是 realized 波动 7.64%、MaxDD 5.80% 显著低于前代的结构性原因。
+> 这也是 realized 波动 7.57%、MaxDD 5.76% 显著低于早期前代的结构性原因。
 
 > **两个"什么都不做"基准的对比**：真·买入持有累计收益（372.6%）高于每周再平衡（326.0%），
 > 但代价是最大回撤高出近 10pp（29.9% vs 20.2%）、年化波动更大，风险调整后 Sharpe 反而更低
@@ -267,7 +280,8 @@ T 是领域选择，非超参数：
 claw_etf_strategy/
 ├── README.md
 ├── config/
-│   ├── strategy_v4_5_pvd.yaml           # 当前生产配置 (PVD 条件激活, 基于 v4.3+v4.4 成果)
+│   ├── strategy_v4_6.yaml               # 当前生产配置 (定向 boost 分级应用, 基于 v4.5-pvd)
+│   ├── strategy_v4_5_pvd.yaml           # 前代已验证配置 (PVD 条件激活, 影子对照)
 │   ├── strategy_v4_4.yaml               # 已验证配置 (EWMA Layer3.5 + 圆整参数, 全链路校验通过)
 │   ├── strategy_v4_3.yaml               # 前代生产/回归基线 (tapered-vol, 无跳变/低回撤)
 │   ├── strategy_v4_2.yaml               # 前代已验证配置 (rolling, 高 Sharpe)
@@ -330,11 +344,11 @@ claw_etf_strategy/
 ### 单次回测
 ```bash
 cd /home/ubuntu/claw_etf_strategy
-python scripts/run_backtest.py                                        # 默认 = v4.5-pvd 生产 config
-python scripts/run_backtest.py --config config/strategy_v4_3.yaml    # 回退前代 v4.3
+python scripts/run_backtest.py                                        # 默认 = v4.6 生产 config
+python scripts/run_backtest.py --config config/strategy_v4_5_pvd.yaml  # 回退前代 v4.5-pvd
 ```
-> `config/strategy_v4_5_pvd.yaml` 已全门禁通过并于 2026-08 切换为生产默认；
-> 前代 v4.3/v4.4/v4.2 配置保留，可用 `--config` 随时回退对比。
+> `config/strategy_v4_6.yaml` 已过完整对抗验证管线并于 2026-08-11 切换为生产默认；
+> 前代 v4.5-pvd/v4.4/v4.3/v4.2 配置保留，可用 `--config` 随时回退对比。
 
 ### 绩效对比（当年/近1年/当前回撤）
 ```bash
@@ -424,7 +438,7 @@ python scripts/premium_sentinel.py                 # 手工诊断入口（仅溢
 ## 注意事项
 
 - 数据列顺序：`日期,纳指ETF,红利低波ETF,中证500ETF,黄金ETF,国债ETF`
-- **v4.5-pvd 生产沿用 tapered vol**（`vol_taper_enabled: true`, window14+len7），非 rolling、非 EWMA。
+- **v4.6 生产沿用 tapered vol**（`vol_taper_enabled: true`, window14+len7），非 rolling、非 EWMA。
   三种 vol 估计器互斥，引擎优先级 ewma > taper > rolling；v4.5-pvd 关 ewma、开 taper。前代 v4.2 用 rolling(10)、v4.1 用 rolling(11)，EWMA 分支保留但默认关闭
 - 阈值基准使用状态文件 `data/.last_alloc.json`（上次实仓），首次无状态文件时降级到上周理论仓位
 - 确认调仓后请带 `--save-state` 参数保存仓位状态，下次阈值判断更准
@@ -434,5 +448,6 @@ python scripts/premium_sentinel.py                 # 手工诊断入口（仅溢
 - 数据更新脚本基线为 `data/all_etfs_nav_latest.csv`(可用 `ETF_BASE_FILE` 覆盖)，勿指向已弃用的 h20269_scaled 文件
 - 策略基于历史回测，**不保证未来收益**
 - **v4.0 对抗鲁棒框架**基于 CCC-GARCH 合成 + block bootstrap 的重采样评估，覆盖同分布下的路径不确定性；不能内生地产生 regime switching / DCC / 非对称尾相依（详见 methodology 文档第 8 节）。σ×1.4 类极端复合冲击处于策略族架构上界，需资产池/杠杆结构层面解决而非超参调整
-- **v4.5-pvd 是当前生产 config**：所有默认路径已切换（实盘脚本支持 PVD 条件激活并经 `--verify` 与引擎对齐，Δ≤0.02）。回退前代 v4.3：`--config config/strategy_v4_3.yaml`；v4.2：`--config config/strategy_v4_2.yaml`；历史基线 v4.1：`--config config/strategy_v4_1.yaml`。完整取向对比见上方版本演进章节
+- **v4.6 是当前生产 config**：所有默认路径已切换（实盘脚本支持定向 boost 分级应用并经 `--verify` 与引擎对齐，Δ=0.0066）。回退前代 v4.5-pvd：`--config config/strategy_v4_5_pvd.yaml`；v4.3：`--config config/strategy_v4_3.yaml`；v4.2：`--config config/strategy_v4_2.yaml`；历史基线 v4.1：`--config config/strategy_v4_1.yaml`。完整取向对比见上方版本演进章节
+- **v4.6 裁出项留档**：PE 估值防御调制（pe_defense，E2 PASS 但 E3 对抗门禁 FAIL：bond_bear/stagflation 机制 Sharpe 跑输等权）代码保留默认关，待重新设计（如危机条件交互/更低 δ）；R² 动量替换 E2 NO-GO 归档。见 `docs/v4_6_directed_boost_closure.md`
 - **v4.4 成果已随 v4.5-pvd 继承**：EWMA Layer3.5 + 圆整防御参数均包含在 v4.5-pvd 配置中（v4.4 单独配置保留作对照）。压测入口：`evaluate.py --corr-scenarios`（corr_crisis 硬门禁）、`oos_validation.py --corr-variants`。详见 `docs/v4_4_crisis_correlation_closure.md`

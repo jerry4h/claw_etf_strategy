@@ -31,7 +31,9 @@ class TestV46Config:
         assert cfg.directed_boost_threshold == 0.45
         assert cfg.directed_boost_slope == 0.75
         assert cfg.directed_boost_corr_split == 0.60
-        assert cfg.pe_defense_enabled is True
+        # pe_defense: E2 PASS 但 E3 对抗门禁 FAIL (bond_bear/stagflation 跑输等权),
+        # 裁出 v4.6, 代码保留默认关待重新设计
+        assert cfg.pe_defense_enabled is False
         assert cfg.pe_defense_pct_threshold == 0.90
         assert cfg.pe_defense_delta == 0.10
         # 前置依赖: directed 需要 EWMA 相关估计
@@ -122,13 +124,14 @@ class TestV46ProductionPin:
         """v4.6 生产 config 关键数字 pin (锚点数据窗口至 2026-08-07)。
 
         立项门禁 (风险导向): Sharpe ≥ v4.5-pvd − 0.01 且 MaxDD ≤ 6.10%。
-        锚点: Sharpe 1.6300 / MaxDD 5.73% (realized)。
+        锚点: Sharpe 1.6094 / MaxDD 5.76% (realized, directed boost only;
+        PE 调制 E3 对抗 FAIL 已裁出)。
         """
         from src.backtest import run_backtest
         cfg = load_config(PROJECT / 'config/strategy_v4_6.yaml')
         m = run_backtest(cfg).metrics
-        assert abs(m['sharpe_ratio'] - 1.6300) < 0.03, \
-            f"v4.6 Sharpe drift: {m['sharpe_ratio']:.4f}, expected ~1.6300"
+        assert abs(m['sharpe_ratio'] - 1.6094) < 0.03, \
+            f"v4.6 Sharpe drift: {m['sharpe_ratio']:.4f}, expected ~1.6094"
         assert m['max_drawdown'] <= 0.061, \
             f"v4.6 MaxDD 超出门禁: {m['max_drawdown']:.4%} > 6.10%"
 
@@ -142,6 +145,7 @@ class TestV46ProductionPin:
         assert m46['max_drawdown'] <= m45['max_drawdown'] + 0.005
 
     def test_production_default_source_ref(self):
-        """生产入口脚本当前仍指向 v4.5-pvd (v4.6 切换在阶段四执行, 防提前切换)。"""
-        src = (PROJECT / 'scripts' / 'run_backtest.py').read_text(encoding='utf-8')
-        assert 'strategy_v4_5_pvd.yaml' in src or 'strategy_v4_6.yaml' in src
+        """生产入口脚本默认 config 指向 v4.6 (阶段四切换完成, 防回退)."""
+        for script in ('run_backtest.py', 'rebalance_live.py'):
+            src = (PROJECT / 'scripts' / script).read_text(encoding='utf-8')
+            assert 'strategy_v4_6.yaml' in src, f"{script} 默认未指向 v4.6"

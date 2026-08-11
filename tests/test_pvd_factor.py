@@ -204,11 +204,11 @@ class TestV45PvdProductionPin:
         assert m45['max_drawdown'] <= m43['max_drawdown'] + 0.005
 
     def test_production_default_config_is_v45_pvd(self):
-        """生产入口脚本默认 config 必须指向 v4.5-pvd (防默认路径回退)."""
+        """生产入口脚本默认 config 不低于 v4.5-pvd (v4.6 已接续, 防默认路径回退)."""
         for script in ('run_backtest.py', 'rebalance_live.py'):
             src = (PROJECT / 'scripts' / script).read_text(encoding='utf-8')
-            assert 'strategy_v4_5_pvd.yaml' in src, \
-                f"{script} 未引用 v4.5-pvd 生产配置"
+            assert 'strategy_v4_6.yaml' in src, \
+                f"{script} 未引用 v4.6 生产配置"
 
 
 # ============================================================

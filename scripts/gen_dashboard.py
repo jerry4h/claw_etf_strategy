@@ -874,7 +874,7 @@ def main():
                         help="生成后启动本地 HTTP 服务器（http://localhost:8000）以便预览")
     args = parser.parse_args()
 
-    cfg = load_config(PROJ / "config" / "strategy_v4_5_pvd.yaml")
+    cfg = load_config(PROJ / "config" / "strategy_v4_6.yaml")
     data = _build_data(cfg)
     data["meta"]["version_note"] = "候选版（PVD 量价因子增强）"
 

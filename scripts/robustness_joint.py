@@ -418,7 +418,7 @@ def compare_marginal_vs_joint(t1_rows, t2_rows, t3_rows, base_metrics):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default="config/strategy_v4_5_pvd.yaml")
+    ap.add_argument("--config", default="config/strategy_v4_6.yaml")
     ap.add_argument("--test", choices=["all", "t1", "t2", "t3"], default="all")
     ap.add_argument("--n", type=int, default=200, help="Test 2/3 采样数")
     ap.add_argument("--block", type=int, default=13, help="bootstrap block 长度 (周)")

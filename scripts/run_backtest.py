@@ -4,7 +4,7 @@
 
 用法：
     python scripts/run_backtest.py
-    python scripts/run_backtest.py --config config/strategy_v4_3.yaml   # 回退前代
+    python scripts/run_backtest.py --config config/strategy_v4_5_pvd.yaml   # 回退前代
     python scripts/run_backtest.py --start 2020-01-01 --end 2025-12-31
 """
 
@@ -26,8 +26,8 @@ def main():
         description='虾池ETF轮动策略 — 单次回测'
     )
     parser.add_argument(
-        '--config', type=str, default='config/strategy_v4_5_pvd.yaml',
-        help='策略配置文件路径（默认: config/strategy_v4_5_pvd.yaml）'
+        '--config', type=str, default='config/strategy_v4_6.yaml',
+        help='策略配置文件路径（默认: config/strategy_v4_6.yaml）'
     )
     parser.add_argument(
         '--start', type=str, default=None,

@@ -108,7 +108,7 @@ def main():
     args = p.parse_args()
 
     # 生产默认 config = v4.5-pvd (历史版本对比用 git 旧版或显式改此路径)
-    cfg = load_config(PROJECT / 'config/strategy_v4_5_pvd.yaml')
+    cfg = load_config(PROJECT / 'config/strategy_v4_6.yaml')
     if args.start:
         blocks = {'CUSTOM': compute_benchmarks(cfg, start_date=args.start)}
     else:
