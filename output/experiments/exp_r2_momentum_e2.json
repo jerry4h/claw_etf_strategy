@@ -1,0 +1,60 @@
+{
+ "window": 6,
+ "week_factor": 6.0,
+ "variants": {
+  "BASE": {
+   "estimator": null,
+   "realized": {
+    "sharpe": 1.6028,
+    "maxdd": 0.058,
+    "annual": 0.1552,
+    "turnover": 0.1032
+   },
+   "boot_sharpe_med": 1.2639,
+   "boot_sharpe_p10": 0.9169
+  },
+  "R2U-OLS": {
+   "estimator": "ols",
+   "realized": {
+    "sharpe": 1.5342,
+    "maxdd": 0.0732,
+    "annual": 0.1471,
+    "turnover": 0.1066
+   },
+   "boot_sharpe_med": 1.188,
+   "boot_sharpe_p10": 0.8419
+  },
+  "R2U-WLS": {
+   "estimator": "wls",
+   "realized": {
+    "sharpe": 1.5152,
+    "maxdd": 0.0699,
+    "annual": 0.1459,
+    "turnover": 0.1125
+   },
+   "boot_sharpe_med": 1.182,
+   "boot_sharpe_p10": 0.8204
+  }
+ },
+ "gates": {
+  "R2U-OLS": {
+   "d_sharpe": -0.0686,
+   "d_maxdd_pp": 1.52,
+   "d_turnover": 0.0034,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  },
+  "R2U-WLS": {
+   "d_sharpe": -0.0876,
+   "d_maxdd_pp": 1.19,
+   "d_turnover": 0.0093,
+   "boot_not_worse": false,
+   "verdict": "NO-GO"
+  }
+ },
+ "bootstrap": {
+  "n": 200,
+  "block": 13,
+  "seed": 7744
+ }
+}

@@ -1,0 +1,60 @@
+{
+ "pe_threshold": 0.9,
+ "n_aligned_weeks": 679,
+ "n_pe_above_thr": 168,
+ "pe_above_share": 0.247,
+ "variants": {
+  "BASE": {
+   "delta": 0.0,
+   "realized": {
+    "sharpe": 1.6028,
+    "maxdd": 0.058,
+    "annual": 0.1552,
+    "turnover": 0.1032
+   },
+   "boot_sharpe_med": 1.2639,
+   "boot_sharpe_p10": 0.9169
+  },
+  "D05": {
+   "delta": 0.05,
+   "realized": {
+    "sharpe": 1.6146,
+    "maxdd": 0.0573,
+    "annual": 0.1542,
+    "turnover": 0.1049
+   },
+   "boot_sharpe_med": 1.2661,
+   "boot_sharpe_p10": 0.9295
+  },
+  "D10": {
+   "delta": 0.1,
+   "realized": {
+    "sharpe": 1.6254,
+    "maxdd": 0.0572,
+    "annual": 0.1532,
+    "turnover": 0.1078
+   },
+   "boot_sharpe_med": 1.2747,
+   "boot_sharpe_p10": 0.9331
+  }
+ },
+ "gates": {
+  "D05": {
+   "d_sharpe": 0.0118,
+   "d_maxdd_pp": -0.07,
+   "boot_not_worse": true,
+   "verdict": "PASS"
+  },
+  "D10": {
+   "d_sharpe": 0.0226,
+   "d_maxdd_pp": -0.08,
+   "boot_not_worse": true,
+   "verdict": "PASS"
+  }
+ },
+ "bootstrap": {
+  "n": 200,
+  "block": 13,
+  "seed": 7733
+ }
+}
