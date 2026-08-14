@@ -2,7 +2,7 @@
   "meta": {
     "strategy": "虾池ETF轮动 v4.6 — 定向boost分级应用",
     "version": "4.6",
-    "generated_at": "2026-08-14 17:06 (UTC+8)",
+    "generated_at": "2026-08-14 20:27 (UTC+8)",
     "data_range": "2013-08-30 ~ 2026-08-14",
     "data_as_of": "2026-08-14",
     "data_source": "Tushare",
@@ -2170,7 +2170,7 @@
   "recent_ytd": {
     "start": "2026-01-09",
     "end": "2026-08-14",
-    "return": 8.65,
+    "return": 9.9,
     "max_drawdown": 4.94
   },
   "recent_year1": {

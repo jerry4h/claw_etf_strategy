@@ -349,9 +349,18 @@ def _build_data(cfg):
         ("year1", lambda: now - pd.DateOffset(years=1)),
         ("month3", lambda: now - pd.DateOffset(months=3)),
     ]:
-        seg = nav[nav.index >= start_fn()]
+        start = start_fn()
+        seg = nav[nav.index >= start]
         if len(seg) > 0:
-            sr = seg["nav"].iloc[-1] / seg["nav"].iloc[0] - 1
+            # YTD 锚定到上一年末收盘（窗口前最后一个净值点），与"年度收益"图
+            # 的当年口径一致——标准 YTD 从上年末算起，含跨年首周收益。其它滚动
+            # 窗口沿用窗口内首点为基准。
+            if label == "ytd":
+                prior = nav[nav.index < start]
+                base_nav = prior["nav"].iloc[-1] if len(prior) > 0 else seg["nav"].iloc[0]
+            else:
+                base_nav = seg["nav"].iloc[0]
+            sr = seg["nav"].iloc[-1] / base_nav - 1
             sd = seg["drawdown"].max()
             data[f"recent_{label}"] = {
                 "start": str(seg.index[0].date()),
