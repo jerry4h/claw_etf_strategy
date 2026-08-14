@@ -39,6 +39,8 @@
 失败容错: git add 只在全链路成功后进行，任何一步失败均不产生部分提交；数据文件如已
 被修改，可手动 `git checkout -- data/ index.html dashboard/` 恢复。
 调试钩子: CLAW_REFRESH_FORCE_UPDATE=1 跳过步骤 1 的幂等预检，强制运行更新子进程。
+         CLAW_REFRESH_END_DATE=YYYYMMDD 显式指定增量截止日（步骤 1/2 共用），用于
+         周五收盘后手动刷新——此时本 ISO 周交易日已全部结束，可安全纳入本周。
 """
 
 import argparse
@@ -188,7 +190,12 @@ def release_lock():
 # ---------- 步骤实现 ----------
 def end_cap() -> datetime:
     """增量截止日：周六/周日运行取当天（本周五数据已完结）；周一~周五运行
-    截断到上个周日，只纳入已完整结束的 ISO 周，避免写入本周未完结快照。"""
+    截断到上个周日，只纳入已完整结束的 ISO 周，避免写入本周未完结快照。
+    CLAW_REFRESH_END_DATE=YYYYMMDD 可显式覆盖（用于周五收盘后手动刷新，
+    此时本 ISO 周交易日已全部结束）。"""
+    override = os.environ.get('CLAW_REFRESH_END_DATE')
+    if override:
+        return datetime.strptime(override, '%Y%m%d')
     now = datetime.now()
     if now.weekday() >= 5:
         return now

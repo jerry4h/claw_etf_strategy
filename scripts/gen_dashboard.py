@@ -876,7 +876,7 @@ def main():
 
     cfg = load_config(PROJ / "config" / "strategy_v4_6.yaml")
     data = _build_data(cfg)
-    data["meta"]["version_note"] = "候选版（PVD 量价因子增强）"
+    data["meta"]["version_note"] = "生产版（Layer3.5 定向 boost 分级应用）"
 
     out_dir = PROJ / "dashboard"
     out_dir.mkdir(parents=True, exist_ok=True)
