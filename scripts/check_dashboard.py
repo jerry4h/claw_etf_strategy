@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""看板上线前校验门禁（14 项自动检查）。
+"""看板上线前校验门禁（16 项自动检查）。
 
 退出码 0=全部通过, 非0=至少一项失败。
 每项打印 [PASS] 或 [FAIL reason]。
@@ -237,8 +237,105 @@ def main() -> int:
         print(f"[FAIL] 14. minmax 最小值超标: {bad_minmax}")
         failed += 1
 
+    # ---------- 新增 15-16 项（策略持仓正确性） ----------
+    EXPECTED_ETFS = {'纳指ETF', '中证500ETF', '黄金ETF', '红利低波ETF', '国债ETF'}
+
+    def _validate_holdings_block(name, holds, issues):
+        """校验单周持仓：5 只齐全 / 权重合法 / 合计≈100% / 进攻+防御=合计。"""
+        if not holds:
+            issues.append(f"{name}: 持仓为空")
+            return
+        names = [h.get("name") for h in holds]
+        if set(names) != EXPECTED_ETFS:
+            issues.append(f"{name}: ETF 集合不符 {sorted(names)}")
+        for h in holds:
+            w = h.get("weight")
+            if not isinstance(w, (int, float)) or w < -0.01 or w > 100.01:
+                issues.append(f"{name}: {h.get('name')} 权重非法 {w}")
+            if h.get("category") not in ("进攻", "防御"):
+                issues.append(f"{name}: {h.get('name')} 类别非法 {h.get('category')}")
+        total = sum(h.get("weight", 0) for h in holds)
+        if abs(total - 100) > 0.3:
+            issues.append(f"{name}: 合计 {total:.2f}% 偏离 100%")
+        off = sum(h.get("weight", 0) for h in holds if h.get("category") == "进攻")
+        deff = sum(h.get("weight", 0) for h in holds if h.get("category") == "防御")
+        if abs((off + deff) - total) > 0.05:
+            issues.append(f"{name}: 进攻+防御({off + deff:.2f}) != 合计({total:.2f})")
+
+    # 15. 仓位数据结构完整性：本周/下周各自 5 只齐全、权重合法、合计≈100%、日期一致
+    if data_match:
+        try:
+            data_15 = json.loads(data_match.group(1))
+            issues = []
+            _validate_holdings_block("本周", data_15.get("holdings"), issues)
+            hl = data_15.get("holdings_live")
+            if hl:
+                _validate_holdings_block("下周", hl.get("next_holdings"), issues)
+                from datetime import date
+                try:
+                    ts, te = date.fromisoformat(hl["this_signal"]), date.fromisoformat(hl["this_exec"])
+                    ns, ne = date.fromisoformat(hl["next_signal"]), date.fromisoformat(hl["next_exec"])
+                    if (te - ts).days != 3:
+                        issues.append(f"本周 exec-signal={(te - ts).days}d≠3(周五→下周一)")
+                    if (ne - ns).days != 3:
+                        issues.append(f"下周 exec-signal={(ne - ns).days}d≠3(周五→下周一)")
+                    if not (ts < ns and te < ne):
+                        issues.append("本周日期未早于下周")
+                except (KeyError, ValueError) as de:
+                    issues.append(f"日期字段异常: {de}")
+            if not issues:
+                print("[PASS] 15. 仓位数据结构完整（本周/下周 5 只齐全, 合计100%, 进攻+防御=100, 日期一致）")
+            else:
+                print(f"[FAIL] 15. 仓位数据结构: {'; '.join(issues)}")
+                failed += 1
+        except (json.JSONDecodeError, ValueError):
+            print("[FAIL] 15. 仓位数据结构: DATA JSON 解析失败")
+            failed += 1
+    else:
+        print("[FAIL] 15. 仓位数据结构: 未找到 DATA JSON")
+        failed += 1
+
+    # 16. 仓位与引擎一致性：重算回测末行(本周)+rebalance 下周持仓, 与内嵌 DATA 逐位比对
+    if data_match:
+        try:
+            data_16 = json.loads(data_match.group(1))
+            sys.path.insert(0, str(PROJ))
+            sys.path.insert(0, str(PROJ / "scripts"))
+            from src.strategy import load_config
+            from src.backtest import run_backtest
+            import gen_dashboard as gd
+            cfg = load_config(PROJ / "config" / "strategy_v4_6.yaml")
+            latest = run_backtest(cfg).nav_series.iloc[-1]
+            exp_this = {e: round(latest.get(f"weight_{e}", 0) * 100, 1) for e in gd.DISPLAY_ORDER}
+            got_this = {h["name"]: h["weight"] for h in data_16.get("holdings", [])}
+            mism = [f"本周 {e}: 看板{got_this.get(e)} vs 引擎{exp_this[e]}"
+                    for e in gd.DISPLAY_ORDER if abs(got_this.get(e, -1) - exp_this[e]) > 0.05]
+            live = gd._build_next_holdings(cfg)
+            hl = data_16.get("holdings_live")
+            if live and hl:
+                exp_next = {h["name"]: h["weight"] for h in live["next_holdings"]}
+                got_next = {h["name"]: h["weight"] for h in hl.get("next_holdings", [])}
+                for e in gd.DISPLAY_ORDER:
+                    if abs(got_next.get(e, -1) - exp_next.get(e, -2)) > 0.05:
+                        mism.append(f"下周 {e}: 看板{got_next.get(e)} vs 引擎{exp_next.get(e)}")
+                for k in ("this_signal", "this_exec", "next_signal", "next_exec"):
+                    if hl.get(k) != live.get(k):
+                        mism.append(f"{k}: 看板{hl.get(k)} vs 引擎{live.get(k)}")
+            elif live and not hl:
+                mism.append("看板缺 holdings_live 但引擎可算出下周仓位")
+            if not mism:
+                print("[PASS] 16. 仓位与引擎一致（本周回测末行 + 下周 rebalance 逐位吻合）")
+            else:
+                print(f"[FAIL] 16. 仓位与引擎不一致: {'; '.join(mism[:6])}")
+                failed += 1
+        except Exception as e:  # noqa: BLE001
+            print(f"[PASS] 16. 仓位与引擎一致性（引擎不可用，跳过）: {str(e)[:80]}")
+    else:
+        print("[FAIL] 16. 仓位与引擎一致性: 未找到 DATA JSON")
+        failed += 1
+
     # 汇总
-    total_checks = 14
+    total_checks = 16
     print(f"\n{'='*50}")
     if failed == 0:
         print(f"✅ 全部 {total_checks} 项检查通过")

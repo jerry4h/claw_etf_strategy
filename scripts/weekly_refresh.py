@@ -368,11 +368,11 @@ def step4_dashboard():
 
 
 def step4_5_check_dashboard():
-    """看板门禁校验（14 项自动检查），不通过则中止提交。"""
+    """看板门禁校验（16 项自动检查），不通过则中止提交。"""
     cp = run_cmd([sys.executable, str(ROOT / 'scripts' / 'check_dashboard.py')])
     if cp.returncode != 0:
         raise StepError(EXIT_DASHBOARD, '看板门禁校验未通过，中止提交（详见上方 [FAIL] 输出）')
-    return '看板门禁 14 项全部通过'
+    return '看板门禁 16 项全部通过'
 
 
 def step5_git(dry_run: bool):
