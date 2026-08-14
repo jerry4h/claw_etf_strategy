@@ -2,7 +2,7 @@
   "meta": {
     "strategy": "虾池ETF轮动 v4.6 — 定向boost分级应用",
     "version": "4.6",
-    "generated_at": "2026-08-14 20:27 (UTC+8)",
+    "generated_at": "2026-08-14 21:45 (UTC+8)",
     "data_range": "2013-08-30 ~ 2026-08-14",
     "data_as_of": "2026-08-14",
     "data_source": "Tushare",
@@ -2063,6 +2063,39 @@
       "category": "防御"
     }
   ],
+  "holdings_live": {
+    "next_holdings": [
+      {
+        "name": "纳指ETF",
+        "weight": 10.4,
+        "category": "进攻"
+      },
+      {
+        "name": "中证500ETF",
+        "weight": 0,
+        "category": "进攻"
+      },
+      {
+        "name": "黄金ETF",
+        "weight": 10.8,
+        "category": "进攻"
+      },
+      {
+        "name": "红利低波ETF",
+        "weight": 22.2,
+        "category": "防御"
+      },
+      {
+        "name": "国债ETF",
+        "weight": 56.6,
+        "category": "防御"
+      }
+    ],
+    "this_signal": "2026-08-07",
+    "this_exec": "2026-08-10",
+    "next_signal": "2026-08-14",
+    "next_exec": "2026-08-17"
+  },
   "annual_returns": [
     {
       "year": 2013,

@@ -278,6 +278,58 @@ def _build_national_team_data():
     }
 
 
+def _build_next_holdings(cfg):
+    """复用 rebalance_live 引擎计算"下周"目标持仓，并给出本周/下周的信号日与
+    执行日（周五信号 → 下周一执行）。与 rebalance_live.py 同源同逻辑（含 pending/gap
+    回放与止损镜像），保证看板"下周仓位"与实盘调仓工具逐位一致。失败时降级返回
+    None（看板退回仅显示本周）。"""
+    try:
+        import rebalance_live as rl
+        rl._apply_cfg(cfg)
+        df = rl.load(cfg.nav_path)
+        n = len(df) - 1
+        if n - 1 < rl._START_IDX:
+            return None
+
+        def _calc(idx):
+            lookback = max(rl.TREND_CONFIRM + 2, 3)
+            rf = max(rl._START_IDX, idx - lookback)
+            _sel = _pend = None
+            _pc = 0
+            gh = []
+            for ri in range(rf, idx):
+                r = rl.compute(df, ri, prev_sel=_sel, prev_pending=_pend,
+                               prev_pending_count=_pc, gap_history=gh)
+                _sel, _pend, _pc, gh = r.selected, r.pending, r.pending_count, r.gap_history
+            res = rl.compute(df, idx, prev_sel=_sel, prev_pending=_pend,
+                             prev_pending_count=_pc, gap_history=gh)
+            a = res.alloc
+            if rl.replay_stop_loss_state(df, idx)['should_stop']:
+                a = rl.compute(df, idx, prev_sel=_sel, prev_pending=_pend,
+                               prev_pending_count=_pc, gap_history=gh,
+                               force_def_floor=rl.MAX_DEF).alloc
+            return a
+
+        a_next = _calc(n)
+        next_holdings = [
+            {"name": e, "weight": round(a_next.get(e, 0) * 100, 1),
+             "category": "进攻" if e in OFFENSIVE else "防御"}
+            for e in DISPLAY_ORDER
+        ]
+
+        def _mon(ts):
+            return str((ts + pd.Timedelta(days=3)).date())  # 周五信号 → 下周一执行
+
+        return {
+            "next_holdings": next_holdings,
+            "this_signal": str(df.index[n - 1].date()), "this_exec": _mon(df.index[n - 1]),
+            "next_signal": str(df.index[n].date()), "next_exec": _mon(df.index[n]),
+        }
+    except Exception as ex:  # noqa: BLE001
+        print(f"  ⚠️ 下周持仓计算失败，看板退回仅显示本周: {ex}")
+        return None
+
+
 def _build_data(cfg):
     result = run_backtest(cfg)
     nav = result.nav_series
@@ -320,6 +372,8 @@ def _build_data(cfg):
          "category": "进攻" if e in OFFENSIVE else "防御"}
         for e in DISPLAY_ORDER
     ]
+    # 本周（回测最后一行）+ 下周（rebalance 引擎前瞻）持仓与各自信号/执行日
+    data["holdings_live"] = _build_next_holdings(cfg)
 
     nav_c = nav.copy()
     nav_c["year"] = nav_c.index.year
@@ -555,9 +609,20 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
     </div>
   </div>
   <div class="panel">
-    <h2>🎯 当前持仓</h2>
-    <div id="holdings-content"></div>
-    <div id="offdef-summary" style="margin-top:12px;font-size:0.85rem;display:flex;gap:16px;"></div>
+    <h2>🎯 策略持仓</h2>
+    <div id="holdings-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;">
+      <div>
+        <div id="hold-this-hd" style="font-size:0.9rem;font-weight:600;margin-bottom:8px;"></div>
+        <div id="holdings-this"></div>
+        <div id="offdef-this" style="margin-top:10px;font-size:0.85rem;display:flex;gap:16px;"></div>
+      </div>
+      <div>
+        <div id="hold-next-hd" style="font-size:0.9rem;font-weight:600;margin-bottom:8px;"></div>
+        <div id="holdings-next"></div>
+        <div id="offdef-next" style="margin-top:10px;font-size:0.85rem;display:flex;gap:16px;"></div>
+      </div>
+    </div>
+    <div id="hold-note" style="margin-top:12px;font-size:0.76rem;color:var(--muted);line-height:1.6;"></div>
   </div>
 </div>
 
@@ -599,6 +664,7 @@ const DATA = __DATA__;
   const d = DATA;
   const {meta,metrics:m,nav:nd,defense:dd,drawdown:dwd,
          holdings,annual_returns:ann,etf_stats:etfS,
+         holdings_live:hl,
          recent_ytd:rytd,recent_year1:r1y,recent_month3:r3m,params,national_team:nt} = d;
 
   // Header
@@ -722,19 +788,39 @@ const DATA = __DATA__;
 
   // Holdings
   const catClr = {'进攻':'#f59e0b','防御':'#60a5fa'};
-  let htm = '<table class="ht"><thead><tr><th>ETF</th><th>仓位</th><th></th></tr></thead><tbody>';
-  for (const h of holdings) {
-    if (h.weight<0) continue;
-    const clr=catClr[h.category];
-    const zero = h.weight<0.05;
-    htm += `<tr${zero?' style="color:var(--muted)"':''}><td><span style="color:${zero?'var(--muted)':clr}">${h.category==='进攻'?'⚔️':'🛡️'}</span> ${h.name}</td><td style="font-weight:600">${h.weight.toFixed(1)}%</td><td><div class="hbar">${zero?'':`<div class="hfill" style="width:${h.weight>5?h.weight:5}%;background:${clr}"></div>`}</div></td></tr>`;
+  const renderHoldings = (holds, tblId, sumId) => {
+    let htm = '<table class="ht"><thead><tr><th>ETF</th><th>仓位</th><th></th></tr></thead><tbody>';
+    for (const h of holds) {
+      if (h.weight<0) continue;
+      const clr=catClr[h.category];
+      const zero = h.weight<0.05;
+      htm += `<tr${zero?' style="color:var(--muted)"':''}><td><span style="color:${zero?'var(--muted)':clr}">${h.category==='进攻'?'⚔️':'🛡️'}</span> ${h.name}</td><td style="font-weight:600">${h.weight.toFixed(1)}%</td><td><div class="hbar">${zero?'':`<div class="hfill" style="width:${h.weight>5?h.weight:5}%;background:${clr}"></div>`}</div></td></tr>`;
+    }
+    htm += '</tbody></table>';
+    document.getElementById(tblId).innerHTML = htm;
+    const off = holds.filter(h=>h.category==='进攻').reduce((s,h)=>s+h.weight,0);
+    const def = holds.filter(h=>h.category==='防御').reduce((s,h)=>s+h.weight,0);
+    document.getElementById(sumId).innerHTML =
+      `<span style="color:#f59e0b">⚔️ 进攻 ${off.toFixed(1)}%</span><span style="color:#60a5fa">🛡️ 防御 ${def.toFixed(1)}%</span>`;
+  };
+  // 本周（回测最后一行 = 已执行仓位）
+  const thisHd = hl ? `📌 本周仓位（${hl.this_exec} 周一执行）` : '📌 本周仓位';
+  document.getElementById('hold-this-hd').innerHTML = thisHd;
+  renderHoldings(holdings, 'holdings-this', 'offdef-this');
+  // 下周（最新信号 → 下周一目标）
+  if (hl && hl.next_holdings) {
+    document.getElementById('hold-next-hd').innerHTML = `🔜 下周仓位（${hl.next_exec} 周一执行）`;
+    renderHoldings(hl.next_holdings, 'holdings-next', 'offdef-next');
+    document.getElementById('hold-note').innerHTML =
+      `本周仓位基于 ${hl.this_signal}（周五）收盘信号、已于 ${hl.this_exec} 执行；`+
+      `下周仓位基于 ${hl.next_signal}（周五）收盘信号、将于 ${hl.next_exec} 执行。`+
+      `两列为相邻两周、基于不同截止日信号的调仓目标（QDII 溢价需交易前自行核对）。`;
+  } else {
+    document.getElementById('hold-next-hd').innerHTML = '🔜 下周仓位';
+    document.getElementById('holdings-next').innerHTML =
+      '<div style="color:var(--muted);font-size:0.85rem;padding:8px 0;">下周目标仓位暂不可用（待信号更新）。</div>';
   }
-  htm += '</tbody></table>';
-  document.getElementById('holdings-content').innerHTML = htm;
-  const off = holdings.filter(h=>h.category==='进攻').reduce((s,h)=>s+h.weight,0);
-  const def = holdings.filter(h=>h.category==='防御').reduce((s,h)=>s+h.weight,0);
-  document.getElementById('offdef-summary').innerHTML =
-    `<span style="color:#f59e0b">⚔️ 进攻 ${off.toFixed(1)}%</span><span style="color:#60a5fa">🛡️ 防御 ${def.toFixed(1)}%</span>`;
+
 
   // Annual
   const endD = endDate ? new Date(endDate+'T00:00:00') : null;
