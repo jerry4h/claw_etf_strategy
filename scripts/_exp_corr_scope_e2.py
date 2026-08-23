@@ -359,24 +359,8 @@ def main():
             adv_res[k][s]["maxdd_worst"] - adv_res["C"][s]["maxdd_worst"] for s in SCENARIOS)
         variants[k]["adv_worst_med_delta_pp"] = worst_med_delta
         variants[k]["adv_worst_worst_delta_pp"] = worst_worst_delta
-        variants[k]["gate_adversarial"] = bool(worst_med_delta <= GATE_D_MAXDD_PP)
 
-    # ---------- 裁决 ----------
-    for k, v in variants.items():
-        v["gate_all"] = bool(v["gate_sharpe"] and v["gate_maxdd"]
-                             and v["gate_bootstrap"] and v["gate_adversarial"])
-    go = [k for k, v in variants.items() if v["gate_all"]]
-    verdict = {
-        "go_variants": go,
-        "decision": "GO" if go else "NO-GO",
-        "conclusion": (
-            f"{'/'.join(go)} 三门禁全过且对抗不劣, 建议进 E3 (配置开关默认关 + "
-            f"TestBaselineUnchanged pin + OOS 全管线)。"
-            if go else
-            "两个变体均未过门禁。全池口径虽有 55.7% 机制性误触发 (E1 实证), "
-            "但改为持仓对口径在回测目标函数上无收益, 归档为 NO-GO, 不改 src/。"),
-    }
-
+    # ---------- 门禁与裁决 ----------
     res = {
         "config": str(CFG_PATH.name),
         "seed": SEED, "n_boot": N_BOOT, "block": BLOCK,
@@ -392,15 +376,52 @@ def main():
         "adversarial": adv_res,
         "adversarial_note": ("合成 NAV 无 amount 数据, 三组统一在 PVD 关闭副本上跑 "
                              "(沿用 _exp_directed_boost_study 先例); realized 臂用完整 v4.6。"),
-        "verdict": verdict,
         "runtime_min": round((time.time() - t0) / 60, 1),
     }
+    recompute_gates(res)
     OUT_JSON.write_text(json.dumps(res, ensure_ascii=False, indent=1, default=str),
                         encoding="utf-8")
     render(res)
     plot(res)
     print(f"\n[save] {OUT_JSON}\n[save] {OUT_MD}\n[save] {OUT_PNG}")
-    print(f"DONE in {res['runtime_min']:.1f} min  →  {verdict['decision']}")
+    print(f"DONE in {res['runtime_min']:.1f} min  →  {res['verdict']['decision']}")
+
+
+def recompute_gates(res):
+    """从已存储的差量重算全部门禁与裁决 (幂等, 可对旧 JSON 重放)。
+
+    对抗门禁按计划口径 —— “MaxDD 中位与最差均不劣于 C”, 两个子条件均适用
+    同一 GATE_D_MAXDD_PP 容差, 分开记录以便判断是哪一侧未过。
+    """
+    tol = res["gates"]["d_maxdd_pp"]
+    for k, v in res["variants"].items():
+        v["gate_adv_median"] = bool(v["adv_worst_med_delta_pp"] <= tol)
+        v["gate_adv_worst"] = bool(v["adv_worst_worst_delta_pp"] <= tol)
+        v["gate_adversarial"] = bool(v["gate_adv_median"] and v["gate_adv_worst"])
+        v["gate_all"] = bool(v["gate_sharpe"] and v["gate_maxdd"]
+                             and v["gate_bootstrap"] and v["gate_adversarial"])
+    go = [k for k, v in res["variants"].items() if v["gate_all"]]
+    # 计划裁决表三情形
+    realized_pass = [k for k, v in res["variants"].items()
+                     if v["gate_sharpe"] and v["gate_maxdd"] and v["gate_bootstrap"]]
+    if go:
+        case = "情形 1: 有变体三门禁全过且对抗不劣"
+        concl = (f"{'/'.join(go)} 全门禁通过, 建议进 E3 (配置开关默认关 + "
+                 "TestBaselineUnchanged pin + OOS 全管线)。")
+    elif realized_pass:
+        case = "情形 2: 仅 realized 过、对抗劣化"
+        concl = (f"{'/'.join(realized_pass)} realized 三门禁过但对抗情景劣化, "
+                 "同 pe_defense 归档留档, 不改 src/。")
+    else:
+        case = "情形 3: 全不过"
+        concl = ("两个变体均未过 realized 主门禁。全池口径虽有 55.7% 机制性误触发 "
+                 "(E1 实证), 但改为持仓对口径在回测目标函数上无收益; 且 V-B 已把触发率 "
+                 "匹配回基线水平(隔离纯口径效应)仍无收益, 说明不是被“少防御”的副作用掩盖。"
+                 "归档为 NO-GO, 不改 src/ 与生产配置。")
+    res["verdict"] = {"case": case, "go_variants": go,
+                      "realized_pass_variants": realized_pass,
+                      "decision": "GO" if go else "NO-GO", "conclusion": concl}
+    return res
 
 
 def render(res):
@@ -440,8 +461,20 @@ def render(res):
             f"{'PASS' if v['gate_bootstrap'] else 'FAIL'} | "
             f"{'PASS' if v['gate_adversarial'] else 'FAIL'} |")
     L += ["", f"门禁: ΔSharpe >= +{res['gates']['d_sharpe']} AND ΔMaxDD <= "
-          f"+{res['gates']['d_maxdd_pp']}pp AND 配对 bootstrap 中位不劣 AND 对抗 MaxDD 不劣。"
+          f"+{res['gates']['d_maxdd_pp']}pp AND 配对 bootstrap 中位不劣 AND 对抗 MaxDD "
+          f"中位与最差均不劣(同容差 {res['gates']['d_maxdd_pp']}pp)。"
           "MaxDD 为正数深度, 正 Δ 表示更差。", "",
+          "对抗门禁拆为两个子条件 (最坏情景取值):", "",
+          "| 组 | ΔMaxDD 中位 | 中位子条件 | ΔMaxDD 最差 | 最差子条件 | 对抗门禁 |",
+          "|---|---|---|---|---|---|"]
+    for k in ("V_A", "V_B"):
+        v = v_[k]
+        L.append(f"| {k.replace('_', '-')} | {v['adv_worst_med_delta_pp']:+.2f}pp | "
+                 f"{'PASS' if v['gate_adv_median'] else 'FAIL'} | "
+                 f"{v['adv_worst_worst_delta_pp']:+.2f}pp | "
+                 f"{'PASS' if v['gate_adv_worst'] else 'FAIL'} | "
+                 f"{'PASS' if v['gate_adversarial'] else 'FAIL'} |")
+    L += ["",
           "## 配对 bootstrap 分布", "",
           "| 组 | 路径数 | ΔSharpe 中位 | 5% | 95% | 正比例 | ΔMaxDD 中位 |",
           "|---|---|---|---|---|---|---|"]
@@ -479,7 +512,7 @@ def render(res):
           f"- 样本仅 {bb['C']['n']} seeds, 中位改善属**提示性而非结论性**; bond_bear 是 "
           "defense_asset 硬门禁情景(pe_defense 正是死在这里), 故作为未来方向候选留档, "
           "不构成本次 GO 的理由", "",
-          "## 裁决", "", f"**{res['verdict']['decision']}**", "",
+          "## 裁决", "", f"**{res['verdict']['decision']}** — {res['verdict']['case']}", "",
           res["verdict"]["conclusion"], "",
           "## 方法说明", "",
           "- 源码手术只替换 boost 调用传入的资产索引集合, 其余逐字符同 src/backtest.py; 零 src/ 改动",
@@ -543,11 +576,14 @@ def plot(res):
 
 
 if __name__ == "__main__":
-    # --render-only: 从既有 JSON 重渲染报告与图, 免去 17 分钟重跑
+    # --render-only: 从既有 JSON 重算门禁并重渲染报告与图, 免去 17 分钟重跑
     if "--render-only" in sys.argv:
-        _r = json.loads(OUT_JSON.read_text(encoding="utf-8"))
+        _r = recompute_gates(json.loads(OUT_JSON.read_text(encoding="utf-8")))
+        OUT_JSON.write_text(json.dumps(_r, ensure_ascii=False, indent=1, default=str),
+                            encoding="utf-8")
         render(_r)
         plot(_r)
-        print(f"[save] {OUT_MD}\n[save] {OUT_PNG} (render-only)")
+        print(f"[save] {OUT_JSON}\n[save] {OUT_MD}\n[save] {OUT_PNG} (render-only)")
+        print(f"裁决: {_r['verdict']['decision']} — {_r['verdict']['case']}")
     else:
         main()
