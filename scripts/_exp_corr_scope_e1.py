@@ -250,15 +250,52 @@ def main():
                          "故以效应量 (均值/中位差) 为主要判据, p 值仅供参考。")
     result["b3b_group_contrast"] = gstats
 
-    # ---------- 裁决 ----------
+    # ---------- 裁决 (计划 B4 裁决表, 数据驱动) ----------
     pool_better = sum(1 for y in b3 if abs(b3[y]["corr_pool"]["spearman_ic"]) >
                       abs(b3[y]["corr_held"]["spearman_ic"]))
+    held_better = len(b3) - pool_better
     pool_incremental = any(abs(b3[y]["joint_regression"]["corr_pool"]["t"]) >= 1.5 for y in b3)
     held_incremental = any(abs(b3[y]["joint_regression"]["corr_held"]["t"]) >= 1.5 for y in b3)
+    pool_gate = any(b3[y]["corr_pool"]["gate_pass"] for y in b3)
+    held_gate = any(b3[y]["corr_held"]["gate_pass"] for y in b3)
+
+    # G2 (仅全池告警) 与 G3 (都不告警) 的未来风险效应量 —— 决定性证据
+    g2g3_vol = gstats.get("G2_pool_only_vs_G3_neither_fwd_vol", {}).get("delta_mean")
+    g2g3_dd = gstats.get("G2_pool_only_vs_G3_neither_fwd_dd", {}).get("delta_mean")
+
+    if not pool_gate and not held_gate:
+        case = "C4 两口径均未过门禁"
+        conclusion = ("E1 严格 NO-GO: 两个口径对未来 4 周进攻端风险均无预测力。"
+                      "该结论证明全池口径缺乏实证依据, 但同样未能证明持仓对口径更优 —— "
+                      "它只说明在此前瞻代理 y 上二者都无信息。")
+        next_step = ("不得据此改 src/。Layer 3.5 是经回测 Sharpe/MaxDD/bootstrap 门禁进生产的, "
+                     "本 E1 的前瞻代理 y 不足以否决它 (项目先例: PVD E1 GO 而 E2 NO-GO, 反向亦可能)。"
+                     "唯一权威判据是 E2 直接 A/B 回测, 需用户决定是否执行。")
+    elif held_gate and not pool_gate:
+        case = "C1 持仓对显著优于全池"
+        conclusion = "口径缺陷成立: 持仓对口径过门禁而全池不过。"
+        next_step = "进 E2 验证回测目标函数。"
+    elif pool_gate and not held_gate:
+        case = "C3 全池口径有独立价值"
+        conclusion = "全池 corr 具备系统性风险代理价值, 现状口径应保留。"
+        next_step = "归档结论, 不改口径。"
+    elif pool_incremental:
+        case = "C3 全池有独立增量解释力"
+        conclusion = "控制持仓对后全池仍显著, 说明其承载了持仓分散度之外的系统性信息。"
+        next_step = "保留现状口径, 归档。"
+    else:
+        case = "C2 两者相当且全池无独立增量"
+        conclusion = "口径宜改为持仓对: 机制解释更自洁且不损预测力。"
+        next_step = "进 E2 验证回测目标函数。"
+
     result["verdict"] = {
-        "pool_stronger_on_n_of_3_y": pool_better,
+        "case": case, "conclusion": conclusion, "next_step": next_step,
+        "pool_stronger_on_n_of_3_y": pool_better, "held_stronger_on_n_of_3_y": held_better,
+        "pool_gate_pass_any_y": pool_gate, "held_gate_pass_any_y": held_gate,
         "pool_has_incremental_power": pool_incremental,
         "held_has_incremental_power": held_incremental,
+        "g2_vs_g3_delta_fwd_vol": g2g3_vol, "g2_vs_g3_delta_fwd_dd": g2g3_dd,
+        "hard_fact_misfire_rate_pct": result["b2_scope_divergence"]["pool_fire_but_held_not_pct_of_fires"],
     }
 
     (OUT_DIR / "exp_corr_scope_e1.json").write_text(
@@ -321,11 +358,21 @@ def main():
         L.append(f"- {key}: Δmean={s['delta_mean']*100:+.2f}pp, Mann-Whitney p={s['mannwhitney_p']:.4f}")
     L.append(f"\n> {gstats['_caveat']}")
 
-    L.append("\n## 裁决输入\n")
+    L.append("\n## 裁决 (计划 B4)\n")
     v = result["verdict"]
-    L.append(f"- 全池 IC 更强的 y 个数: {v['pool_stronger_on_n_of_3_y']}/3")
-    L.append(f"- 全池在控制持仓对后仍有增量解释力: {v['pool_has_incremental_power']}")
-    L.append(f"- 持仓对在控制全池后仍有增量解释力: {v['held_has_incremental_power']}")
+    L.append(f"**落例: {v['case']}**\n")
+    L.append(f"- 结论: {v['conclusion']}")
+    L.append(f"- 下一步: {v['next_step']}\n")
+    L.append("裁决依据:\n")
+    L.append(f"- 门禁通过 (任一 y): 全池={v['pool_gate_pass_any_y']}, 持仓对={v['held_gate_pass_any_y']}")
+    L.append(f"- IC 更强的 y 个数: 全池 {v['pool_stronger_on_n_of_3_y']}/3, "
+             f"持仓对 {v['held_stronger_on_n_of_3_y']}/3")
+    L.append(f"- 增量解释力: 全池={v['pool_has_incremental_power']}, 持仓对={v['held_has_incremental_power']}")
+    if v["g2_vs_g3_delta_fwd_vol"] is not None:
+        L.append(f"- G2(仅全池告警) vs G3(都不告警) 未来波动差: "
+                 f"{v['g2_vs_g3_delta_fwd_vol']*100:+.2f}pp, 回撤差: {v['g2_vs_g3_delta_fwd_dd']*100:+.2f}pp")
+    L.append(f"- 硬事实 (不依赖预测力): 全池触发中 {v['hard_fact_misfire_rate_pct']:.1f}% "
+             f"的周实际持仓对并不高相关")
 
     (OUT_DIR / "exp_corr_scope_e1.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n" + "\n".join(L[5:]))
