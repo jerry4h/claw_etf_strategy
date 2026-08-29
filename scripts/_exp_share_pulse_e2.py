@@ -758,6 +758,90 @@ def e3_onesided(delta: float, hold: int, flag_out: pd.Series, dates: list,
     }
 
 
+def e3_onesided_grid(flag_out: pd.Series, dates: list, base_res,
+                     bm: dict) -> dict:
+    """单边变体的 3x3 参数网格 + 每格各自的分期一致性(探索性, 不入门禁).
+
+    单边结论此前只测了**一组参数**(从双向最优格继承而来), 而一个点无法区分
+    "稳健区域"与"又一个孤立点"。本网格是独立的稳健性检验(不是挑阈值):
+    判据仍用已有的 ΔUlcer<0 与分期符号一致, 只是把它们逐格重算。
+    结论仍不改写本次裁决 —— 单边分支本身是事后选择的。
+    """
+    empty = pd.Series(False, index=flag_out.index)
+    rows = []
+    for delta in TRACK_B_DELTA:
+        for hold in HOLD_GRID:
+            res, au = run_track_b(delta, hold, flag_out, empty, dates)
+            m = fh.metrics_of(res)
+            so = e3_split_oos(base_res, res)
+            pre = so.get("pre_2019") or {}
+            post = so.get("post_2019") or {}
+            pu, qu = pre.get("d_ulcer_pp"), post.get("d_ulcer_pp")
+            rows.append({
+                "param": delta, "hold": hold, **_deltas(m, bm),
+                "pre_d_ulcer_pp": pu, "post_d_ulcer_pp": qu,
+                "pre_d_sharpe": pre.get("d_sharpe"),
+                "post_d_sharpe": post.get("d_sharpe"),
+                "post_d_maxdd_pp": post.get("d_maxdd_pp"),
+                "split_sign_consistent": bool(pu is not None and qu is not None
+                                              and pu < 0 and qu < 0),
+                "n_more_defense": au["n_more_defense"],
+            })
+            print(f"    单边网格 delta={delta} hold={hold}: "
+                  f"ΔUlcer={rows[-1]['d_ulcer_pp']:+.4f} "
+                  f"(分期 {pu:+.4f}/{qu:+.4f}) "
+                  f"ΔSharpe={rows[-1]['d_sharpe']:+.4f}", flush=True)
+
+    df = pd.DataFrame(rows)
+    n = len(df)
+    best = df.loc[df.d_ulcer_pp.idxmin()]
+    nb = df[((df.param == best.param) | (df.hold == best.hold))
+            & ~((df.param == best.param) & (df.hold == best.hold))]
+    n_all = int((df.split_sign_consistent & (df.d_ulcer_pp < 0)
+                 & (df.d_sharpe > 0)).sum())
+    return {
+        "grid": rows, "n_cells": n,
+        "n_ulcer_improve": int((df.d_ulcer_pp < 0).sum()),
+        "n_split_consistent": int(df.split_sign_consistent.sum()),
+        "n_sharpe_improve": int((df.d_sharpe > 0).sum()),
+        "n_cagr_within_tol": int((df.d_cagr_pp > CAGR_TOL_PP).sum()),
+        "n_all_conditions": n_all,
+        "best_param": float(best.param), "best_hold": int(best.hold),
+        "best_d_ulcer_pp": float(best.d_ulcer_pp),
+        "neighbors_total": int(len(nb)),
+        "neighbors_improving": int((nb.d_ulcer_pp < 0).sum()),
+        "isolated_optimum": bool((nb.d_ulcer_pp < 0).sum()
+                                 < max(len(nb) // 2, 1)),
+        "robust_region": bool(n_all > n / 2
+                              and (nb.d_ulcer_pp < 0).sum() >= len(nb) / 2),
+    }
+
+
+def boot_attainability(bs: dict) -> dict:
+    """该 bootstrap 门禁在当前样本下还差多少 —— 纯函数, 不需重跑回测.
+
+    区分"信号弱"与"样本不足以证明这个量级的效应": CI 半宽随 1/sqrt(n) 收缩,
+    若效应量不变, 要让 CI 上界落到 0 以下所需的样本倍数 ≈ (offset/|effect|)^2。
+    这个数字直接告诉你"再等几年能定案", 而不是笼统地说一句不显著。
+    注: 它不是放行理由, 只是把"未过"的性质定量到可决策的程度。
+    """
+    obs, hi = bs.get("observed_d_ulcer_pp"), bs.get("ci_hi_pp")
+    if obs is None or hi is None or obs >= 0:
+        return {}
+    offset = float(hi) - float(obs)          # 分布中心到 CI 上界的距离
+    need = round(offset, 4)                  # CI 全负所需的效应量下限
+    k = (offset / abs(float(obs))) ** 2 if obs else None
+    n_w = bs.get("n_weeks")
+    return {
+        "observed_pp": round(float(obs), 4), "ci_hi_pp": round(float(hi), 4),
+        "center_to_upper_pp": need,
+        "shortfall_pp": round(float(hi), 4) if hi > 0 else 0.0,
+        "sample_multiple_needed": round(k, 2) if k else None,
+        "extra_years_needed": (round((k - 1) * (n_w / 52.0), 1)
+                               if (k and n_w and k > 1) else 0.0),
+    }
+
+
 def e3_gate(e3: dict) -> dict:
     """E3 四项门禁全部先定. 全过才议引入 src/; 部分过只能停在观察层."""
     so = e3.get("split_oos") or {}
@@ -905,6 +989,15 @@ def _g1c_next(e3: dict) -> str:
                  + (f" (未过: {', '.join(og.get('failed_items', []))})"
                     if og.get("failed_items") else " 全过")
                  + ", 需在新样本上预注册重跑才能宣称。")
+    gr = e3.get("onesided_grid") or {}
+    if gr.get("n_cells"):
+        tail += (f"该候选在 3x3 参数网格上: Ulcer 改善 "
+                 f"{gr['n_ulcer_improve']}/{gr['n_cells']}, 分期符号一致 "
+                 f"{gr['n_split_consistent']}/{gr['n_cells']}, 全条件满足 "
+                 f"{gr['n_all_conditions']}/{gr['n_cells']}, "
+                 + ("构成稳健区域而非孤立点"
+                    if gr.get("robust_region") else "**未构成稳健区域**")
+                 + "。")
     return ("; ".join(parts) + "。" + tail) if parts else tail
 
 
@@ -1145,6 +1238,17 @@ def render(res: dict) -> None:
                      f"{bs['ci_lo_pp']:+.4f}pp | {bs['ci_hi_pp']:+.4f}pp | "
                      f"{bs['pct_improving']}% | {'✓' if bs['passed'] else '✗'} |")
             L.append("")
+            at = boot_attainability(bs)
+            if at.get("sample_multiple_needed"):
+                L.append(f"该门禁的可达性: CI 上界要落到 0 以下, 效应量需 ≥ "
+                         f"{at['center_to_upper_pp']}pp, 实测 "
+                         f"{abs(at['observed_pp'])}pp。若效应量不变, 需约 "
+                         f"**{at['sample_multiple_needed']} 倍样本**"
+                         + (f"(再累积约 {at['extra_years_needed']} 年)"
+                            if at["extra_years_needed"] else "")
+                         + "。这区分了'信号弱'与'样本不足以证明这个量级的效应' —— "
+                         "但不是放行理由。")
+                L.append("")
 
         ct = e3.get("cost") or {}
         if ct.get("grid"):
@@ -1230,6 +1334,49 @@ def render(res: dict) -> None:
                      + (f" (未过: {', '.join(og.get('failed_items', []))})"
                         if og.get("failed_items") else " 全过")
                      + " —— 仅作为下一轮预注册的候选假说, 本次不据此改写裁决。")
+            L.append("")
+            oat = boot_attainability(osb)
+            if oat.get("sample_multiple_needed"):
+                L.append(f"其 bootstrap 差距: CI 上界 "
+                         f"{oat['ci_hi_pp']:+.4f}pp, 需效应量 ≥ "
+                         f"{oat['center_to_upper_pp']}pp 而实测 "
+                         f"{abs(oat['observed_pp'])}pp —— 差 "
+                         f"{oat['shortfall_pp']}pp; 若效应量不变需约 "
+                         f"**{oat['sample_multiple_needed']} 倍样本**"
+                         + (f", 即再累积约 **{oat['extra_years_needed']} 年**"
+                            if oat["extra_years_needed"] else "")
+                         + "。与双向版本需要的样本倍数对比, 可看出两者不是同一回事。")
+                L.append("")
+
+        gr = e3.get("onesided_grid") or {}
+        if gr.get("grid"):
+            L.append("### E3-7 单边变体的 3×3 网格: 稳健区域还是孤立点?")
+            L.append("")
+            L.append("单边结论之前只测了**一组参数**(从双向最优格继承), 一个点无法区分‘稳健’与‘碰巧’。"
+                     "本网格逐格重算已有判据(ΔUlcer<0 与分期符号一致), 不引入新阈值、不挑最优; "
+                     "但单边分支本身仍是事后选择的, 所以**不改写裁决**。")
+            L.append("")
+            L.append("| delta | hold | 触发 | ΔUlcer | 2019前 | 2019后 | 分期一致 | ΔSharpe | ΔCAGR | 2019后ΔMaxDD |")
+            L.append("|---|---|---|---|---|---|---|---|---|---|")
+            for r in gr["grid"]:
+                L.append(f"| {r['param']} | {r['hold']} | {r['n_more_defense']} | "
+                         f"{r['d_ulcer_pp']:+.4f}pp | "
+                         f"{r['pre_d_ulcer_pp']:+.4f}pp | "
+                         f"{r['post_d_ulcer_pp']:+.4f}pp | "
+                         f"{'✓' if r['split_sign_consistent'] else '✗'} | "
+                         f"{r['d_sharpe']:+.4f} | {r['d_cagr_pp']:+.3f}pp | "
+                         f"{r['post_d_maxdd_pp']:+.4f}pp |")
+            L.append("")
+            L.append(f"汇总: Ulcer 改善 **{gr['n_ulcer_improve']}/{gr['n_cells']}**、"
+                     f"分期符号一致 **{gr['n_split_consistent']}/{gr['n_cells']}**、"
+                     f"ΔSharpe>0 **{gr['n_sharpe_improve']}/{gr['n_cells']}**、"
+                     f"CAGR 在容忍内 {gr['n_cagr_within_tol']}/{gr['n_cells']}、"
+                     f"三项全满足 **{gr['n_all_conditions']}/{gr['n_cells']}**; "
+                     f"最优格 {gr['best_param']}/hold{gr['best_hold']} "
+                     f"ΔUlcer {gr['best_d_ulcer_pp']:+.4f}pp, 邻域改善 "
+                     f"{gr['neighbors_improving']}/{gr['neighbors_total']}, "
+                     + ("**构成稳健区域**" if gr.get("robust_region")
+                        else "**未构成稳健区域**") + "。")
             L.append("")
 
     L.append("## 结论")
@@ -1432,11 +1579,13 @@ def main() -> None:
                                            base_res)
         e3["onesided_more_defense"] = e3_onesided(bd, bh, fl_out, dates,
                                                   base_res, bm["ulcer_pct"])
+        e3["onesided_grid"] = e3_onesided_grid(fl_out, dates, base_res, bm)
         e3["n_backtests"] = int(2 + 2 * len(E3_FEE_BP)
                                 + int(e3["placebo"].get("n_iter", 0))
                                 + int(e3["branch_diag"].get("n_runs", 0))
                                 + int(e3["onesided_more_defense"]
-                                      .get("n_backtests", 0)))
+                                      .get("n_backtests", 0))
+                                + int(e3["onesided_grid"].get("n_cells", 0)))
         e3["gate"] = e3_gate(e3)
         print(f"  E3 门禁: {e3['gate']['n_pass']}/{e3['gate']['n_total']} "
               f"未过={e3['gate']['failed_items']}", flush=True)
@@ -1444,6 +1593,11 @@ def main() -> None:
         print(f"  单边(仅多防御, 事后选择) 门禁: "
               f"{og['n_pass']}/{og['n_total']} 未过={og['failed_items']}",
               flush=True)
+        ogr = e3["onesided_grid"]
+        print(f"  单边 3x3 网格: Ulcer 改善 {ogr['n_ulcer_improve']}/"
+              f"{ogr['n_cells']}, 分期一致 {ogr['n_split_consistent']}/"
+              f"{ogr['n_cells']}, 全条件 {ogr['n_all_conditions']}/"
+              f"{ogr['n_cells']}, 稳健区域={ogr['robust_region']}", flush=True)
 
     res = {
         "meta": {"lag_steps": LAG_STEPS, "roll_win": ROLL_WIN,
