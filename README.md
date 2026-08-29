@@ -135,6 +135,28 @@ v4.4 的 EWMA Layer3.5 成果已随 v4.5-pvd 配置继承（crisis_correlation_e
 > 评估（纳指 QDII 溢价扭曲 corr=0.30）+ E2 分资产回测（Mixed Sharpe -0.38）双 NO-GO，
 > **课题中止**。详见 [`docs/hl_vol_exploration_abort.md`](docs/hl_vol_exploration_abort.md)。
 
+> **ETF 份额脉冲因子（观察层，不接入资金分配）**：把主力份额的净申赎变化当**稀疏脉冲**
+> （滚动 q0.95 低尾，36 次 / 5.28% 的周、横跨 10 个年份）而非每周连续因子来测，共实跑 **150 次回测**。
+> E1' 事件研究预注册假说显著（`pool_net_flow|low` → 策略前瞻 4 周回撤，效应量 −0.254、p=0.0103），
+> 且与股指期货线相反：市场层面不显著、**策略层面显著**（即 Layer3/3.5 未吸收的那部分回撤）。
+> E2 轨 B（脉冲→双向调防御）9/9 格 Ulcer 改善，但 **E3 四门禁仅 2/4**（分期 OOS 符号反转、
+> block bootstrap CI 跨零；安慰剂重排 0/50 与 10bp 成本稳健通过）→ **NO-GO（集成）/ GO（观察层）**。
+> 轨 A（份额→选股 tiebreaker）是 **no-op、未测出结论**（加分量 0.001~0.003 相对 momentum 0.1~0.3
+> 从未翻转排序），**不是证否**。下一轮预注册候选：单边“净流出→多防御” `delta=0.10, hold=4`
+> （单边 3×3 网格 9/9 稳健、bootstrap CI 上界仅差 0.0148pp、约需再累积 2 年样本定案）。
+> 详见 [`docs/share_pulse_factor_closure.md`](docs/share_pulse_factor_closure.md)，
+> 全量表格见 `output/experiments/exp_share_pulse_e2.md`；脚本 `scripts/_exp_share_pulse_e2.py`。
+
+> **股指期货衍生信号（A 线基差 / B 线多空龙虎榜）**：两条线均 **NO-GO**。基差是**同步指标**
+> （k=0 同步相关远强于所有领先项，与 tapered_vol14 相关 −0.49）；IF 长样本对照线连一个组合都未过
+> 单项门禁。龙虎榜净空变动对**市场**风险有效应（fwd_vol_4w +3.10pp）但对**策略**回撤几乎无效应
+> （策略/市场效应量比 0.204）→ 信息已被 Layer3/3.5 吸收。这也是上面份额线的反面对照组。
+> 证据见 `output/experiments/exp_futures_basis.md` 与 `exp_futures_holding.md`
+> （脚本 `scripts/_exp_futures_basis_study.py` / `_exp_futures_holding_study.py`）。
+
+注：`fut_holding` 是**前 20 名排行榜**而非全市场持仓，数据里不存在真实的 0、只有 NaN；
+用 `groupby().sum()` 会把“未上榜”读成“持仓为 0”，必须逐字段 `sum(min_count=1)`。
+
 ## v4.0 对抗鲁棒性框架
 
 四节点 + 收尾，实现"realized + adversarial 双维度评估 + 多目标约束优化"：
@@ -450,4 +472,5 @@ python scripts/premium_sentinel.py                 # 手工诊断入口（仅溢
 - **v4.0 对抗鲁棒框架**基于 CCC-GARCH 合成 + block bootstrap 的重采样评估，覆盖同分布下的路径不确定性；不能内生地产生 regime switching / DCC / 非对称尾相依（详见 methodology 文档第 8 节）。σ×1.4 类极端复合冲击处于策略族架构上界，需资产池/杠杆结构层面解决而非超参调整
 - **v4.6 是当前生产 config**：所有默认路径已切换（实盘脚本支持定向 boost 分级应用并经 `--verify` 与引擎对齐，Δ=0.0066）。回退前代 v4.5-pvd：`--config config/strategy_v4_5_pvd.yaml`；v4.3：`--config config/strategy_v4_3.yaml`；v4.2：`--config config/strategy_v4_2.yaml`；历史基线 v4.1：`--config config/strategy_v4_1.yaml`。完整取向对比见上方版本演进章节
 - **v4.6 裁出项留档**：PE 估值防御调制（pe_defense，E2 PASS 但 E3 对抗门禁 FAIL：bond_bear/stagflation 机制 Sharpe 跑输等权）代码保留默认关，待重新设计（如危机条件交互/更低 δ）；R² 动量替换 E2 NO-GO 归档。见 `docs/v4_6_directed_boost_closure.md`
+- **稀疏脉冲类因子的评估教训（份额/期货两条线共同固化）**：① 稀疏脉冲不能用全样本连续 IC 判死（隐含“每周都线性有效”），改事件研究 + 真回测；② 非平稳序列禁用 expanding 分位（只认“历史新高”会把触发全挤在少数年份），改滚动分位 + 触发年份跳数门禁；③ MaxDD 不能当唯一主指标（被单一历史极值锚死、对干预不敏感），用 Ulcer / 平均回撤 / 条件回撤；④ 安慰剂“只重排触发日期”比单纯 block bootstrap 更能排除“改善来自动作本身”的混淆；⑤ 区分“证否”与“未测出结论（no-op）”；⑥ 事后拆解必须标注已用自由度与校正后阈值。详见 `docs/share_pulse_factor_closure.md` 第 9 节
 - **v4.4 成果已随 v4.5-pvd 继承**：EWMA Layer3.5 + 圆整防御参数均包含在 v4.5-pvd 配置中（v4.4 单独配置保留作对照）。压测入口：`evaluate.py --corr-scenarios`（corr_crisis 硬门禁）、`oos_validation.py --corr-variants`。详见 `docs/v4_4_crisis_correlation_closure.md`
