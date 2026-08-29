@@ -39,6 +39,8 @@ OUT_PNG = OUT_DIR / "futures_basis.png"
 
 # 期货根代码 -> 对应现货指数. IC=中证500(策略持仓标的), IF=沪深300(A股整体代理)
 ROOTS = {"IC": "000905.SH", "IF": "000300.SH"}
+MAIN_LINE = "IC"          # 主线: 标的直接对应策略持仓的中证500
+REF_LINE = "IF"           # 对照线: 2010-04 起, 覆盖策略全样本
 NAV_PATH = PROJECT / "data" / "all_etfs_nav_latest.csv"
 
 NEAR_EXPIRY_DAYS = 5      # days_left <= 5 时年化基差率分母趋零, 切次月合约
@@ -238,6 +240,56 @@ def e0_roll_jump_check(df: pd.DataFrame) -> dict:
     }
 
 
+def e0_weekly_coverage(wk: pd.DataFrame, n_weeks: int) -> dict:
+    """与 ETF 周频日历对齐后的覆盖率 / NaN 率 (计划 E0 校验第 1 项).
+
+    日频自身的 NaN 与"对齐到策略周频后的缺失"是两件事: 后者还包含合约
+    上市前的历史空白与长假陈旧(align_to_weekly 的 max_stale_days 抢断).
+    """
+    n = len(wk)
+    out = {"n_weeks_total": int(n_weeks), "n_weeks_aligned": int(n)}
+    for c in ("basis_ann", "oi", "spot_close"):
+        if c not in wk.columns:
+            continue
+        ok = int(wk[c].notna().sum())
+        out[f"{c}_n_valid"] = ok
+        out[f"{c}_coverage_pct"] = round(100.0 * ok / max(n_weeks, 1), 2)
+        out[f"{c}_nan_pct"] = round(100.0 * (n_weeks - ok) / max(n_weeks, 1), 2)
+    # 有效区间内的空洞(排除合约上市前的开头空白)
+    s = wk["basis_ann"]
+    first = s.first_valid_index()
+    if first is not None:
+        tail = s.loc[first:]
+        out["post_listing_weeks"] = int(len(tail))
+        out["post_listing_gaps"] = int(tail.isna().sum())
+        out["post_listing_gap_pct"] = round(
+            100.0 * int(tail.isna().sum()) / max(len(tail), 1), 2)
+        out["first_valid_week"] = str(pd.Timestamp(first).date())
+    return out
+
+
+def e0_gate(e0: dict, roll: dict, spot: dict, cover: dict) -> dict:
+    """E0 硬校验: 计划要求"全部写入报告, 不达标即中止".
+
+    不达标时 main 会先写出报告再非零退出, 不进入 E1 —— 避免在脏数据上
+    做信号评估得出看似漂亮的结论.
+    """
+    checks = {}
+    checks["spot_etf_corr_gt_0.98"] = bool(spot.get("pass"))
+    for root in e0:
+        checks[f"{root}_roll_no_jump"] = bool(
+            roll.get(root, {}).get("no_jump", False))
+        checks[f"{root}_basis_ann_nan_zero"] = bool(
+            e0[root].get("basis_ann_nan", 1) == 0)
+        checks[f"{root}_near_expiry_dropped_lt_5pct"] = bool(
+            e0[root].get("pct_dropped", 100.0) < 5.0)
+        cv = cover.get(root, {})
+        checks[f"{root}_post_listing_gap_lt_5pct"] = bool(
+            cv.get("post_listing_gap_pct", 100.0) < 5.0)
+    failed = [k for k, v in checks.items() if not v]
+    return {"checks": checks, "all_pass": not failed, "failed": failed}
+
+
 def e0_spot_etf_consistency(spot_weekly: pd.Series, nav: pd.DataFrame) -> dict:
     """现货指数 000905.SH 与 510500 ETF 净值的周收益一致性抽查。"""
     etf = nav["中证500ETF"]
@@ -317,15 +369,20 @@ def expanding_tercile(s: pd.Series) -> pd.Series:
     return grp
 
 
-def build_signals(wk_ic: pd.DataFrame, wk_if: pd.DataFrame) -> pd.DataFrame:
-    """六个信号变体. 涉及量的字段一律用 oi, 不用 vol。"""
-    sig = pd.DataFrame(index=wk_ic.index)
-    sig["basis_ann"] = wk_ic["basis_ann"]
-    sig["basis_z_exp"] = expanding_z(wk_ic["basis_ann"])
-    sig["basis_chg_1w"] = wk_ic["basis_ann"].diff(1)
-    sig["basis_chg_4w"] = wk_ic["basis_ann"].diff(4)
-    sig["oi_chg_1w"] = wk_ic["oi"].pct_change(1)
-    sig["basis_if_minus_ic"] = wk_if["basis_ann"] - wk_ic["basis_ann"]
+def build_signals(wk_self: pd.DataFrame,
+                  wk_other: pd.DataFrame | None = None) -> pd.DataFrame:
+    """一条线的信号集. 涉及量的字段一律用 oi, 不用 vol.
+
+    wk_other 提供时追加跨线差值信号 basis_if_minus_ic(仅主线 IC 使用).
+    """
+    sig = pd.DataFrame(index=wk_self.index)
+    sig["basis_ann"] = wk_self["basis_ann"]
+    sig["basis_z_exp"] = expanding_z(wk_self["basis_ann"])
+    sig["basis_chg_1w"] = wk_self["basis_ann"].diff(1)
+    sig["basis_chg_4w"] = wk_self["basis_ann"].diff(4)
+    sig["oi_chg_1w"] = wk_self["oi"].pct_change(1)
+    if wk_other is not None:
+        sig["basis_if_minus_ic"] = wk_other["basis_ann"] - wk_self["basis_ann"]
     return sig
 
 
@@ -494,6 +551,64 @@ def leading_ok(ll: dict) -> dict:
                      if amax_fwd <= a0 else "存在领先成分")}
 
 
+def run_e1(sig: pd.DataFrame, tg: pd.DataFrame, weekly: pd.DataFrame,
+           cfg) -> dict:
+    """单条线的完整 E1 评估. 两条线(IC 主 / IF 长样本对照)各跑一次.
+
+    两线共用同一组目标(中证500 未来风险 + 策略回撤 + 纳指安慰剂): 我们关心的
+    是对**本策略**的预测力, IF 基差在此作为 A 股整体对冲需求代理, 这样两线
+    结果可直接比较.
+    """
+    ic_tbl = {s: {t: ts_ic(sig[s], tg[t]) for t in tg.columns}
+              for s in sig.columns}
+    grp = expanding_tercile(sig["basis_z_exp"])
+    ll = lead_lag_all(sig, weekly)
+    return {
+        "signals": list(sig.columns),
+        "signal_coverage": {c: int(sig[c].notna().sum()) for c in sig.columns},
+        "span": {"first_valid": (str(sig["basis_ann"].first_valid_index().date())
+                                 if sig["basis_ann"].first_valid_index() is not None
+                                 else None),
+                 "n_valid_weeks": int(sig["basis_ann"].notna().sum())},
+        "ic": ic_tbl,
+        "groups": group_contrast(grp, tg),
+        "lead_lag": ll,
+        "lead": {c: leading_ok(ll[c]) for c in sig.columns},
+        "ortho": orthogonality(sig, weekly, cfg),
+    }
+
+
+def line_funnel(line: dict) -> dict:
+    """单线四道筛漏斗 + 裁决输入. 幂等。"""
+    ics, ortho, leads = line["ic"], line["ortho"], line["lead"]
+    raw_risk, raw_ret, pairs = [], [], []
+    for sname, per_t in ics.items():
+        for tname, r in per_t.items():
+            pairs.append((f"{sname}->{tname}", r.get("p_boot")))
+            if not gate_of(r):
+                continue
+            if tname in RISK_TARGETS:
+                raw_risk.append(f"{sname}->{tname}")
+            elif tname in RET_TARGETS:
+                raw_ret.append(f"{sname}->{tname}")
+    placebo = [f"{s}->{PLACEBO}" for s, per_t in ics.items()
+               if gate_of(per_t.get(PLACEBO, {}))]
+    fdr = bh_fdr(pairs, q=0.10)
+    surv = set(fdr["survivors"])
+    after_fdr = [p for p in raw_risk if p in surv]
+    ortho_ok = [p for p in after_fdr
+                if ortho.get(p.split("->")[0], {}).get("orthogonal")]
+    effective = [p for p in ortho_ok
+                 if leads.get(p.split("->")[0], {}).get("is_leading")]
+    return {
+        "fdr": fdr,
+        "raw_risk_pass": raw_risk, "after_fdr": after_fdr,
+        "after_orthogonality": ortho_ok, "after_leading": effective,
+        "ret_pass": raw_ret, "placebo_pass": placebo,
+        "leading_signals": [k for k, v in leads.items() if v.get("is_leading")],
+    }
+
+
 def group_contrast(grp: pd.Series, tg: pd.DataFrame) -> dict:
     """expanding 三分位分组的未来风险对照. G1=最深贴水。"""
     out = {}
@@ -599,50 +714,62 @@ def orthogonality(sig: pd.DataFrame, weekly: pd.DataFrame, cfg) -> dict:
 # 裁决
 # --------------------------------------------------------------------------
 def recompute_verdict(res: dict) -> dict:
-    """裁决树. 幂等, 可对旧 json 重放.
+    """双线裁决树. 幂等, 可对旧 json 重放.
+
+    主线 IC(标的直接对应中证500)定裁决; IF 线(长样本全覆盖)作稳健性对照,
+    两线结论不一致时以 IC 为准并显式标注分歧(计划阶段 2 末要求).
 
     除计划阶段 3 的 C1-C4 外, 补足三道计划已要求计算但未约定如何入裁决的条件:
-      (a) 多重比较: 30 个组合下 5% 水平期望 1.5 个假阳性, 靠 BH-FDR 筛
+      (a) 多重比较: 单线 30 个组合下 5% 水平期望 1.5 个假阳性, 靠 BH-FDR 筛
       (b) 正交性: 计划要求 |corr| < 0.30, 不正交即无增量
       (c) 领先性: 计划要求"真领先而非同步", 同步指标无预测价值
     """
-    ics = res["ic"]
-    ortho = res.get("ortho", {})
+    if "lines" not in res:
+        raise SystemExit("json 为旧单线格式, 请先不带 --render-only 重跑一次")
 
-    raw_risk, raw_ret = [], []
-    pairs = []
-    for sname, per_t in ics.items():
-        for tname, r in per_t.items():
-            pairs.append((f"{sname}->{tname}", r.get("p_boot")))
-            if not gate_of(r):
-                continue
-            if tname in RISK_TARGETS:
-                raw_risk.append(f"{sname}->{tname}")
-            elif tname in RET_TARGETS:
-                raw_ret.append(f"{sname}->{tname}")
-    placebo_pass = [f"{s}->{PLACEBO}" for s, per_t in ics.items()
-                    if gate_of(per_t.get(PLACEBO, {}))]
+    lines = res["lines"]
+    funnels = {k: line_funnel(v) for k, v in lines.items()}
+    res["funnel_by_line"] = funnels
 
-    fdr = bh_fdr(pairs, q=0.10)
+    m = funnels[MAIN_LINE]
+    raw_risk = m["raw_risk_pass"]
+    after_fdr = m["after_fdr"]
+    ortho_ok = m["after_orthogonality"]
+    effective = m["after_leading"]
+    raw_ret = m["ret_pass"]
+    placebo_pass = m["placebo_pass"]
+    fdr = m["fdr"]
+    leads = lines[MAIN_LINE]["lead"]
+
+    # 双线一致性: 以"是否存在四道筛后有效信号"为同一口径比较
+    agree = {}
+    for k, f in funnels.items():
+        agree[k] = {
+            "n_raw_risk": len(f["raw_risk_pass"]),
+            "n_after_fdr": len(f["after_fdr"]),
+            "n_after_ortho": len(f["after_orthogonality"]),
+            "n_effective": len(f["after_leading"]),
+            "has_effective": bool(f["after_leading"]),
+            "n_valid_weeks": lines[k]["span"]["n_valid_weeks"],
+            "first_valid": lines[k]["span"]["first_valid"],
+            "leading_signals": f["leading_signals"],
+        }
+    verdicts_same = len({v["has_effective"] for v in agree.values()}) == 1
+    res["line_agreement"] = {
+        "per_line": agree,
+        "main_line": MAIN_LINE,
+        "consistent": bool(verdicts_same),
+        "note": ("两线结论一致" if verdicts_same else
+                 f"**两线结论分歧**, 按计划以主线 {MAIN_LINE} 为准"),
+    }
+
+    # 兼容旧字段名(报告与外部引用)
     res["fdr"] = fdr
-    leads = res.get("lead", {})
-
-    surv = set(fdr["survivors"])
-    after_fdr = [p for p in raw_risk if p in surv]
-    ortho_ok = [p for p in after_fdr
-                if ortho.get(p.split("->")[0], {}).get("orthogonal")]
-    # 领先性 per-signal 判定
-    effective = [p for p in ortho_ok
-                 if leads.get(p.split("->")[0], {}).get("is_leading")]
-    any_leading = any(v.get("is_leading") for v in leads.values())
-
     res["funnel"] = {
-        "raw_risk_pass": raw_risk,
-        "after_fdr": after_fdr,
-        "after_orthogonality": ortho_ok,
-        "after_leading": effective,
-        "any_signal_leading": bool(any_leading),
-        "leading_signals": [k for k, v in leads.items() if v.get("is_leading")],
+        "raw_risk_pass": raw_risk, "after_fdr": after_fdr,
+        "after_orthogonality": ortho_ok, "after_leading": effective,
+        "leading_signals": m["leading_signals"],
+        "any_signal_leading": bool(m["leading_signals"]),
     }
 
     if effective and not placebo_pass:
@@ -700,8 +827,10 @@ def recompute_verdict(res: dict) -> dict:
 
     res["verdict"] = {
         "case": case, "decision": decision, "conclusion": concl, "next_step": nxt,
+        "main_line": MAIN_LINE,
         "risk_pass_raw": raw_risk, "risk_pass_effective": effective,
         "ret_pass": raw_ret, "placebo_pass": placebo_pass,
+        "line_consistent": res["line_agreement"]["consistent"],
         "gate": {"ic": IC_GATE, "t_boot": T_GATE, "fdr_q": 0.10,
                  "ortho": ORTHO_GATE},
     }
@@ -714,6 +843,7 @@ def recompute_verdict(res: dict) -> dict:
 def render(res: dict) -> None:
     L = []
     A = L.append
+    L0 = res["lines"][MAIN_LINE]
     A("# 股指期货基差 E0+E1: 能否从对冲痕迹预测风险")
     A("")
     A(f"- 生成时间: {res['generated_at']}")
@@ -762,6 +892,37 @@ def render(res: dict) -> None:
         A(f"### 标的一致性: 000905.SH 现货 vs 510500 ETF 周收益相关 = {sc['corr']} "
           f"({'PASS' if sc['pass'] else 'FAIL'}, n={sc['n']})")
     A("")
+    A("### 周频对齐后的覆盖率 / NaN 率")
+    A("")
+    A("| 项 | IC | IF |")
+    A("|---|---|---|")
+    cv = res.get("e0_coverage", {})
+    ci, cf = cv.get("IC", {}), cv.get("IF", {})
+    for key, label in [("n_weeks_total", "策略周数"),
+                       ("basis_ann_n_valid", "basis_ann 有效周"),
+                       ("basis_ann_coverage_pct", "basis_ann 覆盖率%"),
+                       ("basis_ann_nan_pct", "basis_ann NaN率%"),
+                       ("oi_coverage_pct", "oi 覆盖率%"),
+                       ("first_valid_week", "首个有效周"),
+                       ("post_listing_weeks", "上市后周数"),
+                       ("post_listing_gaps", "上市后空洞数"),
+                       ("post_listing_gap_pct", "上市后空洞率%")]:
+        A(f"| {label} | {ci.get(key)} | {cf.get(key)} |")
+    A("")
+    A("basis_ann 覆盖率低于 100% 是因为合约上市日晚于策略起点(IC 2015-04,")
+    A("IF 2010-04 但策略起点 2013-05)。判据应看\"上市后空洞率\" —— 它才反映真实缺失。")
+    A("")
+    eg = res.get("e0_gate", {})
+    A(f"### E0 硬校验: {'全部通过' if eg.get('all_pass') else '**未通过**'}")
+    A("")
+    A("| 校验项 | 结果 |")
+    A("|---|---|")
+    for k, v in (eg.get("checks") or {}).items():
+        A(f"| `{k}` | {'PASS' if v else '**FAIL**'} |")
+    A("")
+    if eg.get("failed"):
+        A(f"未通过项: {eg['failed']} —— 按计划要求不进入 E1。")
+        A("")
 
     A("## E1 时序 IC (主判据=风险类)")
     A("")
@@ -777,10 +938,13 @@ def render(res: dict) -> None:
     A("")
     A(f"门禁: |IC| >= {IC_GATE} 且 95% CI 不含 0 且 |t_boot| >= {T_GATE}。")
     A("")
+    A(f"以下为主线 **{MAIN_LINE}**(标的直接对应中证500)详表; "
+      f"对照线 {REF_LINE} 见后文双线对照节。")
+    A("")
     hdr = ["信号"] + RISK_TARGETS + RET_TARGETS + [PLACEBO + "(安慰剂)"]
     A("| " + " | ".join(hdr) + " |")
     A("|" + "---|" * len(hdr))
-    for sname, per_t in res["ic"].items():
+    for sname, per_t in L0["ic"].items():
         cells = [f"`{sname}`"]
         for tname in RISK_TARGETS + RET_TARGETS + [PLACEBO]:
             r = per_t.get(tname, {})
@@ -793,7 +957,8 @@ def render(res: dict) -> None:
             cells.append(f"{ic:+.4f} / t={t_:.2f} / {ci}{mark}")
         A("| " + " | ".join(cells) + " |")
     A("")
-    A(f"样本量 n={res['ic'][list(res['ic'])[0]][RISK_TARGETS[0]]['n']} 周 (IC 线)。")
+    A(f"样本量 n={L0['ic'][list(L0['ic'])[0]][RISK_TARGETS[0]]['n']} 周 "
+      f"({MAIN_LINE} 线)。")
     A("")
     A("### 分组对照与领先滞后是更可信的证据")
     A("")
@@ -806,7 +971,7 @@ def render(res: dict) -> None:
     A("")
     A("| 目标 | G1 均值% | G2 均值% | G3 均值% | G1-G3 | p | 显著 |")
     A("|---|---|---|---|---|---|---|")
-    for col, row in res["groups"].items():
+    for col, row in L0["groups"].items():
         d = row["G1_vs_G3"]
         dlt = "n/a" if d["delta_pp"] is None else f"{d['delta_pp']:+.3f}pp"
         A(f"| {col} | {row['G1']['mean_pct']} | {row['G2']['mean_pct']} | "
@@ -822,8 +987,8 @@ def render(res: dict) -> None:
     ks = list(range(-2, FWD_WIN + 1))
     A("| 信号 | " + " | ".join(f"k={k}" for k in ks) + " | 判定 |")
     A("|---|" + "---|" * (len(ks) + 1))
-    leads = res.get("lead", {})
-    for sname, per_k in res["lead_lag"].items():
+    leads = L0["lead"]
+    for sname, per_k in L0["lead_lag"].items():
         cells = []
         for k in ks:
             x = per_k.get(str(k))
@@ -840,10 +1005,50 @@ def render(res: dict) -> None:
     A("")
     A("| 信号 | mom6 | tapered_vol14 | nasdaq_vol | ewma_crisis_corr | max | 正交 |")
     A("|---|---|---|---|---|---|---|")
-    for sname, row in res["ortho"].items():
+    for sname, row in L0["ortho"].items():
         A(f"| `{sname}` | {row.get('mom6')} | {row.get('tapered_vol14')} | "
           f"{row.get('nasdaq_vol')} | {row.get('ewma_crisis_corr')} | "
           f"{row.get('max_abs')} | {'YES' if row.get('orthogonal') else 'no'} |")
+    A("")
+
+    A("## 双线对照 (IC 主线 vs IF 长样本对照线)")
+    A("")
+    A("两线共用同一组目标(中证500 未来风险 + 策略回撤 + 纳指安慰剂): 关心的是对")
+    A("**本策略**的预测力。IC 标的直接对应持仓资产; IF 作为 A 股整体对冲需求代理")
+    A("且样本更长。按计划: 两线不一致时以 IC 为准并标注分歧。")
+    A("")
+    la = res.get("line_agreement", {})
+    A("| 线 | 首个有效周 | 有效周数 | 筛1 单项过 | 筛2 FDR | 筛3 正交 | 筛4 领先 | 领先信号 |")
+    A("|---|---|---|---|---|---|---|---|")
+    for k, v in (la.get("per_line") or {}).items():
+        tag = " (主)" if k == MAIN_LINE else " (对照)"
+        A(f"| **{k}**{tag} | {v['first_valid']} | {v['n_valid_weeks']} | "
+          f"{v['n_raw_risk']} | {v['n_after_fdr']} | {v['n_after_ortho']} | "
+          f"{v['n_effective']} | {v['leading_signals'] or '无'} |")
+    A("")
+    A(f"**一致性**: {la.get('note')}")
+    A("")
+    A(f"### 对照线 {REF_LINE} 时序 IC 详表")
+    A("")
+    LR = res["lines"][REF_LINE]
+    A("| " + " | ".join(hdr) + " |")
+    A("|" + "---|" * len(hdr))
+    for sname, per_t in LR["ic"].items():
+        cells = [f"`{sname}`"]
+        for tname in RISK_TARGETS + RET_TARGETS + [PLACEBO]:
+            r = per_t.get(tname, {})
+            ic_v, t_v = r.get("ic"), r.get("t_boot")
+            if ic_v is None or t_v is None:
+                cells.append("n/a")
+                continue
+            ci_s = "CI含0" if not r.get("ci_excludes_zero") else "CI排0"
+            mk = " **PASS**" if gate_of(r) else ""
+            cells.append(f"{ic_v:+.4f} / t={t_v:.2f} / {ci_s}{mk}")
+        A("| " + " | ".join(cells) + " |")
+    A("")
+    A(f"对照线领先性: " + ", ".join(
+        f"{s}={'领先' if v.get('is_leading') else '同步'}"
+        for s, v in LR["lead"].items()))
     A("")
 
     v = res["verdict"]
@@ -918,10 +1123,11 @@ def plot(res: dict, wk_ic: pd.DataFrame | None = None) -> None:
 
     ax = axes[1]
     cols = RISK_TARGETS
+    groups = res["lines"][MAIN_LINE]["groups"]
     x = np.arange(len(cols))
     w = 0.26
     for j, g in enumerate(("G1", "G2", "G3")):
-        vals = [res["groups"][c][g]["mean_pct"] or 0.0 for c in cols]
+        vals = [groups[c][g]["mean_pct"] or 0.0 for c in cols]
         ax.bar(x + (j - 1) * w, vals, w, label=f"{g}"
                + (" 最深贴水" if g == "G1" else (" 最弱贴水" if g == "G3" else "")))
     ax.set_xticks(x)
@@ -978,46 +1184,61 @@ def main() -> None:
                                    ["basis_ann", "basis_pct", "oi", "spot_close"])
     e0_roll = {r: e0_roll_jump_check(daily[r]) for r in ROOTS}
     e0_spot = e0_spot_etf_consistency(wk["IC"]["spot_close"], weekly)
+    e0_cover = {r: e0_weekly_coverage(wk[r], len(weekly)) for r in ROOTS}
+    eg = e0_gate(e0, e0_roll, e0_spot, e0_cover)
     print(f"  换月跳变: IC no_jump={e0_roll['IC'].get('no_jump')} | "
-          f"标的一致性 corr={e0_spot.get('corr')}")
+          f"标的一致性 corr={e0_spot.get('corr')} | "
+          f"上市后空洞率 IC={e0_cover['IC'].get('post_listing_gap_pct')}% "
+          f"IF={e0_cover['IF'].get('post_listing_gap_pct')}%")
+    print(f"  E0 硬校验: {'全部通过' if eg['all_pass'] else 'FAIL ' + str(eg['failed'])}")
 
-    print("E1: 信号与目标 ...")
-    sig = build_signals(wk["IC"], wk["IF"])
-    res_bt = run_backtest(cfg)
-    tg = build_targets(weekly, res_bt.nav_series["nav"])
-    print("  信号非空周数: " + ", ".join(
-        f"{c}={int(sig[c].notna().sum())}" for c in sig.columns))
-
-    ic_tbl = {}
-    for sname in sig.columns:
-        ic_tbl[sname] = {t: ts_ic(sig[sname], tg[t]) for t in tg.columns}
-
-    grp = expanding_tercile(sig["basis_z_exp"])
-    groups = group_contrast(grp, tg)
-    ll = lead_lag_all(sig, weekly)
-    ortho = orthogonality(sig, weekly, cfg)
-
-    res = {
+    base_res = {
         "generated_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "data_as_of": str(weekly.index.max().date()),
         "params": {"near_expiry_days": NEAR_EXPIRY_DAYS,
                    "min_expanding": MIN_EXPANDING, "roll_ic_win": ROLL_IC_WIN,
                    "fwd_win": FWD_WIN, "ic_gate": IC_GATE, "t_gate": T_GATE,
-                   "ortho_gate": ORTHO_GATE},
+                   "ortho_gate": ORTHO_GATE, "n_boot": N_BOOT, "block": BLOCK,
+                   "seed": SEED, "main_line": MAIN_LINE, "ref_line": REF_LINE},
         "e0": e0, "e0_roll_jump": e0_roll, "e0_spot_etf": e0_spot,
+        "e0_coverage": e0_cover, "e0_gate": eg,
         "n_weeks": int(len(weekly)),
-        "signal_coverage": {c: int(sig[c].notna().sum()) for c in sig.columns},
-        "ic": ic_tbl, "groups": groups, "lead_lag": ll,
-        "lead": {c: leading_ok(ll[c]) for c in sig.columns}, "ortho": ortho,
     }
+
+    # 计划要求: E0 校验不达标即中止 —— 先写出报告再非零退出, 不跑 E1
+    if not eg["all_pass"]:
+        OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
+        OUT_JSON.write_text(json.dumps(base_res, ensure_ascii=False, indent=1,
+                                       default=str), encoding="utf-8")
+        print(f"\nE0 硬校验未通过: {eg['failed']}\n按计划中止, 不进入 E1。")
+        sys.exit(1)
+
+    print("E1: 双线信号与目标 ...")
+    res_bt = run_backtest(cfg)
+    tg = build_targets(weekly, res_bt.nav_series["nav"])
+
+    sigs = {
+        MAIN_LINE: build_signals(wk[MAIN_LINE], wk[REF_LINE]),
+        REF_LINE: build_signals(wk[REF_LINE]),
+    }
+    lines = {}
+    for k, sg in sigs.items():
+        print(f"  [{k}] 信号 {len(sg.columns)} 个, 非空周数: " + ", ".join(
+            f"{c}={int(sg[c].notna().sum())}" for c in sg.columns))
+        lines[k] = run_e1(sg, tg, weekly, cfg)
+
+    res = dict(base_res)
+    res["lines"] = lines
     res = recompute_verdict(res)
 
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(res, ensure_ascii=False, indent=1,
                                    default=str), encoding="utf-8")
     render(res)
-    plot(res, wk["IC"])
-    print(f"\n裁决: {res['verdict']['decision']} — {res['verdict']['case']}")
+    plot(res, wk[MAIN_LINE])
+    la = res["line_agreement"]
+    print(f"\n双线一致性: {la['note']}")
+    print(f"裁决: {res['verdict']['decision']} — {res['verdict']['case']}")
 
 
 if __name__ == "__main__":
