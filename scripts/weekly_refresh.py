@@ -21,7 +21,8 @@
     3. 数据质量校验（NaN / 新增行收益率跳变 >20% / 日期合法性），失败即中止，
        不进入看板生成与提交
     4. 看板生成（gen_dashboard.py → 覆写 index.html + dashboard/data.json）
-    5. git add 精确文件集 + commit + push（无实际变化跳过 commit；push 失败重试 1 次）
+    5. git add 精确文件集（含 NAV / 日频缓存 / 看板 / national_team 两个产物）
+       + commit + push（无实际变化跳过 commit；push 失败重试 1 次）
     6. 执行摘要（stdout）
 
 退出码语义:
@@ -67,11 +68,16 @@ LOCK_MAX_AGE_SEC = 2 * 3600
 LOG_FILE = ROOT / 'output' / f"refresh_log_{datetime.now().strftime('%Y%m%d')}.log"
 
 # 步骤 5 的精确提交文件集（目录路径覆盖其下 *.csv）
+# national_team 两个产物由 gen_dashboard 每次重写, 不列入则每次刷新后都留脏。
+# 刻意用显式文件而非目录 output/national_team: data/national_team/ 已被 .gitignore
+# 整体忽略(份额明细敏感), 目录通配会在将来新增产物时静默提交未预期的文件。
 GIT_PATHS = [
     'data/all_etfs_nav_latest.csv',
     'data/experiments/tushare_cache',
     'index.html',
     'dashboard/data.json',
+    'output/national_team/position_model.json',
+    'output/national_team/weekly_report.md',
 ]
 
 EXIT_OK = 0
