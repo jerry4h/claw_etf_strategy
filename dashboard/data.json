@@ -2,23 +2,23 @@
   "meta": {
     "strategy": "虾池ETF轮动 v4.6 — 定向boost分级应用",
     "version": "4.6",
-    "generated_at": "2026-09-04 20:51 (UTC+8)",
-    "data_range": "2013-08-30 ~ 2026-09-04",
-    "data_as_of": "2026-09-04",
+    "generated_at": "2026-09-13 01:17 (UTC+8)",
+    "data_range": "2013-08-30 ~ 2026-09-11",
+    "data_as_of": "2026-09-11",
     "data_source": "Tushare",
-    "weeks": 668,
+    "weeks": 669,
     "version_note": "生产版（Layer3.5 定向 boost 分级应用）"
   },
   "metrics": {
-    "total_return": 533.88,
-    "annual_return": 15.46,
+    "total_return": 530.58,
+    "annual_return": 15.39,
     "max_drawdown": 5.76,
-    "current_drawdown": 0.28,
-    "sharpe": 1.614,
-    "calmar": 2.68,
-    "annual_vol": 7.55,
-    "win_rate": 62.6,
-    "defensive_weeks": 653
+    "current_drawdown": 0.8,
+    "sharpe": 1.606,
+    "calmar": 2.67,
+    "annual_vol": 7.54,
+    "win_rate": 62.5,
+    "defensive_weeks": 654
   },
   "nav": {
     "dates": [
@@ -355,7 +355,8 @@
       "2026-07-17",
       "2026-07-31",
       "2026-08-14",
-      "2026-08-28"
+      "2026-08-28",
+      "2026-09-11"
     ],
     "values": [
       1.0053,
@@ -691,7 +692,8 @@
       6.0913,
       6.1841,
       6.2696,
-      6.3375
+      6.3375,
+      6.3058
     ]
   },
   "defense": {
@@ -1029,7 +1031,8 @@
       "2026-07-17",
       "2026-07-31",
       "2026-08-14",
-      "2026-08-28"
+      "2026-08-28",
+      "2026-09-11"
     ],
     "ratios": [
       35.0,
@@ -1365,7 +1368,8 @@
       64.4,
       64.7,
       73.1,
-      76.2
+      76.2,
+      74.7
     ]
   },
   "drawdown": {
@@ -1703,7 +1707,8 @@
       "2026-07-17",
       "2026-07-31",
       "2026-08-14",
-      "2026-08-28"
+      "2026-08-28",
+      "2026-09-11"
     ],
     "ratios": [
       0.0,
@@ -2039,13 +2044,14 @@
       4.17,
       2.71,
       1.37,
-      0.3
+      0.3,
+      0.8
     ]
   },
   "holdings": [
     {
       "name": "纳指ETF",
-      "weight": 11.8,
+      "weight": 13.4,
       "category": "进攻"
     },
     {
@@ -2055,17 +2061,17 @@
     },
     {
       "name": "黄金ETF",
-      "weight": 12.0,
+      "weight": 11.8,
       "category": "进攻"
     },
     {
       "name": "红利低波ETF",
-      "weight": 22.8,
+      "weight": 24.6,
       "category": "防御"
     },
     {
       "name": "国债ETF",
-      "weight": 53.5,
+      "weight": 50.1,
       "category": "防御"
     }
   ],
@@ -2073,7 +2079,7 @@
     "next_holdings": [
       {
         "name": "纳指ETF",
-        "weight": 13.4,
+        "weight": 14.8,
         "category": "进攻"
       },
       {
@@ -2083,24 +2089,24 @@
       },
       {
         "name": "黄金ETF",
-        "weight": 11.8,
+        "weight": 12.6,
         "category": "进攻"
       },
       {
         "name": "红利低波ETF",
-        "weight": 24.6,
+        "weight": 25.2,
         "category": "防御"
       },
       {
         "name": "国债ETF",
-        "weight": 50.1,
+        "weight": 47.4,
         "category": "防御"
       }
     ],
-    "this_signal": "2026-08-28",
-    "this_exec": "2026-08-31",
-    "next_signal": "2026-09-04",
-    "next_exec": "2026-09-07"
+    "this_signal": "2026-09-04",
+    "this_exec": "2026-09-07",
+    "next_signal": "2026-09-11",
+    "next_exec": "2026-09-14"
   },
   "annual_returns": [
     {
@@ -2170,58 +2176,58 @@
     },
     {
       "year": 2026,
-      "return": 11.1,
-      "avg_defense": 57.0
+      "return": 10.5,
+      "avg_defense": 57.5
     }
   ],
   "etf_stats": [
     {
       "name": "纳指ETF",
       "avg_weight": 16.9,
-      "held_weeks": 492,
+      "held_weeks": 493,
       "held_pct": 73.7
     },
     {
       "name": "中证500ETF",
       "avg_weight": 8.4,
       "held_weeks": 285,
-      "held_pct": 42.7
+      "held_pct": 42.6
     },
     {
       "name": "黄金ETF",
-      "avg_weight": 23.3,
-      "held_weeks": 559,
+      "avg_weight": 23.2,
+      "held_weeks": 560,
       "held_pct": 83.7
     },
     {
       "name": "红利低波ETF",
       "avg_weight": 19.3,
-      "held_weeks": 644,
+      "held_weeks": 645,
       "held_pct": 96.4
     },
     {
       "name": "国债ETF",
       "avg_weight": 32.2,
-      "held_weeks": 668,
+      "held_weeks": 669,
       "held_pct": 100.0
     }
   ],
   "recent_ytd": {
     "start": "2026-01-09",
-    "end": "2026-09-04",
-    "return": 11.11,
+    "end": "2026-09-11",
+    "return": 10.53,
     "max_drawdown": 4.94
   },
   "recent_year1": {
-    "start": "2025-09-05",
-    "end": "2026-09-04",
-    "return": 22.6,
+    "start": "2025-09-12",
+    "end": "2026-09-11",
+    "return": 19.98,
     "max_drawdown": 4.94
   },
   "recent_month3": {
-    "start": "2026-06-05",
-    "end": "2026-09-04",
-    "return": 0.96,
+    "start": "2026-06-12",
+    "end": "2026-09-11",
+    "return": 0.63,
     "max_drawdown": 4.17
   },
   "params": {
@@ -2244,40 +2250,40 @@
   },
   "national_team": {
     "available": true,
-    "date": "20260904",
+    "date": "20260911",
     "direction_sign": "兑现",
-    "rotation_heat": "创业板",
-    "concentration_hhi": 0.4162,
+    "rotation_heat": "科创",
+    "concentration_hhi": 0.2042,
     "n_indices_active": 11,
     "sector_cards": [
       {
         "sector": "小盘",
-        "growth_20d": -26.1,
+        "growth_20d": -6.7,
         "current_aum": 651.3
       },
       {
-        "sector": "中盘",
-        "growth_20d": -7.5,
-        "current_aum": 1343.6
-      },
-      {
-        "sector": "大盘核心",
-        "growth_20d": -5.3,
-        "current_aum": 3761.3
-      },
-      {
         "sector": "科创",
-        "growth_20d": -2.8,
+        "growth_20d": 3.7,
         "current_aum": 1699.6
       },
       {
-        "sector": "宽基综合",
-        "growth_20d": -1.1
+        "sector": "创业板",
+        "growth_20d": 3.5,
+        "current_aum": 2511.4
       },
       {
-        "sector": "创业板",
-        "growth_20d": 0.3,
-        "current_aum": 2511.4
+        "sector": "大盘核心",
+        "growth_20d": -2.6,
+        "current_aum": 3761.3
+      },
+      {
+        "sector": "宽基综合",
+        "growth_20d": 2.4
+      },
+      {
+        "sector": "中盘",
+        "growth_20d": 1.6,
+        "current_aum": 1343.6
       }
     ],
     "share_trends": {
@@ -18342,164 +18348,164 @@
     },
     "recent_events": [
       {
-        "date": "20260904",
-        "etf": "159211.SZ",
-        "index": "深证",
+        "date": "20260911",
+        "etf": "589560.SH",
+        "index": "科创",
         "trigger_type": "is_anomaly",
-        "share_growth_20d": 20.32,
+        "share_growth_20d": 14.02,
+        "hist_pctile": 88.6
+      },
+      {
+        "date": "20260911",
+        "etf": "515770.SH",
+        "index": "MSCI",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 7.55,
+        "hist_pctile": 96.2
+      },
+      {
+        "date": "20260911",
+        "etf": "562660.SH",
+        "index": "中证2000",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 11.63,
+        "hist_pctile": 66.5
+      },
+      {
+        "date": "20260911",
+        "etf": "561900.SH",
+        "index": "沪深300",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 25.71,
+        "hist_pctile": 99.8
+      },
+      {
+        "date": "20260911",
+        "etf": "159247.SZ",
+        "index": "创业板",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 41.27,
+        "hist_pctile": 80.6
+      },
+      {
+        "date": "20260911",
+        "etf": "588280.SH",
+        "index": "上证50",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 14.13,
+        "hist_pctile": 92.2
+      },
+      {
+        "date": "20260911",
+        "etf": "588090.SH",
+        "index": "上证50",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 12.58,
+        "hist_pctile": 92.0
+      },
+      {
+        "date": "20260911",
+        "etf": "515530.SH",
+        "index": "中证500",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 13.07,
+        "hist_pctile": 88.9
+      },
+      {
+        "date": "20260911",
+        "etf": "159295.SZ",
+        "index": "创业板",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 23.2,
         "hist_pctile": 93.2
       },
       {
-        "date": "20260904",
-        "etf": "159350.SZ",
-        "index": "深证",
+        "date": "20260911",
+        "etf": "588840.SH",
+        "index": "上证50",
         "trigger_type": "is_anomaly",
-        "share_growth_20d": 18.1,
-        "hist_pctile": 89.2
+        "share_growth_20d": 16.29,
+        "hist_pctile": 91.5
       },
       {
-        "date": "20260904",
-        "etf": "159923.SZ",
-        "index": "中证A",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 24.42,
-        "hist_pctile": 95.0
-      },
-      {
-        "date": "20260904",
-        "etf": "159219.SZ",
-        "index": "深证",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 23.84,
-        "hist_pctile": 90.2
-      },
-      {
-        "date": "20260904",
-        "etf": "159627.SZ",
-        "index": "中证A",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 10.46,
-        "hist_pctile": 85.9
-      },
-      {
-        "date": "20260904",
-        "etf": "159295.SZ",
-        "index": "创业板",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 20.3,
-        "hist_pctile": 92.5
-      },
-      {
-        "date": "20260904",
-        "etf": "159216.SZ",
-        "index": "深证",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 40.73,
-        "hist_pctile": 95.7
-      },
-      {
-        "date": "20260904",
-        "etf": "159247.SZ",
-        "index": "创业板",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 29.08,
-        "hist_pctile": 79.8
-      },
-      {
-        "date": "20260904",
-        "etf": "159358.SZ",
-        "index": "中证A",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 27.11,
-        "hist_pctile": 97.1
-      },
-      {
-        "date": "20260904",
-        "etf": "159971.SZ",
-        "index": "创业板",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 15.74,
-        "hist_pctile": 81.6
-      },
-      {
-        "date": "20260903",
-        "etf": "159971.SZ",
-        "index": "创业板",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 10.73,
-        "hist_pctile": 79.9
-      },
-      {
-        "date": "20260903",
-        "etf": "159621.SZ",
-        "index": "MSCI",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 26.24,
-        "hist_pctile": 93.0
-      },
-      {
-        "date": "20260903",
-        "etf": "159350.SZ",
-        "index": "深证",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 20.91,
-        "hist_pctile": 91.0
-      },
-      {
-        "date": "20260903",
-        "etf": "512080.SH",
-        "index": "中证A",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 25.15,
-        "hist_pctile": 94.1
-      },
-      {
-        "date": "20260903",
-        "etf": "159247.SZ",
-        "index": "创业板",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 12.55,
-        "hist_pctile": 73.2
-      },
-      {
-        "date": "20260903",
-        "etf": "510570.SH",
-        "index": "中证500",
-        "trigger_type": "is_anomaly",
-        "share_growth_20d": 35.15,
-        "hist_pctile": 95.2
-      },
-      {
-        "date": "20260903",
-        "etf": "588210.SH",
+        "date": "20260911",
+        "etf": "589520.SH",
         "index": "科创",
         "trigger_type": "is_anomaly",
-        "share_growth_20d": 14.89,
+        "share_growth_20d": 25.6,
+        "hist_pctile": 90.3
+      },
+      {
+        "date": "20260911",
+        "etf": "159211.SZ",
+        "index": "深证",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 10.16,
         "hist_pctile": 84.5
       },
       {
-        "date": "20260903",
-        "etf": "588230.SH",
+        "date": "20260911",
+        "etf": "588160.SH",
         "index": "科创",
         "trigger_type": "is_anomaly",
-        "share_growth_20d": 13.43,
-        "hist_pctile": 71.2
+        "share_growth_20d": 11.4,
+        "hist_pctile": 78.0
       },
       {
-        "date": "20260903",
-        "etf": "159295.SZ",
+        "date": "20260911",
+        "etf": "159150.SZ",
+        "index": "深证",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 6.52,
+        "hist_pctile": 96.3
+      },
+      {
+        "date": "20260911",
+        "etf": "588000.SH",
+        "index": "上证50",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 14.76,
+        "hist_pctile": 84.2
+      },
+      {
+        "date": "20260911",
+        "etf": "588060.SH",
+        "index": "上证50",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 16.11,
+        "hist_pctile": 76.8
+      },
+      {
+        "date": "20260911",
+        "etf": "159971.SZ",
         "index": "创业板",
         "trigger_type": "is_anomaly",
-        "share_growth_20d": 22.55,
-        "hist_pctile": 93.5
+        "share_growth_20d": 16.37,
+        "hist_pctile": 81.7
       },
       {
-        "date": "20260903",
-        "etf": "588220.SH",
+        "date": "20260911",
+        "etf": "588210.SH",
         "index": "科创",
         "trigger_type": "is_anomaly",
-        "share_growth_20d": 18.76,
-        "hist_pctile": 84.4
+        "share_growth_20d": 12.46,
+        "hist_pctile": 79.0
+      },
+      {
+        "date": "20260911",
+        "etf": "588940.SH",
+        "index": "上证50",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 11.26,
+        "hist_pctile": 52.0
+      },
+      {
+        "date": "20260911",
+        "etf": "589780.SH",
+        "index": "科创",
+        "trigger_type": "is_anomaly",
+        "share_growth_20d": 14.95,
+        "hist_pctile": 91.1
       }
     ]
   }
