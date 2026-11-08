@@ -1,112 +1,112 @@
 {
-  "generated_at": "2026-10-25 23:03:34",
+  "generated_at": "2026-11-08 19:36:16",
   "data_dir": "/home/ubuntu/claw_etf_strategy/data/national_team",
   "n_etfs_loaded": 398,
   "n_etfs_signals": 362,
   "market_overview": {
-    "date": "20261023",
+    "date": "20261106",
     "sector_exposure": {
-      "宽基综合": 0.12233377514276636,
-      "大盘核心": 0.044216315396328955,
-      "小盘": 0.14287225493462308,
-      "中盘": 0.057842696987812026,
-      "创业板": 0.16210854640078248,
-      "科创": 0.0855636468398956
+      "宽基综合": 0.1863103779977664,
+      "大盘核心": 0.19251881687895073,
+      "小盘": 0.392500650940514,
+      "中盘": 0.1004436950773512,
+      "创业板": 0.29523120775712086,
+      "科创": 0.12572581562152177
     },
-    "rotation_heat": "创业板",
+    "rotation_heat": "小盘",
     "direction_sign": "入场",
-    "concentration_hhi": 0.1964,
+    "concentration_hhi": 0.2028,
     "index_growth_20d": {
-      "MSCI": 0.014946,
-      "上证50": -0.069613,
-      "other": 0.412338,
-      "中证1000": 0.231213,
-      "中证2000": 0.054532,
-      "中证500": 0.057843,
-      "中证A": 0.02797,
-      "创业板": 0.162109,
-      "沪深300": 0.158046,
-      "深证": 0.034081,
-      "科创": 0.085564
+      "MSCI": 0.042625,
+      "上证50": 0.081573,
+      "other": 0.330813,
+      "中证1000": 0.556486,
+      "中证2000": 0.228516,
+      "中证500": 0.100444,
+      "中证A": 0.074676,
+      "创业板": 0.295231,
+      "沪深300": 0.303464,
+      "深证": 0.297128,
+      "科创": 0.125726
     },
     "n_indices_active": 11
   },
   "index_latest": {
     "MSCI": {
-      "date": "20261023",
-      "growth_20d": 0.014946,
-      "peak_ratio": 0.1254,
-      "hist_pctile": 0.7452,
+      "date": "20261106",
+      "growth_20d": 0.042625,
+      "peak_ratio": 0.1335,
+      "hist_pctile": 0.9541,
       "n_etfs": 15
     },
     "上证50": {
-      "date": "20260630",
-      "growth_20d": -0.069613,
-      "peak_ratio": 0.4236,
+      "date": "20260930",
+      "growth_20d": 0.081573,
+      "peak_ratio": 0.3924,
       "hist_pctile": null,
       "n_etfs": 29
     },
     "other": {
-      "date": "20261023",
-      "growth_20d": 0.412338,
-      "peak_ratio": 0.9894,
-      "hist_pctile": 0.9227,
+      "date": "20261106",
+      "growth_20d": 0.330813,
+      "peak_ratio": 0.9695,
+      "hist_pctile": 0.8623,
       "n_etfs": 3
     },
     "中证1000": {
-      "date": "20261023",
-      "growth_20d": 0.231213,
-      "peak_ratio": 0.0938,
-      "hist_pctile": 0.3518,
+      "date": "20261106",
+      "growth_20d": 0.556486,
+      "peak_ratio": 0.1331,
+      "hist_pctile": 0.9254,
       "n_etfs": 7
     },
     "中证2000": {
-      "date": "20261023",
-      "growth_20d": 0.054532,
-      "peak_ratio": 0.6248,
-      "hist_pctile": 0.6448,
+      "date": "20261106",
+      "growth_20d": 0.228516,
+      "peak_ratio": 0.7569,
+      "hist_pctile": 0.8315,
       "n_etfs": 10
     },
     "中证500": {
-      "date": "20261023",
-      "growth_20d": 0.057843,
-      "peak_ratio": 0.2647,
-      "hist_pctile": 0.7897,
+      "date": "20261106",
+      "growth_20d": 0.100444,
+      "peak_ratio": 0.277,
+      "hist_pctile": 0.7939,
       "n_etfs": 30
     },
     "中证A": {
-      "date": "20261023",
-      "growth_20d": 0.02797,
-      "peak_ratio": 0.4865,
-      "hist_pctile": 0.8156,
+      "date": "20261106",
+      "growth_20d": 0.074676,
+      "peak_ratio": 0.4798,
+      "hist_pctile": 0.6243,
       "n_etfs": 66
     },
     "创业板": {
-      "date": "20261023",
-      "growth_20d": 0.162109,
-      "peak_ratio": 0.6631,
-      "hist_pctile": 0.4689,
+      "date": "20261106",
+      "growth_20d": 0.295231,
+      "peak_ratio": 0.7971,
+      "hist_pctile": 0.8446,
       "n_etfs": 57
     },
     "沪深300": {
-      "date": "20261023",
-      "growth_20d": 0.158046,
-      "peak_ratio": 0.5502,
-      "hist_pctile": 0.8962,
+      "date": "20261106",
+      "growth_20d": 0.303464,
+      "peak_ratio": 0.6266,
+      "hist_pctile": 0.8875,
       "n_etfs": 40
     },
     "深证": {
-      "date": "20261023",
-      "growth_20d": 0.034081,
-      "peak_ratio": 0.0396,
-      "hist_pctile": 0.9453,
+      "date": "20261106",
+      "growth_20d": 0.297128,
+      "peak_ratio": 0.0411,
+      "hist_pctile": 0.9607,
       "n_etfs": 23
     },
     "科创": {
-      "date": "20261023",
-      "growth_20d": 0.085564,
-      "peak_ratio": 0.5423,
-      "hist_pctile": 0.5631,
+      "date": "20261106",
+      "growth_20d": 0.125726,
+      "peak_ratio": 0.5777,
+      "hist_pctile": 0.7611,
       "n_etfs": 82
     }
   }
