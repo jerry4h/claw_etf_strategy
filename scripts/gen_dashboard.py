@@ -356,15 +356,14 @@ def _build_data(cfg):
         },
     }
 
-    step = max(1, len(nav) // 260)
-    nav_s = nav.iloc[::step]
+    nav_dates = [str(d.date()) for d in nav.index]
 
-    data["nav"] = {"dates": [str(d.date()) for d in nav_s.index],
-                   "values": [round(v, 4) for v in nav_s["nav"].tolist()]}
-    data["defense"] = {"dates": [str(d.date()) for d in nav_s.index],
-                       "ratios": [round(v * 100, 1) for v in nav_s["def_ratio"].tolist()]}
-    data["drawdown"] = {"dates": [str(d.date()) for d in nav_s.index],
-                        "ratios": [round(v * 100, 2) for v in nav_s["drawdown"].tolist()]}
+    data["nav"] = {"dates": nav_dates,
+                   "values": [round(v, 4) for v in nav["nav"].tolist()]}
+    data["defense"] = {"dates": nav_dates,
+                       "ratios": [round(v * 100, 1) for v in nav["def_ratio"].tolist()]}
+    data["drawdown"] = {"dates": nav_dates,
+                        "ratios": [round(v * 100, 2) for v in nav["drawdown"].tolist()]}
 
     latest = nav.iloc[-1]
     data["holdings"] = [
@@ -548,9 +547,14 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 .panel h2 .tgl {float:right;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.68rem;padding:2px 10px;border-radius:6px;cursor:pointer;letter-spacing:0;text-transform:none;transition:color .2s,border-color .2s;}
 .panel h2 .tgl:hover {color:var(--accent);border-color:var(--accent);}
 .chart-err {padding:48px 12px;text-align:center;color:var(--muted);font-size:0.85rem;border:1px dashed var(--border);border-radius:8px;}
+.chart-range {display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px;}
+.range-btn {background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.7rem;padding:3px 10px;border-radius:6px;cursor:pointer;transition:color .2s,border-color .2s,background .2s;}
+.range-btn:hover {color:var(--accent);border-color:var(--accent);}
+.range-btn.active {background:rgba(96,165,250,0.15);border-color:var(--accent);color:var(--accent);}
+.range-lbl {margin-left:auto;font-size:0.68rem;color:var(--muted);white-space:nowrap;}
 .grid-2 {display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px;}
 .grid-2-1 {display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px;}
-@media(max-width:600px){body{padding:14px;}.rc{grid-template-columns:1fr;}.panel{padding:12px;overflow-x:auto;}}
+@media(max-width:600px){body{padding:14px;}.rc{grid-template-columns:1fr;}.panel{padding:12px;overflow-x:auto;}.range-lbl{margin-left:0;flex-basis:100%;}}
 .table-wrap {width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .ht {width:100%;border-collapse:collapse;font-size:0.82rem;}
 .ht th {text-align:left;color:var(--muted);padding:6px 8px;font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -602,6 +606,13 @@ body {font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans 
 <div class="grid-2-1">
   <div class="panel">
     <h2>📈 净值 · 回撤 · 防御 <button class="tgl" id="scale-toggle" type="button">对数坐标</button></h2>
+    <div class="chart-range" id="range-selector">
+      <button class="range-btn" data-period="3m" type="button">近3月</button>
+      <button class="range-btn" data-period="1y" type="button">近1年</button>
+      <button class="range-btn" data-period="3y" type="button">近3年</button>
+      <button class="range-btn" data-period="all" type="button">全部</button>
+      <span class="range-lbl" id="range-lbl"></span>
+    </div>
     <div class="chart-stack">
       <div class="chart-wrap"><canvas id="navChart"></canvas></div>
       <div class="chart-wrap"><canvas id="ddChart"></canvas></div>
@@ -662,7 +673,7 @@ const DATA = __DATA__;
 
 (function() {
   const d = DATA;
-  const {meta,metrics:m,nav:nd,defense:dd,drawdown:dwd,
+  const {meta,metrics:m,nav:nd,defense:dfe,drawdown:dwd,
          holdings,annual_returns:ann,etf_stats:etfS,
          holdings_live:hl,
          recent_ytd:rytd,recent_year1:r1y,recent_month3:r3m,params,national_team:nt} = d;
@@ -699,7 +710,7 @@ const DATA = __DATA__;
     animation:{duration:0}, transitions:{active:{animation:{duration:0}}},
     plugins:{legend:{display:false}, tooltip:{animation:TIP_ANIM}},
     scales:{x:{ticks:{maxTicksLimit:8,color:'#8892a8',font:{size:9}}, grid:{color:'rgba(30,42,69,0.5)'}},
-            y:{ticks:{color:'#8892a8',font:{size:9}}, grid:{color:'rgba(30,42,69,0.5)'}}},
+            y:{ticks:{maxTicksLimit:6,color:'#8892a8',font:{size:9}}, grid:{color:'rgba(30,42,69,0.5)'}}},
     interaction:{mode:'nearest',axis:'x',intersect:false},
   };
   const vline = {
@@ -734,12 +745,17 @@ const DATA = __DATA__;
   const ON_HOVER = (e, el, chart) => syncCX(chart);
 
   // 1. NAV
+  let nc, dc, dfc;
   const ns = clean(nd?.dates, nd?.values);
   if (canChart && ns.dates.length) {
-    const nc = new Chart(document.getElementById('navChart'), {
+    nc = new Chart(document.getElementById('navChart'), {
       type:'line', data:{labels:ns.dates, datasets:[{label:'净值', data:ns.vals, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.08)', fill:true, tension:0.1, pointRadius:0, borderWidth:1.5}]},
       options:{...CHART_OPT,
-        scales:{...CHART_OPT.scales, y:{...CHART_OPT.scales.y, type:'logarithmic', ticks:{...CHART_OPT.scales.y.ticks, callback:v=>Number(v).toFixed(1)+'x'}}},
+        scales:{...CHART_OPT.scales, y:{...CHART_OPT.scales.y, type:'logarithmic', ticks:{...CHART_OPT.scales.y.ticks, callback(v) {
+          const vs = this.chart.data.datasets[0].data;
+          const span = vs.length ? Math.max(...vs) - Math.min(...vs) : 0;
+          return Number(v).toFixed(span < 1 ? 2 : 1) + 'x';
+        }}}},
         onHover:ON_HOVER,
       },
       plugins:[vline]
@@ -750,7 +766,7 @@ const DATA = __DATA__;
   // 2. Drawdown
   const ds = clean(dwd?.dates, dwd?.ratios);
   if (canChart && ds.dates.length) {
-    const dc = new Chart(document.getElementById('ddChart'), {
+    dc = new Chart(document.getElementById('ddChart'), {
       type:'line', data:{labels:ds.dates, datasets:[{label:'回撤', data:ds.vals, borderColor:'#f87171', backgroundColor:'rgba(248,113,113,0.15)', fill:true, tension:0.1, pointRadius:0, borderWidth:1}]},
       options:{...CHART_OPT,
         plugins:{...CHART_OPT.plugins, tooltip:{...CHART_OPT.plugins.tooltip, callbacks:{label:c=>'回撤: '+c.parsed.y.toFixed(2)+'%'}}},
@@ -763,9 +779,9 @@ const DATA = __DATA__;
   } else if (!canChart) chartMsg('ddChart', CDN_ERR);
 
   // 3. Defense
-  const dds = clean(dd?.dates, dd?.ratios);
+  const dds = clean(dfe?.dates, dfe?.ratios);
   if (canChart && dds.dates.length) {
-    const dfc = new Chart(document.getElementById('defChart'), {
+    dfc = new Chart(document.getElementById('defChart'), {
       type:'line', data:{labels:dds.dates, datasets:[{label:'防御比', data:dds.vals, borderColor:'#34d399', backgroundColor:'rgba(52,211,153,0.12)', fill:true, tension:0.1, pointRadius:0, borderWidth:1}]},
       options:{...CHART_OPT,
         plugins:{...CHART_OPT.plugins, tooltip:{...CHART_OPT.plugins.tooltip, callbacks:{label:c=>'防御比: '+c.parsed.y.toFixed(1)+'%'}}},
@@ -777,14 +793,58 @@ const DATA = __DATA__;
     stkCharts.push(dfc);
   } else if (!canChart) chartMsg('defChart', CDN_ERR);
 
-  // Scale toggle
-  const st = document.getElementById('scale-toggle');
+  // Scale toggle（对数轴只在窗口足够长时可用；短窗口自动退回线性并覆盖用户选择）
+  const stEl = document.getElementById('scale-toggle');
   let logScale = true;
-  const nc = Chart.getChart('navChart');
-  if (nc) {
-    const apply = () => { nc.options.scales.y.type = logScale ? 'logarithmic' : 'linear'; st.textContent = logScale ? '对数坐标' : '线性坐标'; nc.update(); };
-    apply(); st.onclick = () => { logScale = !logScale; apply(); };
-  } else st.style.display = 'none';
+  const applyScale = () => {
+    if (!nc) return;
+    let type = logScale ? 'logarithmic' : 'linear';
+    if (logScale && nc.data.labels.length < 100) type = 'linear';
+    nc.options.scales.y.type = type;
+    if (stEl) stEl.textContent = type === 'logarithmic' ? '对数坐标' : '线性坐标';
+    nc.update();
+  };
+  if (stEl && nc) {
+    stEl.onclick = () => { logScale = !logScale; applyScale(); };
+  } else if (stEl) stEl.style.display = 'none';
+
+  // Range presets: slice all three stacked charts to the selected window (default: all)
+  let rangeStart = 0;
+  const renderRange = () => {
+    if (!ns.dates.length || !nc || !dc || !dfc) return;
+    const s = Math.max(0, Math.min(rangeStart, ns.dates.length - 1));
+    const labels = ns.dates.slice(s), end = ns.dates[ns.dates.length - 1];
+    nc.data.labels = labels; nc.data.datasets[0].data = ns.vals.slice(s);
+    dc.data.labels = labels; dc.data.datasets[0].data = ds.vals.slice(s);
+    dfc.data.labels = labels; dfc.data.datasets[0].data = dds.vals.slice(s);
+    document.getElementById('range-lbl').textContent =
+      `${ns.dates[s]} ~ ${end} · ${labels.length}周`;
+    applyScale();
+    dc.update(); dfc.update();
+  };
+  const monthsBack = { '3m':3, '1y':12, '3y':36 };
+  const rangeStartFor = p => {
+    if (p === 'all') return 0;
+    const end = new Date(ns.dates[ns.dates.length - 1] + 'T00:00:00');
+    const shift = end.getMonth() - monthsBack[p];
+    const y = end.getFullYear() + Math.floor(shift / 12), mo = ((shift % 12) + 12) % 12 + 1;
+    const dim = new Date(y, mo, 0).getDate();
+    const target = `${y}-${String(mo).padStart(2,'0')}-${String(Math.min(end.getDate(), dim)).padStart(2,'0')}`;
+    const i = ns.dates.findIndex(dt => dt >= target);
+    return i < 0 ? 0 : i;
+  };
+  const rs = document.getElementById('range-selector');
+  if (rs && nc && dc && dfc) {
+    const btns = [...rs.querySelectorAll('.range-btn')];
+    btns.forEach(b => b.onclick = () => {
+      rangeStart = rangeStartFor(b.dataset.period);
+      btns.forEach(x => x.classList.toggle('active', x === b));
+      renderRange();
+    });
+    const allBtn = btns.find(b => b.dataset.period === 'all');
+    if (allBtn) allBtn.classList.add('active');
+    renderRange();
+  } else if (rs) rs.style.display = 'none';
 
   // Holdings
   const catClr = {'进攻':'#f59e0b','防御':'#60a5fa'};

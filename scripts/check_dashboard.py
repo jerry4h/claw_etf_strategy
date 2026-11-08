@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""看板上线前校验门禁（16 项自动检查）。
+"""看板上线前校验门禁（17 项自动检查）。
 
 退出码 0=全部通过, 非0=至少一项失败。
 每项打印 [PASS] 或 [FAIL reason]。
@@ -159,7 +159,14 @@ def main() -> int:
             dd_len = len(data_10.get("drawdown", {}).get("dates", []))
             def_len = len(data_10.get("defense", {}).get("dates", []))
             if nav_len > 50 and dd_len > 50 and def_len > 50:
-                print(f"[PASS] 10. 三主图有数据（nav={nav_len}, drawdown={dd_len}, defense={def_len}）")
+                latest_date = data_10.get("meta", {}).get("data_as_of")
+                chart_ends = {key: data_10[key]["dates"][-1]
+                              for key in ("nav", "drawdown", "defense")}
+                if latest_date and all(date == latest_date for date in chart_ends.values()):
+                    print(f"[PASS] 10. 三主图有数据且包含最新周（nav={nav_len}, drawdown={dd_len}, defense={def_len}, 截至={latest_date}）")
+                else:
+                    print(f"[FAIL] 10. 三主图末点未对齐最新周: {chart_ends}, data_as_of={latest_date}")
+                    failed += 1
             else:
                 print(f"[FAIL] 10. 三主图数据不足: nav={nav_len}, drawdown={dd_len}, defense={def_len}（需>50）")
                 failed += 1
@@ -334,8 +341,34 @@ def main() -> int:
         print("[FAIL] 16. 仓位与引擎一致性: 未找到 DATA JSON")
         failed += 1
 
+    # 17. 主图时间范围控件 + 完整周频数据（快捷按钮切换近3月/近1年/近3年/全部）
+    if data_match:
+        try:
+            data_17 = json.loads(data_match.group(1))
+            missing = []
+            for marker in ('range-selector', 'data-period="3m"', 'data-period="1y"',
+                           'data-period="3y"', 'data-period="all"', 'renderRange'):
+                if marker not in html:
+                    missing.append(marker)
+            weeks = data_17.get("meta", {}).get("weeks")
+            nav_len = len(data_17.get("nav", {}).get("dates", []))
+            if missing:
+                print(f"[FAIL] 17. 主图时间范围控件缺失: {missing}")
+                failed += 1
+            elif not isinstance(weeks, int) or nav_len != weeks:
+                print(f"[FAIL] 17. 主图非完整周频数据: 点数={nav_len} 回测周数={weeks}")
+                failed += 1
+            else:
+                print(f"[PASS] 17. 主图时间范围快捷按钮齐全，且为完整周频数据（{nav_len} 周）")
+        except (json.JSONDecodeError, ValueError):
+            print("[FAIL] 17. 主图时间范围控件: DATA JSON 解析失败")
+            failed += 1
+    else:
+        print("[FAIL] 17. 主图时间范围控件: 未找到 DATA JSON")
+        failed += 1
+
     # 汇总
-    total_checks = 16
+    total_checks = 17
     print(f"\n{'='*50}")
     if failed == 0:
         print(f"✅ 全部 {total_checks} 项检查通过")

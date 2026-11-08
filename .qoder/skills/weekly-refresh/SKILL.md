@@ -1,6 +1,6 @@
 ---
 name: weekly-refresh
-description: Execute the weekly data refresh pipeline for the ETF rotation strategy. Updates NAV data, tushare cache, national team share tracking, regenerates the dashboard, runs 14-item pre-push gate checks, and commits+pushes if all pass. Use when the user asks to refresh data, update the dashboard, or run the weekly pipeline.
+description: Execute the weekly data refresh pipeline for the ETF rotation strategy. Updates NAV data, tushare cache, national team share tracking, regenerates the dashboard, runs 17-item pre-push gate checks, and commits+pushes if all pass. Use when the user asks to refresh data, update the dashboard, or run the weekly pipeline.
 ---
 
 # Weekly Data Refresh
@@ -24,7 +24,7 @@ cd /home/ubuntu/claw_etf_strategy
 2. **日频 cache 增量**: Appends new daily OHLC+amount rows to `data/experiments/tushare_cache/fund_daily_*.csv`
 3. **主力份额追踪** (soft failure): Updates `data/national_team/fund_share/` — failure doesn't block pipeline
 4. **数据校验**: NaN check, date monotonicity, no >20% tail jumps
-5. **看板生成 + 门禁**: `gen_dashboard.py` → `check_dashboard.py` (14 items, FAIL = abort)
+5. **看板生成 + 门禁**: `gen_dashboard.py` → `check_dashboard.py` (17 items, FAIL = abort)
 6. **git commit + push**: Only if steps 1-5 all pass; no partial commits
 
 ## Exit Codes
@@ -49,5 +49,5 @@ Runs full pipeline but skips git commit/push at the end. Use to verify before re
 
 - Token never appears in logs (masked as `***TOKEN***`)
 - Data files in `data/national_team/` are gitignored (sensitive)
-- `check_dashboard.py` must PASS all 14 items before commit is allowed
+- `check_dashboard.py` must PASS all 17 items before commit is allowed
 - Idempotent: safe to run multiple times

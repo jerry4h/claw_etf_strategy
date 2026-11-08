@@ -1,6 +1,6 @@
 ---
 name: dashboard-update
-description: Modify, preview, and validate the strategy dashboard (index.html). Handles template changes in gen_dashboard.py, local preview with --preview flag, multi-resolution testing, and 14-item pre-push gate validation. Use when the user asks to change the dashboard, fix visual issues, add new dashboard sections, or troubleshoot display problems.
+description: Modify, preview, and validate the strategy dashboard (index.html). Handles template changes in gen_dashboard.py, local preview with --preview flag, multi-resolution testing, and 17-item pre-push gate validation. Use when the user asks to change the dashboard, fix visual issues, add new dashboard sections, or troubleshoot display problems.
 ---
 
 # Dashboard Update Workflow
@@ -40,7 +40,7 @@ python scripts/test_dashboard_responsive.py
 
 # 4. Run gate validation (MUST PASS before commit)
 python scripts/check_dashboard.py
-# 14 items, exit 0 = safe to commit
+# 17 items, exit 0 = safe to commit
 
 # 5. Commit + push
 git add scripts/gen_dashboard.py index.html dashboard/data.json
@@ -48,7 +48,7 @@ git commit -m "fix/feat(dashboard): ..."
 git push
 ```
 
-## 14-Item Gate Checklist (check_dashboard.py)
+## 17-Item Gate Checklist (check_dashboard.py)
 
 | # | Check | Fail Condition |
 |---|-------|----------------|
@@ -66,6 +66,9 @@ git push
 | 12 | National team data | share_trends empty when available=true |
 | 13 | No hidden sections | Critical containers with display:none |
 | 14 | minmax ≤ 300px | Any `minmax(Xpx,...)` where X > 300 |
+| 15 | Holdings block | 本周/下周持仓缺失、权重非法、合计≠100% |
+| 16 | Holdings vs engine | 看板仓位与回测末行/rebalance 不一致 |
+| 17 | Range presets + weekly data | 快捷区间按钮缺失，或主图点数≠回测周数 |
 
 ## CSS Responsive Constraints (from project rules)
 
